@@ -21,6 +21,7 @@ const (
 )
 
 var ErrNoAuthHeaderIncluded = errors.New("no authorization header included")
+var randReader = rand.Read
 
 func GetAPIKey(headers http.Header) (string, error) {
 	authHeader := headers.Get("Authorization")
@@ -49,11 +50,13 @@ func CheckPasswordHash(password, hash string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 }
 
-func MakeJWT(
-	userID uuid.UUID,
-	tokenSecret string,
-	expiresIn time.Duration,
-) (string, error) {
+func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
+	if tokenSecret == "" {
+		return "", errors.New("tokenSecret must not be empty")
+	}
+	if expiresIn <= 0 {
+		return "", errors.New("expiresIn must be positive")
+	}
 	signingKey := []byte(tokenSecret)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
 		Issuer:    string(TokenTypeAccess),
@@ -104,13 +107,15 @@ func GetBearerToken(headers http.Header) (string, error) {
 	if len(splitAuth) < 2 || splitAuth[0] != "Bearer" {
 		return "", errors.New("malformed authorization header")
 	}
-
+	if splitAuth[1] == "" {
+		return "", errors.New("malformed authorization header")
+	}
 	return splitAuth[1], nil
 }
 
 func MakeRefreshToken() (string, error) {
 	token := make([]byte, 32)
-	_, err := rand.Read(token)
+	_, err := randReader(token)
 	if err != nil {
 		return "", err
 	}

@@ -19,14 +19,14 @@ func TestGetAPIKey(t *testing.T) {
 		"no auth header":         {input: http.Header{"Authorization": []string{""}}, expectedValue: fmt.Sprint(ErrNoAuthHeaderIncluded)},
 	}
 
-	for test, tc := range tests {
+	for test, tt := range tests {
 		t.Run(test, func(t *testing.T) {
-			receivedValue, err := GetAPIKey(tc.input)
+			receivedValue, err := GetAPIKey(tt.input)
 			var diff string
 			if err != nil {
-				diff = cmp.Diff(tc.expectedValue, fmt.Sprint(err))
+				diff = cmp.Diff(tt.expectedValue, fmt.Sprint(err))
 			} else {
-				diff = cmp.Diff(tc.expectedValue, receivedValue)
+				diff = cmp.Diff(tt.expectedValue, receivedValue)
 			}
 			if diff != "" {
 				t.Fatal(diff)
