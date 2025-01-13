@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -120,4 +121,23 @@ func MakeRefreshToken() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(token), nil
+}
+
+func ValidatePassword(password string) error {
+	if len(password) < 8 {
+		return fmt.Errorf("password must be at least 8 characters long")
+	}
+	if matched, _ := regexp.MatchString(`[A-Z]`, password); !matched {
+		return fmt.Errorf("password must contain at least one uppercase letter")
+	}
+	if matched, _ := regexp.MatchString(`[a-z]`, password); !matched {
+		return fmt.Errorf("password must contain at least one lowercase letter")
+	}
+	if matched, _ := regexp.MatchString(`\d`, password); !matched {
+		return fmt.Errorf("password must contain at least one digit")
+	}
+	if matched, _ := regexp.MatchString(`[!@#\$%\^&\*\(\)_\+\-=\[\]\{\};':"\\|,.<>\/?]`, password); !matched {
+		return fmt.Errorf("password must contain at least one special character")
+	}
+	return nil
 }
