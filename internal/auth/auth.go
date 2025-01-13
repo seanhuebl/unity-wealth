@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -17,9 +18,7 @@ import (
 
 type TokenType string
 
-const (
-	TokenTypeAccess TokenType = "unity-wealth-access"
-)
+var TokenTypeAccess = TokenType(os.Getenv("TOKEN_TYPE"))
 
 var ErrNoAuthHeaderIncluded = errors.New("no authorization header included")
 var randReader = rand.Read
