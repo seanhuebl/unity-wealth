@@ -11,8 +11,7 @@ import (
 )
 
 type apiConfig struct {
-	port         string
-	secretString string
+	port string
 }
 
 func main() {
@@ -20,10 +19,9 @@ func main() {
 	if err != nil {
 		log.Fatal("unable to load environment")
 	}
-	
+
 	var cfg apiConfig
 	cfg.port = fmt.Sprintf(":%v", os.Getenv("PORT"))
-	cfg.secretString = os.Getenv("JWT_SECRET")
 
 	router := gin.Default()
 
