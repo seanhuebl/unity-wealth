@@ -15,7 +15,7 @@ func RegisterRoutes(router *gin.Engine, cfg *ApiConfig) {
 	home := router.Group("/")
 	{
 		home.GET("/health", func(ctx *gin.Context) {
-			Health(ctx)
+			health(ctx)
 		})
 	}
 
