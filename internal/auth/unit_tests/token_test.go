@@ -11,6 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
+	"github.com/seanhuebl/unity-wealth/internal/auth"
 )
 
 func TestMakeJWT(t *testing.T) {
@@ -29,7 +30,7 @@ func TestMakeJWT(t *testing.T) {
 			expiresIn:   time.Hour,
 			wantErr:     false,
 			verifyClaims: jwt.RegisteredClaims{
-				Issuer:  string(TokenTypeAccess),
+				Issuer:  string(auth.TokenTypeAccess),
 				Subject: "",
 			},
 		},
@@ -51,7 +52,7 @@ func TestMakeJWT(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			token, err := MakeJWT(tt.userID, tt.tokenSecret, tt.expiresIn)
+			token, err := auth.MakeJWT(tt.userID, tt.tokenSecret, tt.expiresIn)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MakeJWT() error = %v, wantErr %v", err, tt.wantErr)
@@ -97,7 +98,7 @@ func TestValidateJWT(t *testing.T) {
 		{
 			name: "Valid token",
 			tokenString: func() string {
-				token, _ := MakeJWT(userID, "testsecret", time.Hour)
+				token, _ := auth.MakeJWT(userID, "testsecret", time.Hour)
 				return token
 			}(),
 			tokenSecret: "testsecret",
@@ -107,7 +108,7 @@ func TestValidateJWT(t *testing.T) {
 		{
 			name: "Invalid token secret",
 			tokenString: func() string {
-				token, _ := MakeJWT(uuid.New(), "testsecret", time.Hour)
+				token, _ := auth.MakeJWT(uuid.New(), "testsecret", time.Hour)
 				return token
 			}(),
 			tokenSecret: "wrongsecret",
@@ -125,7 +126,7 @@ func TestValidateJWT(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotUUID, err := ValidateJWT(tt.tokenString, tt.tokenSecret)
+			gotUUID, err := auth.ValidateJWT(tt.tokenString, tt.tokenSecret)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateJWT() error = %v, wantErr %v", err, tt.wantErr)
@@ -147,12 +148,12 @@ func TestGetBearerToken(t *testing.T) {
 		"simple":                 {input: http.Header{"Authorization": []string{"Bearer 1234"}}, expectedValue: "1234"},
 		"wrong auth header":      {input: http.Header{"Authorization": []string{"ApiKey 1234"}}, expectedValue: "malformed authorization header"},
 		"incomplete auth header": {input: http.Header{"Authorization": []string{"Bearer "}}, expectedValue: "malformed authorization header"},
-		"no auth header":         {input: http.Header{"Authorization": []string{""}}, expectedValue: fmt.Sprint(ErrNoAuthHeaderIncluded)},
+		"no auth header":         {input: http.Header{"Authorization": []string{""}}, expectedValue: fmt.Sprint(auth.ErrNoAuthHeaderIncluded)},
 	}
 
 	for test, tt := range tests {
 		t.Run(test, func(t *testing.T) {
-			receivedValue, err := GetBearerToken(tt.input)
+			receivedValue, err := auth.GetBearerToken(tt.input)
 			var diff string
 			if err != nil {
 				diff = cmp.Diff(tt.expectedValue, fmt.Sprint(err))
@@ -191,11 +192,11 @@ func TestMakeRefreshToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Override randReader temporarily for this test
-			origRandReader := randReader
-			randReader = tt.mockRand
-			defer func() { randReader = origRandReader }()
+			origRandReader := auth.RandReader
+			auth.RandReader = tt.mockRand
+			defer func() { auth.RandReader = origRandReader }()
 
-			token, err := MakeRefreshToken()
+			token, err := auth.MakeRefreshToken()
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MakeRefreshToken() error = %v, wantErr %v", err, tt.wantErr)

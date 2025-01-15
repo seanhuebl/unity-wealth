@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -15,7 +14,7 @@ type SignUpInput struct {
 }
 
 // POST
-func addUser(ctx *gin.Context, cfg *ApiConfig) {
+func AddUser(ctx *gin.Context, cfg *ApiConfig) {
 	var input SignUpInput
 
 	if err := ctx.ShouldBindJSON(&input); err != nil {
@@ -32,10 +31,15 @@ func addUser(ctx *gin.Context, cfg *ApiConfig) {
 		return
 	}
 
-	cfg.Queries.CreateUser(context.Background(), database.CreateUserParams{
+	if err := cfg.Queries.CreateUser(ctx.Request.Context(), database.CreateUserParams{
 		Email:          input.Email,
 		HashedPassword: hashedPW,
-	})
+	}); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"message": "Sign up successful!",

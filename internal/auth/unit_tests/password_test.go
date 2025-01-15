@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/seanhuebl/unity-wealth/internal/auth"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -66,7 +67,7 @@ func TestHashPassword(t *testing.T) {
 				}
 			} else {
 				// Ensure valid hashes are verifiable
-				if err := CheckPasswordHash(tt.password, hash); err != nil {
+				if err := auth.CheckPasswordHash(tt.password, hash); err != nil {
 					t.Errorf("HashPassword() generated a hash that could not be verified: %v", err)
 				}
 			}
@@ -85,13 +86,13 @@ func TestCheckPasswordHash(t *testing.T) {
 		{
 			name:     "Valid password and hash",
 			password: "securePassword123",
-			hash:     func() string { h, _ := HashPassword("securePassword123"); return h }(),
+			hash:     func() string { h, _ := auth.HashPassword("securePassword123"); return h }(),
 			wantErr:  false,
 		},
 		{
 			name:     "Invalid password",
 			password: "wrongPassword",
-			hash:     func() string { h, _ := HashPassword("securePassword123"); return h }(),
+			hash:     func() string { h, _ := auth.HashPassword("securePassword123"); return h }(),
 			wantErr:  true,
 			errMsg:   bcrypt.ErrMismatchedHashAndPassword.Error(),
 		},
@@ -120,7 +121,7 @@ func TestCheckPasswordHash(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := CheckPasswordHash(tt.password, tt.hash)
+			err := auth.CheckPasswordHash(tt.password, tt.hash)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CheckPasswordHash() error = %v, wantErr %v", err, tt.wantErr)
@@ -184,7 +185,7 @@ func TestValidatePassword(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidatePassword(tt.password)
+			err := auth.ValidatePassword(tt.password)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidatePassword() error = %v, wantErr %v", err, tt.wantErr)

@@ -13,7 +13,6 @@ type User struct {
 	Email                string
 	HashedPassword       string
 	RiskPreference       string
-	TotalDebt            sql.NullFloat64
 	PlanType             string
 	StripeCustomerID     sql.NullString
 	StripeSubscriptionID sql.NullString
