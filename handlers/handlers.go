@@ -14,6 +14,7 @@ type ApiConfig struct {
 
 type Quierier interface {
 	CreateUser(ctx context.Context, params database.CreateUserParams) error
+	GetUserByEmail(ctx context.Context, email string) (database.GetUserByEmailRow, error)
 }
 
 func RegisterRoutes(router *gin.Engine, cfg *ApiConfig) {
