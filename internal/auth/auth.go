@@ -21,7 +21,7 @@ type TokenType string
 var TokenTypeAccess = TokenType(os.Getenv("TOKEN_TYPE"))
 
 var ErrNoAuthHeaderIncluded = errors.New("no authorization header included")
-var randReader = rand.Read
+var RandReader = rand.Read
 
 func GetAPIKey(headers http.Header) (string, error) {
 	authHeader := headers.Get("Authorization")
@@ -115,7 +115,7 @@ func GetBearerToken(headers http.Header) (string, error) {
 
 func MakeRefreshToken() (string, error) {
 	token := make([]byte, 32)
-	_, err := randReader(token)
+	_, err := RandReader(token)
 	if err != nil {
 		return "", err
 	}

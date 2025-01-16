@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/seanhuebl/unity-wealth/internal/auth"
 )
 
 func TestGetAPIKey(t *testing.T) {
@@ -16,12 +17,12 @@ func TestGetAPIKey(t *testing.T) {
 		"simple":                 {input: http.Header{"Authorization": []string{"ApiKey 1234"}}, expectedValue: "1234"},
 		"wrong auth header":      {input: http.Header{"Authorization": []string{"Bearer 1234"}}, expectedValue: "malformed authorization header"},
 		"incomplete auth header": {input: http.Header{"Authorization": []string{"ApiKey "}}, expectedValue: "malformed authorization header"},
-		"no auth header":         {input: http.Header{"Authorization": []string{""}}, expectedValue: fmt.Sprint(ErrNoAuthHeaderIncluded)},
+		"no auth header":         {input: http.Header{"Authorization": []string{""}}, expectedValue: fmt.Sprint(auth.ErrNoAuthHeaderIncluded)},
 	}
 
 	for test, tt := range tests {
 		t.Run(test, func(t *testing.T) {
-			receivedValue, err := GetAPIKey(tt.input)
+			receivedValue, err := auth.GetAPIKey(tt.input)
 			var diff string
 			if err != nil {
 				diff = cmp.Diff(tt.expectedValue, fmt.Sprint(err))

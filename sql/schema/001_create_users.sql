@@ -1,10 +1,9 @@
--- goose+ Up
+-- +goose Up
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY,
     email TEXT NOT NULL UNIQUE,
     hashed_password TEXT NOT NULL,
     risk_preference TEXT NOT NULL DEFAULT 'LOW',
-    total_debt REAL DEFAULT 0.0,
     plan_type TEXT NOT NULL DEFAULT 'FREE',
     stripe_customer_id TEXT,
     stripe_subscription_id TEXT,
