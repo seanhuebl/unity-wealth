@@ -7,7 +7,6 @@ package database
 
 import (
 	"context"
-	"database/sql"
 )
 
 const createRefreshToken = `-- name: CreateRefreshToken :exec
@@ -30,12 +29,30 @@ VALUES (
 `
 
 type CreateRefreshTokenParams struct {
-	TokenHash    sql.NullString
+	TokenHash    string
 	UserID       interface{}
 	DeviceInfoID interface{}
 }
 
 func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) error {
 	_, err := q.db.ExecContext(ctx, createRefreshToken, arg.TokenHash, arg.UserID, arg.DeviceInfoID)
+	return err
+}
+
+const revokeToken = `-- name: RevokeToken :exec
+UPDATE refresh_tokens
+SET revoked_at = NOW()
+WHERE user_id = ?1
+    AND device_info_id = ?2
+    AND revoked_at IS NULL
+`
+
+type RevokeTokenParams struct {
+	UserID       interface{}
+	DeviceInfoID interface{}
+}
+
+func (q *Queries) RevokeToken(ctx context.Context, arg RevokeTokenParams) error {
+	_, err := q.db.ExecContext(ctx, revokeToken, arg.UserID, arg.DeviceInfoID)
 	return err
 }

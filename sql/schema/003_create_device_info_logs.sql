@@ -1,3 +1,4 @@
+-- +goose Up
 CREATE TABLE IF NOT EXISTS device_info_logs (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL,
@@ -8,5 +9,8 @@ CREATE TABLE IF NOT EXISTS device_info_logs (
     os_version TEXT NOT NULL,
     app_info TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
+-- +goose Down
+DROP TABLE IF EXISTS device_info_logs;

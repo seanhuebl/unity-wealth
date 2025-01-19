@@ -8,14 +8,17 @@ import (
 )
 
 type ApiConfig struct {
-	Port    string
-	Queries Quierier
+	Port        string
+	Queries     Quierier
 	TokenSecret string
 }
 
 type Quierier interface {
 	CreateUser(ctx context.Context, params database.CreateUserParams) error
 	GetUserByEmail(ctx context.Context, email string) (database.GetUserByEmailRow, error)
+	RevokeToken(ctx context.Context, arg database.RevokeTokenParams) error
+	GetDeviceInfoByUser(ctx context.Context, arg database.GetDeviceInfoByUserParams) (interface{}, error)
+	CreateRefreshToken(ctx context.Context, arg database.CreateRefreshTokenParams) error
 }
 
 func RegisterRoutes(router *gin.Engine, cfg *ApiConfig) {

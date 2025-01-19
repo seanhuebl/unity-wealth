@@ -15,3 +15,9 @@ VALUES (
         ?2,
         ?3
     );
+-- name: RevokeToken :exec
+UPDATE refresh_tokens
+SET revoked_at = NOW()
+WHERE user_id = ?1
+    AND device_info_id = ?2
+    AND revoked_at IS NULL;

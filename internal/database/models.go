@@ -8,9 +8,22 @@ import (
 	"database/sql"
 )
 
+type DeviceInfoLog struct {
+	ID             interface{}
+	UserID         interface{}
+	DeviceType     string
+	Browser        string
+	BrowserVersion string
+	Os             string
+	OsVersion      string
+	AppInfo        sql.NullString
+	CreatedAt      sql.NullTime
+	LastUsedAt     sql.NullTime
+}
+
 type RefreshToken struct {
 	ID           interface{}
-	TokenHash    sql.NullString
+	TokenHash    string
 	CreatedAt    sql.NullTime
 	UpdatedAt    sql.NullTime
 	ExpiresAt    sql.NullTime
