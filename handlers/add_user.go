@@ -41,7 +41,7 @@ func AddUser(ctx *gin.Context, cfg *ApiConfig) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	ctx.JSON(http.StatusCreated, gin.H{
 		"message": "Sign up successful!",
 		"email":   input.Email,
 	})

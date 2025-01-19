@@ -27,8 +27,9 @@ func main() {
 	}
 
 	cfg := handlers.ApiConfig{
-		Port:    fmt.Sprintf(":%v", os.Getenv("PORT")),
-		Queries: database.New(db),
+		Port:        fmt.Sprintf(":%v", os.Getenv("PORT")),
+		Queries:     database.New(db),
+		TokenSecret: os.Getenv("TOKEN_SECRET"),
 	}
 
 	router := gin.Default()

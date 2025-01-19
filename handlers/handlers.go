@@ -10,6 +10,7 @@ import (
 type ApiConfig struct {
 	Port    string
 	Queries Quierier
+	TokenSecret string
 }
 
 type Quierier interface {
