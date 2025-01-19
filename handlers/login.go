@@ -14,6 +14,15 @@ type LoginInput struct {
 	Password string `json:"password" binding:"required"`
 }
 
+type DeviceLog struct {
+	UserID         int    `json:"user_id"`
+	DeviceType     string `json:"device_type"`
+	Browser        string `json:"browser"`
+	BrowserVersion string `json:"browser_version"`
+	OS             string `json:"os"`
+	OSVersion      string `json:"os_version"`
+}
+
 func Login(ctx *gin.Context, cfg *ApiConfig) {
 	var input LoginInput
 
@@ -67,8 +76,6 @@ func Login(ctx *gin.Context, cfg *ApiConfig) {
 	}
 
 	http.SetCookie(ctx.Writer, &cookie)
-
-	
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"token": JWT,

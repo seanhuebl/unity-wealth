@@ -7,9 +7,10 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
     expires_at DATETIME,
     revoked_at DATETIME,
     user_id UUID NOT NULL,
-    device_info TEXT,
-    UNIQUE (user_id, device_info),
-    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
+    device_info_id UUID NOT NULL,
+    UNIQUE (user_id, device_info_id),
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    FOREIGN KEY (device_info_id) REFERENCES device_info_logs (id) ON DELETE CASCADE
 );
 -- +goose Down
 DROP TABLE IF EXISTS refresh_tokens;

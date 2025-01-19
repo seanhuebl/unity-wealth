@@ -7,24 +7,35 @@ package database
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createRefreshToken = `-- name: CreateRefreshToken :exec
 INSERT INTO refresh_tokens (
-        token,
-        user_id,
+        id,
+        token_hash,
         expires_at,
-        revoked_at
+        revoked_at,
+        user_id,
+        device_info_id
     )
-VALUES (?1, ?2, DATETIME('now', '+60 days'), NULL)
+VALUES (
+        gen_random_uuid(),
+        ?1,
+        DATETIME('now', '+60 days'),
+        NULL,
+        ?2,
+        ?3
+    )
 `
 
 type CreateRefreshTokenParams struct {
-	Token  string
-	UserID interface{}
+	TokenHash    sql.NullString
+	UserID       interface{}
+	DeviceInfoID interface{}
 }
 
 func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) error {
-	_, err := q.db.ExecContext(ctx, createRefreshToken, arg.Token, arg.UserID)
+	_, err := q.db.ExecContext(ctx, createRefreshToken, arg.TokenHash, arg.UserID, arg.DeviceInfoID)
 	return err
 }

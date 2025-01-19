@@ -9,12 +9,14 @@ import (
 )
 
 type RefreshToken struct {
-	Token     string
-	CreatedAt sql.NullTime
-	UpdatedAt sql.NullTime
-	UserID    interface{}
-	ExpiresAt sql.NullTime
-	RevokedAt sql.NullTime
+	ID           interface{}
+	TokenHash    sql.NullString
+	CreatedAt    sql.NullTime
+	UpdatedAt    sql.NullTime
+	ExpiresAt    sql.NullTime
+	RevokedAt    sql.NullTime
+	UserID       interface{}
+	DeviceInfoID interface{}
 }
 
 type User struct {
