@@ -47,7 +47,7 @@ func Login(ctx *gin.Context, cfg *ApiConfig) {
 		})
 		return
 	}
-	
+
 	userID, err := validateCredentials(ctx, cfg, &input)
 	if err != nil {
 		if err.Error() != "failed to fetch user" {
@@ -61,7 +61,6 @@ func Login(ctx *gin.Context, cfg *ApiConfig) {
 		})
 		return
 	}
-	
 
 	clientDeviceInfo, err := getDeviceInfo(ctx.Request)
 	if err != nil {
