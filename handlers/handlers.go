@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/gin-gonic/gin"
 	"github.com/seanhuebl/unity-wealth/internal/database"
@@ -11,6 +12,7 @@ type ApiConfig struct {
 	Port        string
 	Queries     Quierier
 	TokenSecret string
+	Database    *sql.DB
 }
 
 type Quierier interface {
@@ -20,6 +22,7 @@ type Quierier interface {
 	GetDeviceInfoByUser(ctx context.Context, arg database.GetDeviceInfoByUserParams) (interface{}, error)
 	CreateRefreshToken(ctx context.Context, arg database.CreateRefreshTokenParams) error
 	CreateDeviceInfo(ctx context.Context, arg database.CreateDeviceInfoParams) (interface{}, error)
+	WithTx(tx *sql.Tx) *database.Queries
 }
 
 func RegisterRoutes(router *gin.Engine, cfg *ApiConfig) {
