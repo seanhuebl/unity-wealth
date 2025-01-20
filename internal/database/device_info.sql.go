@@ -9,6 +9,51 @@ import (
 	"context"
 )
 
+const createDeviceInfo = `-- name: CreateDeviceInfo :one
+INSERT INTO device_info_logs (
+        id,
+        user_id,
+        device_type,
+        browser,
+        browser_version,
+        os,
+        os_version
+    )
+VALUES (
+        gen_random_uuid(),
+        ?1,
+        ?2,
+        ?3,
+        ?4,
+        ?5,
+        ?6
+    )
+RETURNING id
+`
+
+type CreateDeviceInfoParams struct {
+	UserID         interface{}
+	DeviceType     string
+	Browser        string
+	BrowserVersion string
+	Os             string
+	OsVersion      string
+}
+
+func (q *Queries) CreateDeviceInfo(ctx context.Context, arg CreateDeviceInfoParams) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, createDeviceInfo,
+		arg.UserID,
+		arg.DeviceType,
+		arg.Browser,
+		arg.BrowserVersion,
+		arg.Os,
+		arg.OsVersion,
+	)
+	var id interface{}
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getDeviceInfoByUser = `-- name: GetDeviceInfoByUser :one
 SELECT id
 FROM device_info_logs

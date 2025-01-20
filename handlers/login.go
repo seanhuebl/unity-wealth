@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -54,14 +55,16 @@ func Login(ctx *gin.Context, cfg *ApiConfig) {
 	err = auth.CheckPasswordHash(input.Password, user.HashedPassword)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"error": "invalid email / password" + err.Error(),
+			"error": "invalid email / password",
 		})
 		return
 	}
 	userID := user.ID.(uuid.UUID)
 	clientDeviceInfo := getDeviceInfo(ctx.Request)
+	var deviceID uuid.UUID
+	var ok bool
 
-	device, err := cfg.Queries.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
+	foundDevice, err := cfg.Queries.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
 		UserID:         userID,
 		DeviceType:     clientDeviceInfo.DeviceType,
 		Browser:        clientDeviceInfo.Browser,
@@ -70,16 +73,52 @@ func Login(ctx *gin.Context, cfg *ApiConfig) {
 		OsVersion:      clientDeviceInfo.OsVersion,
 	})
 	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
+			// No device found: create a new device
+			newDeviceID, err := cfg.Queries.CreateDeviceInfo(ctx, database.CreateDeviceInfoParams{
+				UserID:         userID,
+				DeviceType:     clientDeviceInfo.DeviceType,
+				Browser:        clientDeviceInfo.Browser,
+				BrowserVersion: clientDeviceInfo.BrowserVersion,
+				Os:             clientDeviceInfo.Os,
+				OsVersion:      clientDeviceInfo.OsVersion,
+			})
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{
+					"error": "failed to create new device info: " + err.Error(),
+				})
+				return
+			}
+
+			// Typecast new device ID
+			deviceID, ok = newDeviceID.(uuid.UUID)
+			if !ok {
+				ctx.JSON(http.StatusInternalServerError, gin.H{
+					"error": "failed to retrieve new device ID as UUID",
+				})
+				return
+			}
+		} else {
+			// Critical error
 			ctx.JSON(http.StatusInternalServerError, gin.H{
 				"error": "failed to fetch device info: " + err.Error(),
 			})
 			return
 		}
 	} else {
+		// Device found: Typecast the ID
+		deviceID, ok := foundDevice.(uuid.UUID)
+		if !ok {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": "failed to retrieve device ID as UUID",
+			})
+			return
+		}
+
+		// Revoke token for the existing device
 		err = cfg.Queries.RevokeToken(ctx, database.RevokeTokenParams{
 			UserID:       userID,
-			DeviceInfoID: device.(uuid.UUID),
+			DeviceInfoID: deviceID,
 		})
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -90,7 +129,7 @@ func Login(ctx *gin.Context, cfg *ApiConfig) {
 	}
 
 	// Generate and pass across JWT and refresh token
-	JWT, err := auth.MakeJWT(user.ID.(uuid.UUID), cfg.TokenSecret, time.Minute*15)
+	JWT, err := auth.MakeJWT(userID, cfg.TokenSecret, time.Minute*15)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to create JWT: " + err.Error(),
@@ -103,32 +142,42 @@ func Login(ctx *gin.Context, cfg *ApiConfig) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to create refresh token: " + err.Error(),
 		})
+		return
 	}
 	refreshHash, err := auth.HashPassword(refreshToken)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to hash refresh token: " + err.Error(),
 		})
+		return
 	}
 
 	err = cfg.Queries.CreateRefreshToken(ctx, database.CreateRefreshTokenParams{
 		TokenHash:    refreshHash,
 		UserID:       userID,
-		DeviceInfoID: device.(uuid.UUID),
+		DeviceInfoID: deviceID,
 	})
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to create refresh token entry: " + err.Error(),
 		})
+		return
 	}
+
+	isProduction := os.Getenv("ENV") == "prod"
+	cookieDomain := os.Getenv("COOKIE_DOMAIN")
+	if cookieDomain == "" {
+		cookieDomain = "localhost"
+	}
+
 	cookie := http.Cookie{
 		Name:     "refresh_token",
 		Value:    refreshToken,
 		Path:     "/",
-		Domain:   "localhost", // Use 'localhost' for local testing
+		Domain:   cookieDomain, // Use 'localhost' for local testing
 		Expires:  time.Now().Add(7 * 24 * time.Hour),
 		HttpOnly: true,
-		Secure:   false, // Disable 'Secure' for HTTP testing
+		Secure:   isProduction, // Disable 'Secure' for HTTP testing
 		SameSite: http.SameSiteStrictMode,
 	}
 

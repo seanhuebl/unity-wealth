@@ -19,6 +19,7 @@ type Quierier interface {
 	RevokeToken(ctx context.Context, arg database.RevokeTokenParams) error
 	GetDeviceInfoByUser(ctx context.Context, arg database.GetDeviceInfoByUserParams) (interface{}, error)
 	CreateRefreshToken(ctx context.Context, arg database.CreateRefreshTokenParams) error
+	CreateDeviceInfo(ctx context.Context, arg database.CreateDeviceInfoParams) (interface{}, error)
 }
 
 func RegisterRoutes(router *gin.Engine, cfg *ApiConfig) {

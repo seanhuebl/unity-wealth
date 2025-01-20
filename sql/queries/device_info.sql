@@ -8,3 +8,23 @@ WHERE user_id = ?1
     AND os = ?5
     AND os_version = ?6
 LIMIT 1;
+-- name: CreateDeviceInfo :one
+INSERT INTO device_info_logs (
+        id,
+        user_id,
+        device_type,
+        browser,
+        browser_version,
+        os,
+        os_version
+    )
+VALUES (
+        gen_random_uuid(),
+        ?1,
+        ?2,
+        ?3,
+        ?4,
+        ?5,
+        ?6
+    )
+RETURNING id;
