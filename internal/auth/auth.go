@@ -16,6 +16,17 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type AuthInterface interface {
+	GetAPIKey(headers http.Header) (string, error)
+	HashPassword(password string) (string, error)
+	CheckPasswordHash(password, hash string) error
+	MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error)
+	ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error)
+	GetBearerToken(headers http.Header) (string, error)
+	MakeRefreshToken() (string, error)
+	ValidatePassword(password string) error
+}
+
 type TokenType string
 
 var TokenTypeAccess = TokenType(os.Getenv("TOKEN_TYPE"))

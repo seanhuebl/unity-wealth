@@ -47,8 +47,8 @@ func Login(ctx *gin.Context, cfg *ApiConfig) {
 		})
 		return
 	}
-	
-	userID, err := validateCredentials(ctx, cfg, &input)
+
+	userID, err := ValidateCredentials(ctx, cfg, &input)
 	if err != nil {
 		if err.Error() != "failed to fetch user" {
 			ctx.JSON(http.StatusUnauthorized, gin.H{
@@ -61,7 +61,6 @@ func Login(ctx *gin.Context, cfg *ApiConfig) {
 		})
 		return
 	}
-	
 
 	clientDeviceInfo, err := getDeviceInfo(ctx.Request)
 	if err != nil {
@@ -339,7 +338,7 @@ func setRefreshTokenCookie(ctx *gin.Context, refreshToken string) {
 	http.SetCookie(ctx.Writer, &cookie)
 }
 
-func validateCredentials(ctx *gin.Context, cfg *ApiConfig, input *LoginInput) (uuid.UUID, error) {
+func ValidateCredentials(ctx *gin.Context, cfg *ApiConfig, input *LoginInput) (uuid.UUID, error) {
 	user, err := cfg.Queries.GetUserByEmail(ctx, input.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

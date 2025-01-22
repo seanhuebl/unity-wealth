@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/gin-gonic/gin"
+	"github.com/seanhuebl/unity-wealth/internal/auth"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 )
 
@@ -13,6 +14,7 @@ type ApiConfig struct {
 	Queries     Quierier
 	TokenSecret string
 	Database    *sql.DB
+	Auth        auth.AuthInterface
 }
 
 type Quierier interface {
