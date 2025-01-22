@@ -51,7 +51,7 @@ func TestAddUser(t *testing.T) {
 					return nil
 				}
 			},
-			expectedStatus: http.StatusOK,
+			expectedStatus: http.StatusCreated,
 			expectedBody:   `{"message":"Sign up successful!","email":"user@example.com"}`,
 		},
 		{

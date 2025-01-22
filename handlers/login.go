@@ -48,7 +48,7 @@ func Login(ctx *gin.Context, cfg *ApiConfig) {
 		return
 	}
 
-	userID, err := validateCredentials(ctx, cfg, &input)
+	userID, err := ValidateCredentials(ctx, cfg, &input)
 	if err != nil {
 		if err.Error() != "failed to fetch user" {
 			ctx.JSON(http.StatusUnauthorized, gin.H{
@@ -130,12 +130,18 @@ func Login(ctx *gin.Context, cfg *ApiConfig) {
 		"token": JWT,
 	})
 }
+
 func castToUUID(value interface{}) (uuid.UUID, error) {
-	if id, ok := value.(uuid.UUID); ok {
-		return id, nil
+	switch v := value.(type) {
+	case uuid.UUID:
+		return v, nil
+	case string:
+		return uuid.Parse(v)
+	default:
+		return uuid.Nil, errors.New("failed to cast to UUID")
 	}
-	return uuid.UUID{}, errors.New("failed to cast to UUID")
 }
+
 func getDeviceInfo(req *http.Request) (DeviceInfo, error) {
 	// Check for X-Device-Info header
 	xDeviceInfo := req.Header.Get("X-Device-Info")
@@ -338,18 +344,19 @@ func setRefreshTokenCookie(ctx *gin.Context, refreshToken string) {
 	http.SetCookie(ctx.Writer, &cookie)
 }
 
-func validateCredentials(ctx *gin.Context, cfg *ApiConfig, input *LoginInput) (uuid.UUID, error) {
+func ValidateCredentials(ctx *gin.Context, cfg *ApiConfig, input *LoginInput) (uuid.UUID, error) {
 	user, err := cfg.Queries.GetUserByEmail(ctx, input.Email)
+	fmt.Printf("Error from GetUserByEmail: %v (type: %T)\n", err, err)
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return uuid.UUID{}, fmt.Errorf("invalid email / password")
+			return uuid.Nil, fmt.Errorf("invalid email / password")
 		}
-		return uuid.UUID{}, fmt.Errorf("failed to fetch user")
+		return uuid.Nil, fmt.Errorf("failed to fetch user")
 	}
-
-	err = auth.CheckPasswordHash(input.Password, user.HashedPassword)
+	err = cfg.Auth.CheckPasswordHash(input.Password, user.HashedPassword)
 	if err != nil {
-		return uuid.UUID{}, fmt.Errorf("invalid email / password")
+		return uuid.Nil, fmt.Errorf("invalid email / password")
 	}
 	return castToUUID(user.ID)
 }
