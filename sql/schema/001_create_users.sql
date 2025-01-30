@@ -1,6 +1,6 @@
 -- +goose Up
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     email TEXT NOT NULL UNIQUE,
     hashed_password TEXT NOT NULL,
     risk_preference TEXT NOT NULL DEFAULT 'LOW',

@@ -31,7 +31,7 @@ func TestAddUser(t *testing.T) {
 
 	router := gin.Default()
 	router.POST("/addUser", func(ctx *gin.Context) {
-		handlers.AddUser(ctx, mockCfg)
+		mockCfg.AddUser(ctx)
 	})
 
 	tests := []struct {

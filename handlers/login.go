@@ -31,17 +31,17 @@ type DeviceInfo struct {
 	OsVersion      string `json:"os_version"`
 }
 
-func Login(ctx *gin.Context, cfg *ApiConfig) {
+func (cfg *ApiConfig) Login(ctx *gin.Context) {
 	var input LoginInput
 
 	if err := ctx.ShouldBindJSON(&input); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid input data: " + err.Error(),
+			"error": "invalid request / data",
 		})
 		return
 	}
 
-	if !isValidEmail(input.Email) {
+	if !IsValidEmail(input.Email) {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid email format",
 		})
@@ -62,7 +62,8 @@ func Login(ctx *gin.Context, cfg *ApiConfig) {
 		return
 	}
 
-	clientDeviceInfo, err := getDeviceInfo(ctx.Request)
+	clientDeviceInfo, err := GetDeviceInfo(ctx.Request)
+
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error": "device information could not be verified",
@@ -78,9 +79,15 @@ func Login(ctx *gin.Context, cfg *ApiConfig) {
 		return
 	}
 	defer tx.Rollback()
+	if tx == nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Transaction object is nil",
+		})
+		return
+	}
 	queriesTx := cfg.Queries.WithTx(tx)
 
-	deviceID, err := handleDeviceInfo(ctx, queriesTx, userID, clientDeviceInfo)
+	deviceID, err := HandleDeviceInfo(ctx, queriesTx, userID, clientDeviceInfo)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -88,7 +95,7 @@ func Login(ctx *gin.Context, cfg *ApiConfig) {
 		return
 	}
 
-	JWT, refreshToken, err := generateTokens(userID, cfg.TokenSecret)
+	JWT, refreshToken, err := GenerateTokens(userID, cfg.TokenSecret, cfg.Auth)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -105,9 +112,10 @@ func Login(ctx *gin.Context, cfg *ApiConfig) {
 	}
 
 	err = queriesTx.CreateRefreshToken(ctx, database.CreateRefreshTokenParams{
+		ID:           uuid.NewString(),
 		TokenHash:    refreshHash,
-		UserID:       userID,
-		DeviceInfoID: deviceID,
+		UserID:       userID.String(),
+		DeviceInfoID: deviceID.String(),
 	})
 
 	if err != nil {
@@ -124,39 +132,27 @@ func Login(ctx *gin.Context, cfg *ApiConfig) {
 		return
 	}
 
-	setRefreshTokenCookie(ctx, refreshToken)
+	SetRefreshTokenCookie(ctx, refreshToken)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"token": JWT,
 	})
 }
 
-func castToUUID(value interface{}) (uuid.UUID, error) {
-	switch v := value.(type) {
-	case uuid.UUID:
-		return v, nil
-	case string:
-		return uuid.Parse(v)
-	default:
-		return uuid.Nil, errors.New("failed to cast to UUID")
-	}
-}
-
-func getDeviceInfo(req *http.Request) (DeviceInfo, error) {
+func GetDeviceInfo(req *http.Request) (DeviceInfo, error) {
 	// Check for X-Device-Info header
 	xDeviceInfo := req.Header.Get("X-Device-Info")
 	if xDeviceInfo != "" {
-		deviceInfo := parseDeviceInfoFromHeader(xDeviceInfo)
-		if isValidDeviceInfo(deviceInfo) {
+		deviceInfo := ParseDeviceInfoFromHeader(xDeviceInfo)
+		if IsValidDeviceInfo(deviceInfo) {
 			return deviceInfo, nil
 		}
 	}
-
 	// Fallback to User-Agent header
 	userAgent := req.Header.Get("User-Agent")
 	if userAgent != "" {
-		deviceInfo := parseUserAgent(userAgent)
-		if isValidDeviceInfo(deviceInfo) {
+		deviceInfo := ParseUserAgent(userAgent)
+		if IsValidDeviceInfo(deviceInfo) {
 			return deviceInfo, nil
 		}
 	}
@@ -166,7 +162,7 @@ func getDeviceInfo(req *http.Request) (DeviceInfo, error) {
 }
 
 // parseDeviceInfoFromHeader parses the X-Device-Info header into a DeviceInfo struct.
-func parseDeviceInfoFromHeader(header string) DeviceInfo {
+func ParseDeviceInfoFromHeader(header string) DeviceInfo {
 	deviceInfo := DeviceInfo{}
 
 	// Split the header into key-value pairs
@@ -177,15 +173,15 @@ func parseDeviceInfoFromHeader(header string) DeviceInfo {
 			key, value := strings.ToLower(strings.TrimSpace(kv[0])), strings.TrimSpace(kv[1])
 			switch key {
 			case "os":
-				deviceInfo.Os = sanitizeInput(value)
+				deviceInfo.Os = SanitizeInput(value)
 			case "os_version":
-				deviceInfo.OsVersion = sanitizeInput(value)
+				deviceInfo.OsVersion = SanitizeInput(value)
 			case "device_type":
-				deviceInfo.DeviceType = sanitizeInput(value)
+				deviceInfo.DeviceType = SanitizeInput(value)
 			case "browser":
-				deviceInfo.Browser = sanitizeInput(value)
+				deviceInfo.Browser = SanitizeInput(value)
 			case "browser_version":
-				deviceInfo.BrowserVersion = sanitizeInput(value)
+				deviceInfo.BrowserVersion = SanitizeInput(value)
 			default:
 				// Ignore unexpected keys
 			}
@@ -196,8 +192,7 @@ func parseDeviceInfoFromHeader(header string) DeviceInfo {
 }
 
 // parseUserAgent parses the User-Agent header and provides fallback device info.
-func parseUserAgent(userAgent string) DeviceInfo {
-	userAgent = sanitizeInput(userAgent)
+func ParseUserAgent(userAgent string) DeviceInfo {
 	ua := user_agent.New(userAgent)
 
 	deviceType := "Desktop"
@@ -209,13 +204,14 @@ func parseUserAgent(userAgent string) DeviceInfo {
 
 	return DeviceInfo{
 		DeviceType:     deviceType,
-		Browser:        sanitizeInput(browser),
-		BrowserVersion: sanitizeInput(browserVersion),
-		Os:             sanitizeInput(ua.OS()),
-		OsVersion:      "", // User-Agent does not typically provide OS version
+		Browser:        SanitizeInput(browser),
+		BrowserVersion: SanitizeInput(browserVersion),
+		Os:             SanitizeInput(ua.OSInfo().FullName),
+		OsVersion:      SanitizeInput(ua.OSInfo().Version), // User-Agent does not typically provide OS version
 	}
 }
-func isValidDeviceInfo(info DeviceInfo) bool {
+
+func IsValidDeviceInfo(info DeviceInfo) bool {
 	// Define valid device types
 	validDeviceTypes := map[string]bool{
 		"Desktop": true,
@@ -228,21 +224,23 @@ func isValidDeviceInfo(info DeviceInfo) bool {
 	}
 
 	// Validate versions using regex
-	if !isValidVersion(info.OsVersion) || !isValidVersion(info.BrowserVersion) {
+	if info.BrowserVersion != "" && !IsValidVersion(info.BrowserVersion) {
 		return false
 	}
-
+	if info.OsVersion != "" && !IsValidVersion(info.OsVersion) {
+		return false
+	}
 	// Validate required fields are non-empty
 	return info.Browser != "" && info.Os != ""
 }
 
-func isValidVersion(version string) bool {
+func IsValidVersion(version string) bool {
 	versionRegex := `^\d+(\.\d+)*$` // Matches version strings like "10.0.1" or "95.0.4638.69"
 	matched, _ := regexp.MatchString(versionRegex, version)
 	return matched
 }
 
-func sanitizeInput(input string) string {
+func SanitizeInput(input string) string {
 	// Trim leading and trailing whitespace
 	input = strings.TrimSpace(input)
 
@@ -258,18 +256,18 @@ func sanitizeInput(input string) string {
 	return input
 }
 
-func isValidEmail(email string) bool {
+func IsValidEmail(email string) bool {
 	// Define a regex pattern for validating email
-	emailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+	emailRegex := `^[a-zA-Z0-9_%+\-][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`
 
 	// Compile the regex and match the email
 	re := regexp.MustCompile(emailRegex)
 	return re.MatchString(email)
 }
 
-func handleDeviceInfo(ctx context.Context, queriesTx *database.Queries, userID uuid.UUID, info DeviceInfo) (uuid.UUID, error) {
+func HandleDeviceInfo(ctx context.Context, queriesTx Quierier, userID uuid.UUID, info DeviceInfo) (uuid.UUID, error) {
 	foundDevice, err := queriesTx.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
-		UserID:         userID,
+		UserID:         userID.String(),
 		DeviceType:     info.DeviceType,
 		Browser:        info.Browser,
 		BrowserVersion: info.BrowserVersion,
@@ -280,7 +278,8 @@ func handleDeviceInfo(ctx context.Context, queriesTx *database.Queries, userID u
 		if errors.Is(err, sql.ErrNoRows) {
 			// No device found: create a new device
 			newDeviceID, err := queriesTx.CreateDeviceInfo(ctx, database.CreateDeviceInfoParams{
-				UserID:         userID,
+				ID:             uuid.NewString(),
+				UserID:         userID.String(),
 				DeviceType:     info.DeviceType,
 				Browser:        info.Browser,
 				BrowserVersion: info.BrowserVersion,
@@ -288,30 +287,30 @@ func handleDeviceInfo(ctx context.Context, queriesTx *database.Queries, userID u
 				OsVersion:      info.OsVersion,
 			})
 			if err != nil {
-				return uuid.UUID{}, fmt.Errorf("failed to create new device")
+				return uuid.Nil, fmt.Errorf("failed to create new device: %v", err)
 			}
-			return castToUUID(newDeviceID)
+			return uuid.Parse(newDeviceID)
 
 		}
-		return uuid.UUID{}, fmt.Errorf("failed to fetch device info")
+		return uuid.Nil, fmt.Errorf("failed to fetch device info")
 	}
 	// Device found: Typecast the ID
-	deviceID, err := castToUUID(foundDevice)
+	deviceID, err := uuid.Parse(foundDevice)
 	if err != nil {
-		return uuid.UUID{}, fmt.Errorf("failed to cast device ID")
+		return uuid.Nil, fmt.Errorf("failed to cast device ID")
 	}
 
 	// Revoke token for the existing device
 	if err := queriesTx.RevokeToken(ctx, database.RevokeTokenParams{
-		UserID:       userID,
-		DeviceInfoID: deviceID,
+		UserID:       userID.String(),
+		DeviceInfoID: deviceID.String(),
 	}); err != nil {
-		return uuid.UUID{}, fmt.Errorf("failed to revoke token")
+		return uuid.Nil, fmt.Errorf("failed to revoke token")
 	}
 	return deviceID, nil
 }
 
-func generateTokens(userID uuid.UUID, secret string) (string, string, error) {
+func GenerateTokens(userID uuid.UUID, secret string, auth auth.AuthInterface) (string, string, error) {
 	JWT, err := auth.MakeJWT(userID, secret, time.Minute*15)
 	if err != nil {
 		return "", "", err
@@ -323,7 +322,7 @@ func generateTokens(userID uuid.UUID, secret string) (string, string, error) {
 	return JWT, refreshToken, nil
 }
 
-func setRefreshTokenCookie(ctx *gin.Context, refreshToken string) {
+func SetRefreshTokenCookie(ctx *gin.Context, refreshToken string) {
 	isProduction := os.Getenv("ENV") == "prod"
 	cookieDomain := os.Getenv("COOKIE_DOMAIN")
 	if cookieDomain == "" {
@@ -346,7 +345,6 @@ func setRefreshTokenCookie(ctx *gin.Context, refreshToken string) {
 
 func ValidateCredentials(ctx *gin.Context, cfg *ApiConfig, input *LoginInput) (uuid.UUID, error) {
 	user, err := cfg.Queries.GetUserByEmail(ctx, input.Email)
-	fmt.Printf("Error from GetUserByEmail: %v (type: %T)\n", err, err)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -358,5 +356,5 @@ func ValidateCredentials(ctx *gin.Context, cfg *ApiConfig, input *LoginInput) (u
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("invalid email / password")
 	}
-	return castToUUID(user.ID)
+	return uuid.Parse(user.ID)
 }

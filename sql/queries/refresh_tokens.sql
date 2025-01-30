@@ -8,12 +8,12 @@ INSERT INTO refresh_tokens (
         device_info_id
     )
 VALUES (
-        gen_random_uuid(),
         ?1,
+        ?2,
         DATETIME('now', '+60 days'),
         NULL,
-        ?2,
-        ?3
+        ?3,
+        ?4
     );
 -- name: RevokeToken :exec
 UPDATE refresh_tokens

@@ -20,19 +20,20 @@ INSERT INTO device_info_logs (
         os_version
     )
 VALUES (
-        gen_random_uuid(),
         ?1,
         ?2,
         ?3,
         ?4,
         ?5,
-        ?6
+        ?6,
+        ?7
     )
 RETURNING id
 `
 
 type CreateDeviceInfoParams struct {
-	UserID         interface{}
+	ID             string
+	UserID         string
 	DeviceType     string
 	Browser        string
 	BrowserVersion string
@@ -40,8 +41,9 @@ type CreateDeviceInfoParams struct {
 	OsVersion      string
 }
 
-func (q *Queries) CreateDeviceInfo(ctx context.Context, arg CreateDeviceInfoParams) (interface{}, error) {
+func (q *Queries) CreateDeviceInfo(ctx context.Context, arg CreateDeviceInfoParams) (string, error) {
 	row := q.db.QueryRowContext(ctx, createDeviceInfo,
+		arg.ID,
 		arg.UserID,
 		arg.DeviceType,
 		arg.Browser,
@@ -49,7 +51,7 @@ func (q *Queries) CreateDeviceInfo(ctx context.Context, arg CreateDeviceInfoPara
 		arg.Os,
 		arg.OsVersion,
 	)
-	var id interface{}
+	var id string
 	err := row.Scan(&id)
 	return id, err
 }
@@ -67,7 +69,7 @@ LIMIT 1
 `
 
 type GetDeviceInfoByUserParams struct {
-	UserID         interface{}
+	UserID         string
 	DeviceType     string
 	Browser        string
 	BrowserVersion string
@@ -75,7 +77,7 @@ type GetDeviceInfoByUserParams struct {
 	OsVersion      string
 }
 
-func (q *Queries) GetDeviceInfoByUser(ctx context.Context, arg GetDeviceInfoByUserParams) (interface{}, error) {
+func (q *Queries) GetDeviceInfoByUser(ctx context.Context, arg GetDeviceInfoByUserParams) (string, error) {
 	row := q.db.QueryRowContext(ctx, getDeviceInfoByUser,
 		arg.UserID,
 		arg.DeviceType,
@@ -84,7 +86,7 @@ func (q *Queries) GetDeviceInfoByUser(ctx context.Context, arg GetDeviceInfoByUs
 		arg.Os,
 		arg.OsVersion,
 	)
-	var id interface{}
+	var id string
 	err := row.Scan(&id)
 	return id, err
 }

@@ -9,8 +9,8 @@ import (
 )
 
 type DeviceInfoLog struct {
-	ID             interface{}
-	UserID         interface{}
+	ID             string
+	UserID         string
 	DeviceType     string
 	Browser        string
 	BrowserVersion string
@@ -22,18 +22,18 @@ type DeviceInfoLog struct {
 }
 
 type RefreshToken struct {
-	ID           interface{}
+	ID           string
 	TokenHash    string
 	CreatedAt    sql.NullTime
 	UpdatedAt    sql.NullTime
 	ExpiresAt    sql.NullTime
 	RevokedAt    sql.NullTime
-	UserID       interface{}
-	DeviceInfoID interface{}
+	UserID       string
+	DeviceInfoID string
 }
 
 type User struct {
-	ID                   interface{}
+	ID                   string
 	Email                string
 	HashedPassword       string
 	RiskPreference       string

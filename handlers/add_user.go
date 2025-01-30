@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/auth"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 )
@@ -14,7 +15,7 @@ type SignUpInput struct {
 }
 
 // POST
-func AddUser(ctx *gin.Context, cfg *ApiConfig) {
+func (cfg *ApiConfig) AddUser(ctx *gin.Context) {
 	var input SignUpInput
 
 	if err := ctx.ShouldBindJSON(&input); err != nil {
@@ -32,6 +33,7 @@ func AddUser(ctx *gin.Context, cfg *ApiConfig) {
 	}
 
 	if err := cfg.Queries.CreateUser(ctx.Request.Context(), database.CreateUserParams{
+		ID:             uuid.NewString(),
 		Email:          input.Email,
 		HashedPassword: hashedPW,
 	}); err != nil {

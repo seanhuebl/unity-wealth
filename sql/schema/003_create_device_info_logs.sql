@@ -1,7 +1,7 @@
 -- +goose Up
 CREATE TABLE IF NOT EXISTS device_info_logs (
-    id UUID PRIMARY KEY,
-    user_id UUID NOT NULL,
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
     device_type TEXT NOT NULL,
     browser TEXT NOT NULL,
     browser_version TEXT NOT NULL,

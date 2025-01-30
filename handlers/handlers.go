@@ -21,13 +21,13 @@ type Quierier interface {
 	CreateUser(ctx context.Context, params database.CreateUserParams) error
 	GetUserByEmail(ctx context.Context, email string) (database.GetUserByEmailRow, error)
 	RevokeToken(ctx context.Context, arg database.RevokeTokenParams) error
-	GetDeviceInfoByUser(ctx context.Context, arg database.GetDeviceInfoByUserParams) (interface{}, error)
+	GetDeviceInfoByUser(ctx context.Context, arg database.GetDeviceInfoByUserParams) (string, error)
 	CreateRefreshToken(ctx context.Context, arg database.CreateRefreshTokenParams) error
-	CreateDeviceInfo(ctx context.Context, arg database.CreateDeviceInfoParams) (interface{}, error)
+	CreateDeviceInfo(ctx context.Context, arg database.CreateDeviceInfoParams) (string, error)
 	WithTx(tx *sql.Tx) *database.Queries
 }
 
-func RegisterRoutes(router *gin.Engine, cfg *ApiConfig) {
+func (cfg *ApiConfig) RegisterRoutes(router *gin.Engine) {
 
 	home := router.Group("/")
 	{
@@ -39,7 +39,7 @@ func RegisterRoutes(router *gin.Engine, cfg *ApiConfig) {
 	api := router.Group("/api")
 	{
 		api.POST("/signup", func(ctx *gin.Context) {
-			AddUser(ctx, cfg)
+			cfg.AddUser(ctx)
 		})
 	}
 }

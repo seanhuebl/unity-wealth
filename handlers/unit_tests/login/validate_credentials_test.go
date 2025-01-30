@@ -40,7 +40,7 @@ func TestValidateCredentials(t *testing.T) {
 				Password: "correct-password",
 			},
 			mockEmail:     "valid@example.com",
-			mockUser:      database.GetUserByEmailRow{ID: interface{}(userID), HashedPassword: string(hash)},
+			mockUser:      database.GetUserByEmailRow{ID: userID, HashedPassword: string(hash)},
 			mockError:     nil,
 			mockPassword:  "correct-password",
 			mockHash:      string(hash),
@@ -55,7 +55,7 @@ func TestValidateCredentials(t *testing.T) {
 				Password: "wrong-password",
 			},
 			mockEmail:     "valid@example.com",
-			mockUser:      database.GetUserByEmailRow{ID: interface{}(userID), HashedPassword: string(hash)},
+			mockUser:      database.GetUserByEmailRow{ID: userID, HashedPassword: string(hash)},
 			mockError:     nil,
 			mockPassword:  "wrong-password",
 			mockHash:      "hashed-pass",
@@ -93,7 +93,6 @@ func TestValidateCredentials(t *testing.T) {
 						return tc.mockUser, nil
 					}
 					if email == "nonexistent@example.com" {
-						fmt.Println("Returning sql.ErrNoRows for email:", email)
 						return database.GetUserByEmailRow{}, sql.ErrNoRows
 					}
 					return database.GetUserByEmailRow{}, fmt.Errorf("unknown error")
@@ -121,7 +120,6 @@ func TestValidateCredentials(t *testing.T) {
 
 			// Call the function under test
 			resultUUID, err := handlers.ValidateCredentials(c, cfg, &tc.input)
-			fmt.Println(resultUUID)
 			// Compare results using `cmp`
 			if diff := cmp.Diff(tc.expectedError, err, cmp.Comparer(func(e1, e2 error) bool {
 				if e1 == nil && e2 == nil {

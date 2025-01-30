@@ -11,16 +11,17 @@ import (
 
 const createUser = `-- name: CreateUser :exec
 INSERT INTO users (id, email, hashed_password)
-VALUES (gen_random_uuid(), ?1, ?2)
+VALUES (?1, ?2, ?3)
 `
 
 type CreateUserParams struct {
+	ID             string
 	Email          string
 	HashedPassword string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
-	_, err := q.db.ExecContext(ctx, createUser, arg.Email, arg.HashedPassword)
+	_, err := q.db.ExecContext(ctx, createUser, arg.ID, arg.Email, arg.HashedPassword)
 	return err
 }
 
@@ -32,7 +33,7 @@ WHERE email = ?1
 `
 
 type GetUserByEmailRow struct {
-	ID             interface{}
+	ID             string
 	HashedPassword string
 }
 

@@ -18,24 +18,22 @@ type Quierier struct {
 }
 
 // CreateDeviceInfo provides a mock function with given fields: ctx, arg
-func (_m *Quierier) CreateDeviceInfo(ctx context.Context, arg database.CreateDeviceInfoParams) (interface{}, error) {
+func (_m *Quierier) CreateDeviceInfo(ctx context.Context, arg database.CreateDeviceInfoParams) (string, error) {
 	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateDeviceInfo")
 	}
 
-	var r0 interface{}
+	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, database.CreateDeviceInfoParams) (interface{}, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, database.CreateDeviceInfoParams) (string, error)); ok {
 		return rf(ctx, arg)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, database.CreateDeviceInfoParams) interface{}); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, database.CreateDeviceInfoParams) string); ok {
 		r0 = rf(ctx, arg)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
-		}
+		r0 = ret.Get(0).(string)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, database.CreateDeviceInfoParams) error); ok {
@@ -84,24 +82,22 @@ func (_m *Quierier) CreateUser(ctx context.Context, params database.CreateUserPa
 }
 
 // GetDeviceInfoByUser provides a mock function with given fields: ctx, arg
-func (_m *Quierier) GetDeviceInfoByUser(ctx context.Context, arg database.GetDeviceInfoByUserParams) (interface{}, error) {
+func (_m *Quierier) GetDeviceInfoByUser(ctx context.Context, arg database.GetDeviceInfoByUserParams) (string, error) {
 	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetDeviceInfoByUser")
 	}
 
-	var r0 interface{}
+	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, database.GetDeviceInfoByUserParams) (interface{}, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, database.GetDeviceInfoByUserParams) (string, error)); ok {
 		return rf(ctx, arg)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, database.GetDeviceInfoByUserParams) interface{}); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, database.GetDeviceInfoByUserParams) string); ok {
 		r0 = rf(ctx, arg)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
-		}
+		r0 = ret.Get(0).(string)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, database.GetDeviceInfoByUserParams) error); ok {

@@ -1,6 +1,6 @@
 -- name: CreateUser :exec
 INSERT INTO users (id, email, hashed_password)
-VALUES (gen_random_uuid(), ?1, ?2);
+VALUES (?1, ?2, ?3);
 -- name: GetUserByEmail :one
 SELECT id,
     hashed_password

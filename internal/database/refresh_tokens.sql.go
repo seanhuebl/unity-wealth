@@ -19,23 +19,29 @@ INSERT INTO refresh_tokens (
         device_info_id
     )
 VALUES (
-        gen_random_uuid(),
         ?1,
+        ?2,
         DATETIME('now', '+60 days'),
         NULL,
-        ?2,
-        ?3
+        ?3,
+        ?4
     )
 `
 
 type CreateRefreshTokenParams struct {
+	ID           string
 	TokenHash    string
-	UserID       interface{}
-	DeviceInfoID interface{}
+	UserID       string
+	DeviceInfoID string
 }
 
 func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) error {
-	_, err := q.db.ExecContext(ctx, createRefreshToken, arg.TokenHash, arg.UserID, arg.DeviceInfoID)
+	_, err := q.db.ExecContext(ctx, createRefreshToken,
+		arg.ID,
+		arg.TokenHash,
+		arg.UserID,
+		arg.DeviceInfoID,
+	)
 	return err
 }
 
@@ -48,8 +54,8 @@ WHERE user_id = ?1
 `
 
 type RevokeTokenParams struct {
-	UserID       interface{}
-	DeviceInfoID interface{}
+	UserID       string
+	DeviceInfoID string
 }
 
 func (q *Queries) RevokeToken(ctx context.Context, arg RevokeTokenParams) error {
