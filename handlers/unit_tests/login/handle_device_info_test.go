@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
@@ -52,10 +53,10 @@ func TestHandleDeviceInfo(t *testing.T) {
 				}).Return(existingDeviceID, nil)
 
 				// 2) RevokeToken is called for the found device
-				mockQueries.On("RevokeToken", mock.Anything, database.RevokeTokenParams{
-					UserID:       userID,
-					DeviceInfoID: existingDeviceID,
-				}).Return(nil) // success
+				mockQueries.On("RevokeToken", mock.Anything, mock.MatchedBy(func(params database.RevokeTokenParams) bool {
+					return params.UserID == userID && params.DeviceInfoID == existingDeviceID &&
+						params.RevokedAt.Valid && time.Since(params.RevokedAt.Time) < time.Second // ✅ Allows minor variations
+				})).Return(nil)
 			},
 			expectedDeviceID: uuid.MustParse(existingDeviceID), // This won't match the actual call unless you unify them. See notes below.
 			expectedError:    nil,

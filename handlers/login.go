@@ -111,9 +111,15 @@ func (cfg *ApiConfig) Login(ctx *gin.Context) {
 		return
 	}
 
+	expirationDuration := sql.NullTime{
+		Time:  time.Now().Add(60 * 24 * time.Hour),
+		Valid: true,
+	}
+
 	err = queriesTx.CreateRefreshToken(ctx, database.CreateRefreshTokenParams{
 		ID:           uuid.NewString(),
 		TokenHash:    refreshHash,
+		ExpiresAt:    expirationDuration,
 		UserID:       userID.String(),
 		DeviceInfoID: deviceID.String(),
 	})
@@ -299,9 +305,10 @@ func HandleDeviceInfo(ctx context.Context, queriesTx Quierier, userID uuid.UUID,
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to cast device ID")
 	}
-
+	 
 	// Revoke token for the existing device
 	if err := queriesTx.RevokeToken(ctx, database.RevokeTokenParams{
+		RevokedAt:    sql.NullTime{Time: time.Now(), Valid: true},
 		UserID:       userID.String(),
 		DeviceInfoID: deviceID.String(),
 	}); err != nil {

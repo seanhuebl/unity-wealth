@@ -7,8 +7,9 @@ package database
 
 import (
 	"context"
+	"database/sql"
 )
-
+// #nosec G101 -- False positive; query is parameterized and safe.
 const createRefreshToken = `-- name: CreateRefreshToken :exec
 INSERT INTO refresh_tokens (
         id,
@@ -21,16 +22,17 @@ INSERT INTO refresh_tokens (
 VALUES (
         ?1,
         ?2,
-        DATETIME('now', '+60 days'),
-        NULL,
         ?3,
-        ?4
+        NULL,
+        ?4,
+        ?5
     )
 `
 
 type CreateRefreshTokenParams struct {
 	ID           string
 	TokenHash    string
+	ExpiresAt    sql.NullTime
 	UserID       string
 	DeviceInfoID string
 }
@@ -39,26 +41,28 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 	_, err := q.db.ExecContext(ctx, createRefreshToken,
 		arg.ID,
 		arg.TokenHash,
+		arg.ExpiresAt,
 		arg.UserID,
 		arg.DeviceInfoID,
 	)
 	return err
 }
-
+// #nosec G101 -- False positive; query is parameterized and safe.
 const revokeToken = `-- name: RevokeToken :exec
 UPDATE refresh_tokens
-SET revoked_at = NOW()
-WHERE user_id = ?1
-    AND device_info_id = ?2
+SET revoked_at = ?1
+WHERE user_id = ?2
+    AND device_info_id = ?3
     AND revoked_at IS NULL
 `
 
 type RevokeTokenParams struct {
+	RevokedAt    sql.NullTime
 	UserID       string
 	DeviceInfoID string
 }
 
 func (q *Queries) RevokeToken(ctx context.Context, arg RevokeTokenParams) error {
-	_, err := q.db.ExecContext(ctx, revokeToken, arg.UserID, arg.DeviceInfoID)
+	_, err := q.db.ExecContext(ctx, revokeToken, arg.RevokedAt, arg.UserID, arg.DeviceInfoID)
 	return err
 }

@@ -10,14 +10,14 @@ INSERT INTO refresh_tokens (
 VALUES (
         ?1,
         ?2,
-        DATETIME('now', '+60 days'),
-        NULL,
         ?3,
-        ?4
+        NULL,
+        ?4,
+        ?5
     );
 -- name: RevokeToken :exec
 UPDATE refresh_tokens
-SET revoked_at = NOW()
-WHERE user_id = ?1
-    AND device_info_id = ?2
+SET revoked_at = ?1
+WHERE user_id = ?2
+    AND device_info_id = ?3
     AND revoked_at IS NULL;
