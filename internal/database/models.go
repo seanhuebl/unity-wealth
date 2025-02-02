@@ -8,8 +8,32 @@ import (
 	"database/sql"
 )
 
+type DeviceInfoLog struct {
+	ID             string
+	UserID         string
+	DeviceType     string
+	Browser        string
+	BrowserVersion string
+	Os             string
+	OsVersion      string
+	AppInfo        sql.NullString
+	CreatedAt      sql.NullTime
+	LastUsedAt     sql.NullTime
+}
+
+type RefreshToken struct {
+	ID           string
+	TokenHash    string
+	CreatedAt    sql.NullTime
+	UpdatedAt    sql.NullTime
+	ExpiresAt    sql.NullTime
+	RevokedAt    sql.NullTime
+	UserID       string
+	DeviceInfoID string
+}
+
 type User struct {
-	ID                   interface{}
+	ID                   string
 	Email                string
 	HashedPassword       string
 	RiskPreference       string

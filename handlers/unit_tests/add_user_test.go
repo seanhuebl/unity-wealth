@@ -31,7 +31,7 @@ func TestAddUser(t *testing.T) {
 
 	router := gin.Default()
 	router.POST("/addUser", func(ctx *gin.Context) {
-		handlers.AddUser(ctx, mockCfg)
+		mockCfg.AddUser(ctx)
 	})
 
 	tests := []struct {
@@ -51,7 +51,7 @@ func TestAddUser(t *testing.T) {
 					return nil
 				}
 			},
-			expectedStatus: http.StatusOK,
+			expectedStatus: http.StatusCreated,
 			expectedBody:   `{"message":"Sign up successful!","email":"user@example.com"}`,
 		},
 		{

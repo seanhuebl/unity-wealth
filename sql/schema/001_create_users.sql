@@ -1,6 +1,6 @@
 -- +goose Up
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     email TEXT NOT NULL UNIQUE,
     hashed_password TEXT NOT NULL,
     risk_preference TEXT NOT NULL DEFAULT 'LOW',
@@ -12,4 +12,4 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 -- +goose Down
-DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS users;

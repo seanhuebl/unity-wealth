@@ -27,13 +27,15 @@ func main() {
 	}
 
 	cfg := handlers.ApiConfig{
-		Port:    fmt.Sprintf(":%v", os.Getenv("PORT")),
-		Queries: database.New(db),
+		Port:        fmt.Sprintf(":%v", os.Getenv("PORT")),
+		Queries:     database.New(db),
+		TokenSecret: os.Getenv("TOKEN_SECRET"),
+		Database:    db,
 	}
 
 	router := gin.Default()
 
-	handlers.RegisterRoutes(router, &cfg)
+	cfg.RegisterRoutes(router)
 
 	err = router.Run(cfg.Port)
 	if err != nil {
