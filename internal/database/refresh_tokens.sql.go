@@ -9,6 +9,7 @@ import (
 	"context"
 	"database/sql"
 )
+
 // #nosec G101 -- False positive; query is parameterized and safe.
 const createRefreshToken = `-- name: CreateRefreshToken :exec
 INSERT INTO refresh_tokens (
@@ -47,6 +48,7 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 	)
 	return err
 }
+
 // #nosec G101 -- False positive; query is parameterized and safe.
 const revokeToken = `-- name: RevokeToken :exec
 UPDATE refresh_tokens

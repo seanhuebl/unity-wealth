@@ -305,7 +305,7 @@ func HandleDeviceInfo(ctx context.Context, queriesTx Quierier, userID uuid.UUID,
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to cast device ID")
 	}
-	 
+
 	// Revoke token for the existing device
 	if err := queriesTx.RevokeToken(ctx, database.RevokeTokenParams{
 		RevokedAt:    sql.NullTime{Time: time.Now(), Valid: true},

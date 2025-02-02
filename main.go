@@ -26,7 +26,6 @@ func main() {
 		log.Fatal("database connection test failed:", err)
 	}
 
-	
 	cfg := handlers.ApiConfig{
 		Port:        fmt.Sprintf(":%v", os.Getenv("PORT")),
 		Queries:     database.New(db),
