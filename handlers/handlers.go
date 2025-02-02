@@ -41,5 +41,9 @@ func (cfg *ApiConfig) RegisterRoutes(router *gin.Engine) {
 		api.POST("/signup", func(ctx *gin.Context) {
 			cfg.AddUser(ctx)
 		})
+
+		api.POST("/login", func(ctx *gin.Context) {
+			cfg.Login(ctx)
+		})
 	}
 }
