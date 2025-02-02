@@ -2,8 +2,9 @@
 @LOCAL_BASE_URL=http://localhost:8080
 
 
-POST {{CODESPACE_BASE_URL}}/api/signup 
+POST {{CODESPACE_BASE_URL}}/api/login
 Content-Type: application/json
+X-Device-Info: os=iOS; os_version=14.4; device_type=Mobile; browser=Safari; browser_version=14.0
 
 {
     "email": "sean@example.com",
