@@ -111,6 +111,8 @@ func TestLoginHandler(t *testing.T) {
 
 				mockAuth.On("MakeRefreshToken").Return("fake-refresh-token", nil)
 
+				mockAuth.On("HashPassword", "fake-refresh-token").Return("refresh-hash", nil)
+
 			},
 			expectedStatus: http.StatusOK,
 			expectedJSON: map[string]string{

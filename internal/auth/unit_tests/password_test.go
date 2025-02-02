@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/seanhuebl/unity-wealth/handlers"
 	"github.com/seanhuebl/unity-wealth/internal/auth"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -22,6 +23,9 @@ func CustomHashPassword(password string, cost int) (string, error) {
 }
 
 func TestHashPassword(t *testing.T) {
+	cfg := handlers.ApiConfig{
+		Auth: auth.NewAuthService(),
+	}
 	tests := []struct {
 		name     string
 		password string
@@ -67,7 +71,7 @@ func TestHashPassword(t *testing.T) {
 				}
 			} else {
 				// Ensure valid hashes are verifiable
-				if err := auth.CheckPasswordHash(tt.password, hash); err != nil {
+				if err := cfg.Auth.CheckPasswordHash(tt.password, hash); err != nil {
 					t.Errorf("HashPassword() generated a hash that could not be verified: %v", err)
 				}
 			}
@@ -76,6 +80,9 @@ func TestHashPassword(t *testing.T) {
 }
 
 func TestCheckPasswordHash(t *testing.T) {
+	cfg := handlers.ApiConfig{
+		Auth: auth.NewAuthService(),
+	}
 	tests := []struct {
 		name     string
 		password string
@@ -86,13 +93,13 @@ func TestCheckPasswordHash(t *testing.T) {
 		{
 			name:     "Valid password and hash",
 			password: "securePassword123",
-			hash:     func() string { h, _ := auth.HashPassword("securePassword123"); return h }(),
+			hash:     func() string { h, _ := cfg.Auth.HashPassword("securePassword123"); return h }(),
 			wantErr:  false,
 		},
 		{
 			name:     "Invalid password",
 			password: "wrongPassword",
-			hash:     func() string { h, _ := auth.HashPassword("securePassword123"); return h }(),
+			hash:     func() string { h, _ := cfg.Auth.HashPassword("securePassword123"); return h }(),
 			wantErr:  true,
 			errMsg:   bcrypt.ErrMismatchedHashAndPassword.Error(),
 		},
@@ -121,7 +128,7 @@ func TestCheckPasswordHash(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := auth.CheckPasswordHash(tt.password, tt.hash)
+			err := cfg.Auth.CheckPasswordHash(tt.password, tt.hash)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CheckPasswordHash() error = %v, wantErr %v", err, tt.wantErr)
@@ -139,6 +146,10 @@ func TestCheckPasswordHash(t *testing.T) {
 }
 
 func TestValidatePassword(t *testing.T) {
+
+	cfg := handlers.ApiConfig{
+		Auth: auth.NewAuthService(),
+	}
 	tests := []struct {
 		name       string
 		password   string
@@ -185,7 +196,7 @@ func TestValidatePassword(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := auth.ValidatePassword(tt.password)
+			err := cfg.Auth.ValidatePassword(tt.password)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidatePassword() error = %v, wantErr %v", err, tt.wantErr)

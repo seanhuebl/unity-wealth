@@ -11,10 +11,15 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
+	"github.com/seanhuebl/unity-wealth/handlers"
 	"github.com/seanhuebl/unity-wealth/internal/auth"
 )
 
 func TestMakeJWT(t *testing.T) {
+	cfg := handlers.ApiConfig{
+		Auth: auth.NewAuthService(),
+	}
+
 	tests := []struct {
 		name         string
 		userID       uuid.UUID
@@ -52,7 +57,7 @@ func TestMakeJWT(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			token, err := auth.MakeJWT(tt.userID, tt.tokenSecret, tt.expiresIn)
+			token, err := cfg.Auth.MakeJWT(tt.userID, tt.tokenSecret, tt.expiresIn)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MakeJWT() error = %v, wantErr %v", err, tt.wantErr)
@@ -87,7 +92,9 @@ func TestMakeJWT(t *testing.T) {
 
 func TestValidateJWT(t *testing.T) {
 	userID := uuid.New()
-
+	cfg := handlers.ApiConfig{
+		Auth: auth.NewAuthService(),
+	}
 	tests := []struct {
 		name        string
 		tokenString string
@@ -98,7 +105,7 @@ func TestValidateJWT(t *testing.T) {
 		{
 			name: "Valid token",
 			tokenString: func() string {
-				token, _ := auth.MakeJWT(userID, "testsecret", time.Hour)
+				token, _ := cfg.Auth.MakeJWT(userID, "testsecret", time.Hour)
 				return token
 			}(),
 			tokenSecret: "testsecret",
@@ -108,7 +115,7 @@ func TestValidateJWT(t *testing.T) {
 		{
 			name: "Invalid token secret",
 			tokenString: func() string {
-				token, _ := auth.MakeJWT(uuid.New(), "testsecret", time.Hour)
+				token, _ := cfg.Auth.MakeJWT(uuid.New(), "testsecret", time.Hour)
 				return token
 			}(),
 			tokenSecret: "wrongsecret",
@@ -126,7 +133,7 @@ func TestValidateJWT(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotUUID, err := auth.ValidateJWT(tt.tokenString, tt.tokenSecret)
+			gotUUID, err := cfg.Auth.ValidateJWT(tt.tokenString, tt.tokenSecret)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateJWT() error = %v, wantErr %v", err, tt.wantErr)
@@ -141,6 +148,9 @@ func TestValidateJWT(t *testing.T) {
 }
 
 func TestGetBearerToken(t *testing.T) {
+	cfg := handlers.ApiConfig{
+		Auth: auth.NewAuthService(),
+	}
 	tests := map[string]struct {
 		input         http.Header
 		expectedValue string
@@ -153,7 +163,7 @@ func TestGetBearerToken(t *testing.T) {
 
 	for test, tt := range tests {
 		t.Run(test, func(t *testing.T) {
-			receivedValue, err := auth.GetBearerToken(tt.input)
+			receivedValue, err := cfg.Auth.GetBearerToken(tt.input)
 			var diff string
 			if err != nil {
 				diff = cmp.Diff(tt.expectedValue, fmt.Sprint(err))
@@ -168,6 +178,9 @@ func TestGetBearerToken(t *testing.T) {
 }
 
 func TestMakeRefreshToken(t *testing.T) {
+	cfg := handlers.ApiConfig{
+		Auth: auth.NewAuthService(),
+	}
 	tests := []struct {
 		name     string
 		mockRand func([]byte) (int, error)
@@ -196,7 +209,7 @@ func TestMakeRefreshToken(t *testing.T) {
 			auth.RandReader = tt.mockRand
 			defer func() { auth.RandReader = origRandReader }()
 
-			token, err := auth.MakeRefreshToken()
+			token, err := cfg.Auth.MakeRefreshToken()
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MakeRefreshToken() error = %v, wantErr %v", err, tt.wantErr)

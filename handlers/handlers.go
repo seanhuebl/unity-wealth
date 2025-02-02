@@ -12,8 +12,8 @@ import (
 type ApiConfig struct {
 	Port        string
 	Queries     Quierier
-	TokenSecret string
 	Database    *sql.DB
+	TokenSecret string
 	Auth        auth.AuthInterface
 }
 

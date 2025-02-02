@@ -27,6 +27,9 @@ type AuthInterface interface {
 	ValidatePassword(password string) error
 }
 
+type AuthService struct {
+}
+
 type TokenType string
 
 var TokenTypeAccess = TokenType(os.Getenv("TOKEN_TYPE"))
@@ -34,7 +37,10 @@ var TokenTypeAccess = TokenType(os.Getenv("TOKEN_TYPE"))
 var ErrNoAuthHeaderIncluded = errors.New("no authorization header included")
 var RandReader = rand.Read
 
-func GetAPIKey(headers http.Header) (string, error) {
+func NewAuthService() *AuthService {
+	return &AuthService{}
+}
+func (a *AuthService) GetAPIKey(headers http.Header) (string, error) {
 	authHeader := headers.Get("Authorization")
 	if authHeader == "" {
 		return "", ErrNoAuthHeaderIncluded
@@ -49,7 +55,7 @@ func GetAPIKey(headers http.Header) (string, error) {
 	return splitAuth[1], nil
 }
 
-func HashPassword(password string) (string, error) {
+func (a *AuthService) HashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", err
@@ -57,11 +63,11 @@ func HashPassword(password string) (string, error) {
 	return string(hash), nil
 }
 
-func CheckPasswordHash(password, hash string) error {
+func (a *AuthService) CheckPasswordHash(password, hash string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 }
 
-func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
+func (a *AuthService) MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
 	if tokenSecret == "" {
 		return "", errors.New("tokenSecret must not be empty")
 	}
@@ -78,7 +84,7 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 	return token.SignedString(signingKey)
 }
 
-func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
+func (a *AuthService) ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 	claimsStruct := jwt.RegisteredClaims{}
 	token, err := jwt.ParseWithClaims(
 		tokenString,
@@ -109,7 +115,7 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 	return id, nil
 }
 
-func GetBearerToken(headers http.Header) (string, error) {
+func (a *AuthService) GetBearerToken(headers http.Header) (string, error) {
 	authHeader := headers.Get("Authorization")
 	if authHeader == "" {
 		return "", ErrNoAuthHeaderIncluded
@@ -124,7 +130,7 @@ func GetBearerToken(headers http.Header) (string, error) {
 	return splitAuth[1], nil
 }
 
-func MakeRefreshToken() (string, error) {
+func (a *AuthService) MakeRefreshToken() (string, error) {
 	token := make([]byte, 32)
 	_, err := RandReader(token)
 	if err != nil {
@@ -133,7 +139,7 @@ func MakeRefreshToken() (string, error) {
 	return hex.EncodeToString(token), nil
 }
 
-func ValidatePassword(password string) error {
+func (a *AuthService) ValidatePassword(password string) error {
 	if len(password) < 8 {
 		return fmt.Errorf("password must be at least 8 characters long")
 	}

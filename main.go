@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/seanhuebl/unity-wealth/handlers"
+	"github.com/seanhuebl/unity-wealth/internal/auth"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
@@ -31,6 +32,7 @@ func main() {
 		Queries:     database.New(db),
 		TokenSecret: os.Getenv("TOKEN_SECRET"),
 		Database:    db,
+		Auth:        auth.NewAuthService(),
 	}
 
 	router := gin.Default()

@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/seanhuebl/unity-wealth/handlers"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,12 +29,10 @@ func TestAddUser(t *testing.T) {
 	mockCfg := &handlers.ApiConfig{
 		Queries: &mockQueries{},
 	}
-
 	router := gin.Default()
 	router.POST("/addUser", func(ctx *gin.Context) {
 		mockCfg.AddUser(ctx)
 	})
-
 	tests := []struct {
 		name           string
 		requestBody    string
@@ -48,6 +47,7 @@ func TestAddUser(t *testing.T) {
 				m.CreateUserFunc = func(ctx context.Context, params database.CreateUserParams) error {
 					assert.Equal(t, "user@example.com", params.Email)
 					assert.NotEmpty(t, params.HashedPassword)
+
 					return nil
 				}
 			},
@@ -76,7 +76,19 @@ func TestAddUser(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create a fresh instance of the mock for each test.
+			mockInterface := mocks.NewAuthInterface(t)
 
+			// Set up expectations for this test case.
+			tt.mockBehavior(mockCfg.Queries.(*mockQueries))
+
+			// For example, if this is the "Valid user creation" test:
+			if tt.name == "Valid user creation" || tt.name == "Database error" {
+				mockInterface.
+					On("HashPassword", "StrongPass123!").
+					Return("hashedPassword", nil)
+			}
+			mockCfg.Auth = mockInterface
 			tt.mockBehavior(mockCfg.Queries.(*mockQueries))
 
 			req := httptest.NewRequest(http.MethodPost, "/addUser", bytes.NewBufferString(tt.requestBody))

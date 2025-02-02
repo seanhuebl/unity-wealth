@@ -103,7 +103,7 @@ func (cfg *ApiConfig) Login(ctx *gin.Context) {
 		return
 	}
 
-	refreshHash, err := auth.HashPassword(refreshToken)
+	refreshHash, err := cfg.Auth.HashPassword(refreshToken)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to hash refresh token: " + err.Error(),

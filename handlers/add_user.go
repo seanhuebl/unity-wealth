@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/seanhuebl/unity-wealth/internal/auth"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 )
 
@@ -24,7 +23,7 @@ func (cfg *ApiConfig) AddUser(ctx *gin.Context) {
 		})
 		return
 	}
-	hashedPW, err := auth.HashPassword(input.Password)
+	hashedPW, err := cfg.Auth.HashPassword(input.Password)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
