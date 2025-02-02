@@ -40,6 +40,7 @@ var RandReader = rand.Read
 func NewAuthService() *AuthService {
 	return &AuthService{}
 }
+
 func (a *AuthService) GetAPIKey(headers http.Header) (string, error) {
 	authHeader := headers.Get("Authorization")
 	if authHeader == "" {
