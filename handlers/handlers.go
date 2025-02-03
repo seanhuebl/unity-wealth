@@ -5,17 +5,9 @@ import (
 	"database/sql"
 
 	"github.com/gin-gonic/gin"
-	"github.com/seanhuebl/unity-wealth/internal/auth"
+
 	"github.com/seanhuebl/unity-wealth/internal/database"
 )
-
-type ApiConfig struct {
-	Port        string
-	Queries     Quierier
-	Database    *sql.DB
-	TokenSecret string
-	Auth        auth.AuthInterface
-}
 
 type Quierier interface {
 	CreateUser(ctx context.Context, params database.CreateUserParams) error

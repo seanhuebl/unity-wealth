@@ -21,7 +21,7 @@ type AuthInterface interface {
 	HashPassword(password string) (string, error)
 	CheckPasswordHash(password, hash string) error
 	MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error)
-	ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error)
+	ValidateJWT(tokenString, tokenSecret string) (*jwt.RegisteredClaims, error)
 	GetBearerToken(headers http.Header) (string, error)
 	MakeRefreshToken() (string, error)
 	ValidatePassword(password string) error
@@ -85,35 +85,35 @@ func (a *AuthService) MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn ti
 	return token.SignedString(signingKey)
 }
 
-func (a *AuthService) ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
-	claimsStruct := jwt.RegisteredClaims{}
-	token, err := jwt.ParseWithClaims(
-		tokenString,
-		&claimsStruct,
-		func(token *jwt.Token) (interface{}, error) { return []byte(tokenSecret), nil },
-	)
+func (a *AuthService) ValidateJWT(tokenString, tokenSecret string) (*jwt.RegisteredClaims, error) {
+	// Create an instance of RegisteredClaims to hold the parsed token claims.
+	var claims jwt.RegisteredClaims
+
+	// Parse the token using the claims instance.
+	token, err := jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(tokenSecret), nil
+	})
 	if err != nil {
-		return uuid.Nil, err
+		return nil, err
 	}
 
-	userIDString, err := token.Claims.GetSubject()
-	if err != nil {
-		return uuid.Nil, err
+	// Ensure the token is valid.
+	if !token.Valid {
+		return nil, errors.New("invalid token")
 	}
 
-	issuer, err := token.Claims.GetIssuer()
-	if err != nil {
-		return uuid.Nil, err
-	}
-	if issuer != string(TokenTypeAccess) {
-		return uuid.Nil, errors.New("invalid issuer")
+	// Check the issuer (this example assumes you want the issuer to equal TokenTypeAccess).
+	if claims.Issuer != string(TokenTypeAccess) {
+		return nil, errors.New("invalid issuer")
 	}
 
-	id, err := uuid.Parse(userIDString)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("invalid user ID: %w", err)
+	// Optionally, if you expect the Subject (user ID) to be a valid UUID, you can verify that.
+	if _, err := uuid.Parse(claims.Subject); err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
 	}
-	return id, nil
+
+	// Return the complete claims struct.
+	return &claims, nil
 }
 
 func (a *AuthService) GetBearerToken(headers http.Header) (string, error) {

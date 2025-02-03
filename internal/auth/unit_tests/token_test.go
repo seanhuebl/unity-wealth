@@ -133,13 +133,21 @@ func TestValidateJWT(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotUUID, err := cfg.Auth.ValidateJWT(tt.tokenString, tt.tokenSecret)
-
+			claims, err := cfg.Auth.ValidateJWT(tt.tokenString, tt.tokenSecret)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateJWT() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-
+			if err != nil {
+				// If an error is expected, there's no need to check further.
+				return
+			}
+			// Extract the subject from the claims and parse it as a UUID.
+			gotUUID, err := uuid.Parse(claims.Subject)
+			if err != nil {
+				t.Errorf("failed to parse subject as uuid: %v", err)
+				return
+			}
 			if diff := cmp.Diff(tt.wantUUID, gotUUID); diff != "" {
 				t.Errorf("UUID mismatch (-want +got):\n%s", diff)
 			}
