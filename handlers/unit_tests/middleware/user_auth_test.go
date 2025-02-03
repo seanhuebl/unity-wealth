@@ -89,7 +89,7 @@ func TestUserAuthMiddleware_TableDriven(t *testing.T) {
 			if diff := cmp.Diff(tc.expectedStatus, rr.Code); diff != "" {
 				t.Errorf("Status code mismatch (-want +got):\n%s", diff)
 			}
-			
+
 			// Check that the response body contains the expected substring.
 			if !strings.Contains(rr.Body.String(), tc.expectedSubstr) {
 				t.Errorf("Response body does not contain expected substring.\nGot: %s\nWant substring: %s",

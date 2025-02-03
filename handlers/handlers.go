@@ -5,7 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/gin-gonic/gin"
-	
+
 	"github.com/seanhuebl/unity-wealth/internal/database"
 )
 
