@@ -4,9 +4,11 @@ package mocks
 
 import (
 	http "net/http"
-	time "time"
 
+	jwt "github.com/golang-jwt/jwt/v5"
 	mock "github.com/stretchr/testify/mock"
+
+	time "time"
 
 	uuid "github.com/google/uuid"
 )
@@ -175,23 +177,23 @@ func (_m *AuthInterface) MakeRefreshToken() (string, error) {
 }
 
 // ValidateJWT provides a mock function with given fields: tokenString, tokenSecret
-func (_m *AuthInterface) ValidateJWT(tokenString string, tokenSecret string) (uuid.UUID, error) {
+func (_m *AuthInterface) ValidateJWT(tokenString string, tokenSecret string) (*jwt.RegisteredClaims, error) {
 	ret := _m.Called(tokenString, tokenSecret)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ValidateJWT")
 	}
 
-	var r0 uuid.UUID
+	var r0 *jwt.RegisteredClaims
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, string) (uuid.UUID, error)); ok {
+	if rf, ok := ret.Get(0).(func(string, string) (*jwt.RegisteredClaims, error)); ok {
 		return rf(tokenString, tokenSecret)
 	}
-	if rf, ok := ret.Get(0).(func(string, string) uuid.UUID); ok {
+	if rf, ok := ret.Get(0).(func(string, string) *jwt.RegisteredClaims); ok {
 		r0 = rf(tokenString, tokenSecret)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(uuid.UUID)
+			r0 = ret.Get(0).(*jwt.RegisteredClaims)
 		}
 	}
 
