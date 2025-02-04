@@ -5,7 +5,6 @@ import (
 	"database/sql"
 
 	"github.com/gin-gonic/gin"
-
 	"github.com/seanhuebl/unity-wealth/internal/database"
 )
 
@@ -26,16 +25,20 @@ func (cfg *ApiConfig) RegisterRoutes(router *gin.Engine) {
 		home.GET("/health", func(ctx *gin.Context) {
 			health(ctx)
 		})
-	}
-
-	api := router.Group("/api")
-	{
-		api.POST("/signup", func(ctx *gin.Context) {
+		home.POST("/signup", func(ctx *gin.Context) {
 			cfg.AddUser(ctx)
 		})
-
-		api.POST("/login", func(ctx *gin.Context) {
+	
+		home.POST("/login", func(ctx *gin.Context) {
 			cfg.Login(ctx)
+		})
+	}
+
+	app := router.Group("/app")
+	app.Use(cfg.UserAuthMiddleware())
+	{
+		app.POST("/transactions", func(ctx *gin.Context) {
+			//cfg.NewTransaction(ctx)
 		})
 	}
 }
