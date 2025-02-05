@@ -16,6 +16,8 @@ type Quierier interface {
 	CreateRefreshToken(ctx context.Context, arg database.CreateRefreshTokenParams) error
 	CreateDeviceInfo(ctx context.Context, arg database.CreateDeviceInfoParams) (string, error)
 	WithTx(tx *sql.Tx) *database.Queries
+	CreateTransaction(ctx context.Context, arg database.CreateTransactionParams) error
+	GetDetailedCategoryId(ctx context.Context, name string) (int64, error)
 }
 
 func (cfg *ApiConfig) RegisterRoutes(router *gin.Engine) {
@@ -28,7 +30,7 @@ func (cfg *ApiConfig) RegisterRoutes(router *gin.Engine) {
 		home.POST("/signup", func(ctx *gin.Context) {
 			cfg.AddUser(ctx)
 		})
-	
+
 		home.POST("/login", func(ctx *gin.Context) {
 			cfg.Login(ctx)
 		})

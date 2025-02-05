@@ -63,6 +63,24 @@ func (_m *Quierier) CreateRefreshToken(ctx context.Context, arg database.CreateR
 	return r0
 }
 
+// CreateTransaction provides a mock function with given fields: ctx, arg
+func (_m *Quierier) CreateTransaction(ctx context.Context, arg database.CreateTransactionParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateTransaction")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, database.CreateTransactionParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // CreateUser provides a mock function with given fields: ctx, params
 func (_m *Quierier) CreateUser(ctx context.Context, params database.CreateUserParams) error {
 	ret := _m.Called(ctx, params)
@@ -79,6 +97,34 @@ func (_m *Quierier) CreateUser(ctx context.Context, params database.CreateUserPa
 	}
 
 	return r0
+}
+
+// GetDetailedCategoryId provides a mock function with given fields: ctx, name
+func (_m *Quierier) GetDetailedCategoryId(ctx context.Context, name string) (int64, error) {
+	ret := _m.Called(ctx, name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDetailedCategoryId")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (int64, error)); ok {
+		return rf(ctx, name)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) int64); ok {
+		r0 = rf(ctx, name)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, name)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GetDeviceInfoByUser provides a mock function with given fields: ctx, arg

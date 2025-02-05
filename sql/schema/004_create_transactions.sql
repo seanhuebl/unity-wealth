@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS detailed_categories (
 CREATE TABLE IF NOT EXISTS transactions (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
-    transaction_date DATETIME NOT NULL,
+    transaction_date TEXT NOT NULL,
     merchant TEXT NOT NULL,
     amount_cents INTEGER NOT NULL CHECK(amount_cents <> 0),
     detailed_category_id INTEGER NOT NULL,
