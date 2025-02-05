@@ -18,6 +18,7 @@ type Quierier interface {
 	WithTx(tx *sql.Tx) *database.Queries
 	CreateTransaction(ctx context.Context, arg database.CreateTransactionParams) error
 	GetDetailedCategoryId(ctx context.Context, name string) (int64, error)
+	UpdateTransactionByID(ctx context.Context, arg database.UpdateTransactionByIDParams) (database.UpdateTransactionByIDRow, error)
 }
 
 func (cfg *ApiConfig) RegisterRoutes(router *gin.Engine) {
@@ -39,8 +40,13 @@ func (cfg *ApiConfig) RegisterRoutes(router *gin.Engine) {
 	app := router.Group("/app")
 	app.Use(cfg.UserAuthMiddleware())
 	{
+		
 		app.POST("/transactions", func(ctx *gin.Context) {
-			//cfg.NewTransaction(ctx)
+			cfg.NewTransaction(ctx)
+		})
+
+		app.PUT("/transactions/:id", func(ctx *gin.Context) {
+			cfg.UpdateTransaction(ctx)
 		})
 	}
 }

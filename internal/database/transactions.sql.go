@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createTransaction = `-- name: CreateTransaction :exec
@@ -53,4 +54,56 @@ func (q *Queries) GetDetailedCategoryId(ctx context.Context, name string) (int64
 	var id int64
 	err := row.Scan(&id)
 	return id, err
+}
+
+const updateTransactionByID = `-- name: UpdateTransactionByID :one
+UPDATE transactions
+SET transaction_date = ?1,
+    merchant = ?2,
+    amount_cents = ?3,
+    detailed_category_id = ?4,
+    updated_at = ?5
+WHERE id = ?6
+RETURNING id,
+    transaction_date,
+    merchant,
+    amount_cents,
+    detailed_category_id
+`
+
+type UpdateTransactionByIDParams struct {
+	TransactionDate    string
+	Merchant           string
+	AmountCents        int64
+	DetailedCategoryID int64
+	UpdatedAt          sql.NullTime
+	ID                 string
+}
+
+type UpdateTransactionByIDRow struct {
+	ID                 string
+	TransactionDate    string
+	Merchant           string
+	AmountCents        int64
+	DetailedCategoryID int64
+}
+
+func (q *Queries) UpdateTransactionByID(ctx context.Context, arg UpdateTransactionByIDParams) (UpdateTransactionByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, updateTransactionByID,
+		arg.TransactionDate,
+		arg.Merchant,
+		arg.AmountCents,
+		arg.DetailedCategoryID,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	var i UpdateTransactionByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.TransactionDate,
+		&i.Merchant,
+		&i.AmountCents,
+		&i.DetailedCategoryID,
+	)
+	return i, err
 }

@@ -201,6 +201,34 @@ func (_m *Quierier) RevokeToken(ctx context.Context, arg database.RevokeTokenPar
 	return r0
 }
 
+// UpdateTransactionByID provides a mock function with given fields: ctx, arg
+func (_m *Quierier) UpdateTransactionByID(ctx context.Context, arg database.UpdateTransactionByIDParams) (database.UpdateTransactionByIDRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateTransactionByID")
+	}
+
+	var r0 database.UpdateTransactionByIDRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, database.UpdateTransactionByIDParams) (database.UpdateTransactionByIDRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, database.UpdateTransactionByIDParams) database.UpdateTransactionByIDRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Get(0).(database.UpdateTransactionByIDRow)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, database.UpdateTransactionByIDParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // WithTx provides a mock function with given fields: tx
 func (_m *Quierier) WithTx(tx *sql.Tx) *database.Queries {
 	ret := _m.Called(tx)

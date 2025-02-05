@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"net/http"
 	"time"
 
@@ -11,11 +12,11 @@ import (
 )
 
 type Transaction struct {
+	ID               string  `json:"id"`
 	Date             string  `json:"date" binding:"required"`
 	Merchant         string  `json:"merchant" binding:"required"`
 	Amount           float64 `json:"amount" binding:"required"`
-	PrimaryCategory  string  `json:"primary_category" binding:"required"`
-	DetailedCategory string  `json:"detailed_category" binding:"required"`
+	DetailedCategory string `json:"detailed_category" binding:"required"`
 }
 
 func (cfg *ApiConfig) NewTransaction(ctx *gin.Context) {
@@ -66,11 +67,11 @@ func (cfg *ApiConfig) NewTransaction(ctx *gin.Context) {
 	}
 
 	if err := cfg.Queries.CreateTransaction(ctx, database.CreateTransactionParams{
-		ID: uuid.NewString(),
-		UserID: userID.String(),
-		TransactionDate: req.Date,
-		Merchant: req.Merchant,
-		AmountCents: int64(req.Amount * 100),
+		ID:                 uuid.NewString(),
+		UserID:             userID.String(),
+		TransactionDate:    req.Date,
+		Merchant:           req.Merchant,
+		AmountCents:        int64(req.Amount * 100),
 		DetailedCategoryID: detailedCategoryID,
 	}); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -79,4 +80,57 @@ func (cfg *ApiConfig) NewTransaction(ctx *gin.Context) {
 		return
 	}
 
+	ctx.JSON(http.StatusCreated, gin.H{
+		"transaction_created": "success",
+	})
+
+}
+
+func (cfg *ApiConfig) UpdateTransaction(ctx *gin.Context) {
+	var req Transaction
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err := time.Parse("2006-01-02", req.Date)
+	if err != nil {
+
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid date format: %v",
+		})
+		return
+	}
+	detailedCategoryID, err := cfg.Queries.GetDetailedCategoryId(ctx, req.DetailedCategory)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid detailed category",
+		})
+		return
+	}
+	id := ctx.Param("id")
+
+	txRow, err := cfg.Queries.UpdateTransactionByID(ctx, database.UpdateTransactionByIDParams{
+		TransactionDate:    req.Date,
+		Merchant:           req.Merchant,
+		AmountCents:        int64(req.Amount * 100),
+		DetailedCategoryID: detailedCategoryID,
+		UpdatedAt:          sql.NullTime{Time: time.Now(), Valid: true},
+		ID:                 id,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "error updating transaction",
+		})
+		return
+	}
+	updatedTx := Transaction{
+		ID: txRow.ID,
+		Date: txRow.TransactionDate,
+		Merchant: txRow.Merchant,
+		Amount: float64(txRow.AmountCents / 100),
+		DetailedCategory: req.DetailedCategory,
+	}
+	ctx.JSON(http.StatusOK, updatedTx)
 }
