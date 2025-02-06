@@ -4,7 +4,9 @@ package cache
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"strconv"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
@@ -12,7 +14,7 @@ import (
 	"github.com/go-redis/redismock/v8"
 	"github.com/google/go-cmp/cmp"
 	"github.com/seanhuebl/unity-wealth/cache"
-	"github.com/seanhuebl/unity-wealth/handlers"
+	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/internal/database" // package that provides New(db) returning the querier
 )
 
@@ -30,7 +32,7 @@ func setupSQLiteDB(setupFunc func(db *sql.DB) error) (*sql.DB, error) {
 }
 
 func TestWarmCategoriesCache_TableDriven(t *testing.T) {
-	// Save the original redisClient and restore it after tests.
+	// Save the original cache.RedisClient and restore it after tests.
 	origRedisClient := cache.RedisClient
 	defer func() { cache.RedisClient = origRedisClient }()
 
@@ -44,7 +46,7 @@ func TestWarmCategoriesCache_TableDriven(t *testing.T) {
 		{
 			name: "success",
 			setupSQLite: func(db *sql.DB) error {
-				// Create primary_categories table using your schema.
+				// Create primary_categories table and insert one row.
 				primaryStmt := `
 					CREATE TABLE IF NOT EXISTS primary_categories (
 						id INTEGER PRIMARY KEY,
@@ -53,12 +55,11 @@ func TestWarmCategoriesCache_TableDriven(t *testing.T) {
 				if _, err := db.Exec(primaryStmt); err != nil {
 					return err
 				}
-				// Insert a row into primary_categories.
 				if _, err := db.Exec(`INSERT INTO primary_categories (id, name) VALUES (1, 'Primary Cat 1');`); err != nil {
 					return err
 				}
 
-				// Create detailed_categories table using your schema.
+				// Create detailed_categories table and insert one row.
 				detailedStmt := `
 					CREATE TABLE IF NOT EXISTS detailed_categories (
 						id INTEGER PRIMARY KEY,
@@ -70,7 +71,6 @@ func TestWarmCategoriesCache_TableDriven(t *testing.T) {
 				if _, err := db.Exec(detailedStmt); err != nil {
 					return err
 				}
-				// Insert a row into detailed_categories.
 				_, err := db.Exec(`INSERT INTO detailed_categories (id, name, description, primary_category_id) VALUES (1, 'Detailed Cat 1', 'Some description', 1);`)
 				return err
 			},
@@ -79,7 +79,7 @@ func TestWarmCategoriesCache_TableDriven(t *testing.T) {
 		{
 			name: "primary query error - missing primary_categories table",
 			setupSQLite: func(db *sql.DB) error {
-				// Do not create primary_categories table.
+				// Do not create the primary_categories table.
 				// Create only the detailed_categories table.
 				detailedStmt := `
 					CREATE TABLE IF NOT EXISTS detailed_categories (
@@ -167,15 +167,15 @@ func TestWarmCategoriesCache_TableDriven(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc // capture range variable
 		t.Run(tc.name, func(t *testing.T) {
-			// Set up an in-memory SQLite DB using the test-specific schema and data.
+			// Set up an in-memory SQLite DB.
 			db, err := setupSQLiteDB(tc.setupSQLite)
 			if err != nil {
 				t.Fatalf("failed to set up SQLite DB: %v", err)
 			}
 			defer db.Close()
 
-			// Build the configuration by explicitly setting both Database and Querier.
-			cfg := &handlers.ApiConfig{
+			// Build the configuration.
+			cfg := &config.ApiConfig{
 				Database: db,
 				Queries:  database.New(db),
 			}
@@ -186,30 +186,46 @@ func TestWarmCategoriesCache_TableDriven(t *testing.T) {
 
 			ctx := context.Background()
 
+			// Set expectations for HSET for primary categories.
 			primaryData, primaryErr := cfg.Queries.GetPrimaryCategories(ctx)
 			if primaryErr == nil {
-				exp := mock.ExpectSet("primary_categories", primaryData, 0)
+				expectedPrimaryMap := make(map[string]interface{})
+				for _, cat := range primaryData {
+					catJSON, err := json.Marshal(cat)
+					if err != nil {
+						t.Fatalf("failed to marshal primary category: %v", err)
+					}
+					fieldName := strconv.FormatInt(cat.ID, 10)
+					// Assume the value stored in Redis will be the JSON string.
+					expectedPrimaryMap[fieldName] = string(catJSON)
+				}
+				exp := mock.ExpectHSet("primary_categories", expectedPrimaryMap)
 				if tc.simulateRedisPrimaryErr != nil {
 					exp.SetErr(tc.simulateRedisPrimaryErr)
 				} else {
-					exp.SetVal("OK")
+					exp.SetVal(int64(len(expectedPrimaryMap)))
 				}
 			} else {
-				// If primary query fails, skip setting any expectation for detailed categories.
-				t.Log("primary query failed, skipping detailed redis expectation")
+				t.Log("primary query failed, skipping primary redis expectation")
 			}
 
-			// Only set detailed expectation if primary query succeeded
-			// AND no error is being simulated for the primary Redis call.
+			// Set expectations for HSET for detailed categories.
 			detailedData, detailedErr := cfg.Queries.GetDetailedCategories(ctx)
-			if primaryErr == nil && tc.simulateRedisPrimaryErr == nil {
-				if detailedErr == nil {
-					exp := mock.ExpectSet("detailed_categories", detailedData, 0)
-					if tc.simulateRedisDetailedErr != nil {
-						exp.SetErr(tc.simulateRedisDetailedErr)
-					} else {
-						exp.SetVal("OK")
+			if primaryErr == nil && tc.simulateRedisPrimaryErr == nil && detailedErr == nil {
+				expectedDetailedMap := make(map[string]interface{})
+				for _, cat := range detailedData {
+					catJSON, err := json.Marshal(cat)
+					if err != nil {
+						t.Fatalf("failed to marshal detailed category: %v", err)
 					}
+					fieldName := strconv.FormatInt(cat.ID, 10)
+					expectedDetailedMap[fieldName] = string(catJSON)
+				}
+				exp := mock.ExpectHSet("detailed_categories", expectedDetailedMap)
+				if tc.simulateRedisDetailedErr != nil {
+					exp.SetErr(tc.simulateRedisDetailedErr)
+				} else {
+					exp.SetVal(int64(len(expectedDetailedMap)))
 				}
 			}
 

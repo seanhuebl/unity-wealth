@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/seanhuebl/unity-wealth/handlers"
+	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/mocks"
 	"github.com/stretchr/testify/assert"
@@ -26,12 +27,12 @@ func (m *mockQueries) CreateUser(ctx context.Context, params database.CreateUser
 
 func TestAddUser(t *testing.T) {
 	// Mock dependencies
-	mockCfg := &handlers.ApiConfig{
+	mockCfg := &config.ApiConfig{
 		Queries: &mockQueries{},
 	}
 	router := gin.Default()
 	router.POST("/addUser", func(ctx *gin.Context) {
-		mockCfg.AddUser(ctx)
+		handlers.AddUser(ctx, mockCfg)
 	})
 	tests := []struct {
 		name           string

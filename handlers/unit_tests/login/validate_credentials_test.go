@@ -13,6 +13,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/handlers"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/mocks"
 	"github.com/stretchr/testify/mock"
@@ -108,7 +109,7 @@ func TestValidateCredentials(t *testing.T) {
 				})
 			}
 			// Create API config with mocks
-			cfg := &handlers.ApiConfig{
+			cfg := &config.ApiConfig{
 				Queries: mockQueries,
 				Auth:    mockAuth,
 			}

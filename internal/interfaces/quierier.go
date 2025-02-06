@@ -1,10 +1,9 @@
-package handlers
+package interfaces
 
 import (
 	"context"
 	"database/sql"
 
-	"github.com/gin-gonic/gin"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 )
 
@@ -21,35 +20,4 @@ type Quierier interface {
 	UpdateTransactionByID(ctx context.Context, arg database.UpdateTransactionByIDParams) (database.UpdateTransactionByIDRow, error)
 	GetPrimaryCategories(ctx context.Context) ([]database.PrimaryCategory, error)
 	GetDetailedCategories(ctx context.Context) ([]database.DetailedCategory, error)
-
-}
-
-func (cfg *ApiConfig) RegisterRoutes(router *gin.Engine) {
-
-	home := router.Group("/")
-	{
-		home.GET("/health", func(ctx *gin.Context) {
-			health(ctx)
-		})
-		home.POST("/signup", func(ctx *gin.Context) {
-			cfg.AddUser(ctx)
-		})
-
-		home.POST("/login", func(ctx *gin.Context) {
-			cfg.Login(ctx)
-		})
-	}
-
-	app := router.Group("/app")
-	app.Use(cfg.UserAuthMiddleware())
-	{
-		
-		app.POST("/transactions", func(ctx *gin.Context) {
-			cfg.NewTransaction(ctx)
-		})
-
-		app.PUT("/transactions/:id", func(ctx *gin.Context) {
-			cfg.UpdateTransaction(ctx)
-		})
-	}
 }

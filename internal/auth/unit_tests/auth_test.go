@@ -6,13 +6,13 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/seanhuebl/unity-wealth/handlers"
 	"github.com/seanhuebl/unity-wealth/internal/auth"
+	"github.com/seanhuebl/unity-wealth/internal/config"
 )
 
 func TestGetAPIKey(t *testing.T) {
 
-	cfg := handlers.ApiConfig{
+	cfg := config.ApiConfig{
 		Auth: auth.NewAuthService(),
 	}
 	tests := map[string]struct {
