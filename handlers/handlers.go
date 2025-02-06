@@ -19,6 +19,9 @@ type Quierier interface {
 	CreateTransaction(ctx context.Context, arg database.CreateTransactionParams) error
 	GetDetailedCategoryId(ctx context.Context, name string) (int64, error)
 	UpdateTransactionByID(ctx context.Context, arg database.UpdateTransactionByIDParams) (database.UpdateTransactionByIDRow, error)
+	GetPrimaryCategories(ctx context.Context) ([]database.PrimaryCategory, error)
+	GetDetailedCategories(ctx context.Context) ([]database.DetailedCategory, error)
+
 }
 
 func (cfg *ApiConfig) RegisterRoutes(router *gin.Engine) {

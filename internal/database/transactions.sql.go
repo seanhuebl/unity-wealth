@@ -43,6 +43,39 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 	return err
 }
 
+const getDetailedCategories = `-- name: GetDetailedCategories :many
+SELECT id, name, description, primary_category_id
+FROM detailed_categories
+`
+
+func (q *Queries) GetDetailedCategories(ctx context.Context) ([]DetailedCategory, error) {
+	rows, err := q.db.QueryContext(ctx, getDetailedCategories)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DetailedCategory
+	for rows.Next() {
+		var i DetailedCategory
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.PrimaryCategoryID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getDetailedCategoryId = `-- name: GetDetailedCategoryId :one
 SELECT id
 FROM detailed_categories
@@ -54,6 +87,34 @@ func (q *Queries) GetDetailedCategoryId(ctx context.Context, name string) (int64
 	var id int64
 	err := row.Scan(&id)
 	return id, err
+}
+
+const getPrimaryCategories = `-- name: GetPrimaryCategories :many
+SELECT id, name
+FROM primary_categories
+`
+
+func (q *Queries) GetPrimaryCategories(ctx context.Context) ([]PrimaryCategory, error) {
+	rows, err := q.db.QueryContext(ctx, getPrimaryCategories)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PrimaryCategory
+	for rows.Next() {
+		var i PrimaryCategory
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateTransactionByID = `-- name: UpdateTransactionByID :one

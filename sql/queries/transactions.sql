@@ -25,9 +25,9 @@ RETURNING id,
     merchant,
     amount_cents,
     detailed_category_id;
--- name: GetCategoryNames :one
-SELECT pc.name, dc.name
-FROM primary_categories AS pc
-INNER JOIN detailed_categories AS dc
-ON pc.id = dc.primary_category_id
-WHERE
+-- name: GetPrimaryCategories :many
+SELECT *
+FROM primary_categories;
+-- name: GetDetailedCategories :many
+SELECT *
+FROM detailed_categories;
