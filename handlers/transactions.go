@@ -17,7 +17,7 @@ type Transaction struct {
 	Date             string  `json:"date" binding:"required"`
 	Merchant         string  `json:"merchant" binding:"required"`
 	Amount           float64 `json:"amount" binding:"required"`
-	DetailedCategory int64  `json:"detailed_category" binding:"required"`
+	DetailedCategory int64   `json:"detailed_category" binding:"required"`
 }
 
 func NewTransaction(ctx *gin.Context, cfg *config.ApiConfig) {
