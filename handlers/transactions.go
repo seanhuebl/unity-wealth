@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/seanhuebl/unity-wealth/cache"
 	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 )
@@ -18,7 +17,7 @@ type Transaction struct {
 	Date             string  `json:"date" binding:"required"`
 	Merchant         string  `json:"merchant" binding:"required"`
 	Amount           float64 `json:"amount" binding:"required"`
-	DetailedCategory string  `json:"detailed_category" binding:"required"`
+	DetailedCategory int64  `json:"detailed_category" binding:"required"`
 }
 
 func NewTransaction(ctx *gin.Context, cfg *config.ApiConfig) {
@@ -60,10 +59,6 @@ func NewTransaction(ctx *gin.Context, cfg *config.ApiConfig) {
 		})
 		return
 	}
-	detailedCategories, err := cache.GetCachedDetailedCategories(ctx)
-	if err != nil {
-
-	}
 
 	if err := cfg.Queries.CreateTransaction(ctx, database.CreateTransactionParams{
 		ID:                 uuid.NewString(),
@@ -71,7 +66,7 @@ func NewTransaction(ctx *gin.Context, cfg *config.ApiConfig) {
 		TransactionDate:    req.Date,
 		Merchant:           req.Merchant,
 		AmountCents:        int64(req.Amount * 100),
-		DetailedCategoryID: detailedCategoryID,
+		DetailedCategoryID: req.DetailedCategory,
 	}); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "unable to create transaction",
@@ -101,20 +96,13 @@ func UpdateTransaction(ctx *gin.Context, cfg *config.ApiConfig) {
 		})
 		return
 	}
-	detailedCategoryID, err := cfg.Queries.GetDetailedCategoryId(ctx, req.DetailedCategory)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid detailed category",
-		})
-		return
-	}
 	id := ctx.Param("id")
 
 	txRow, err := cfg.Queries.UpdateTransactionByID(ctx, database.UpdateTransactionByIDParams{
 		TransactionDate:    req.Date,
 		Merchant:           req.Merchant,
 		AmountCents:        int64(req.Amount * 100),
-		DetailedCategoryID: detailedCategoryID,
+		DetailedCategoryID: req.DetailedCategory,
 		UpdatedAt:          sql.NullTime{Time: time.Now(), Valid: true},
 		ID:                 id,
 	})

@@ -33,4 +33,18 @@ func RegisterRoutes(router *gin.Engine, cfg *config.ApiConfig) {
 			UpdateTransaction(ctx, cfg)
 		})
 	}
+
+	api := router.Group("/api")
+	{
+		lookups := api.Group("/lookups")
+		{
+			categories := lookups.Group("/categories")
+			{
+				categories.GET("/", GetCategories)
+				categories.GET("/primary/:id", GetPrimaryCategoryByID)
+				categories.GET("/detailed/:id", GetDetailedCategoryByID)
+			}
+
+		}
+	}
 }
