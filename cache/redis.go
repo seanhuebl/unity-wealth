@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"os"
 	"strconv"
 
 	"github.com/go-redis/redis/v8"
@@ -12,9 +13,9 @@ import (
 )
 
 var RedisClient = redis.NewClient(&redis.Options{
-	Addr:     "localhost:6379",
-	Password: "", // No password set
-	DB:       0,  // Use default DB
+	Addr:     os.Getenv("REDIS_PORT"),
+	Password: os.Getenv("REDIS_PWD"),
+	DB:       0,
 })
 
 func WarmCategoriesCache(cfg *config.ApiConfig) error {
