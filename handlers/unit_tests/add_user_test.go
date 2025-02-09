@@ -30,10 +30,9 @@ func TestAddUser(t *testing.T) {
 	mockCfg := &config.ApiConfig{
 		Queries: &mockQueries{},
 	}
+	h := handlers.NewHandler(mockCfg)
 	router := gin.Default()
-	router.POST("/addUser", func(ctx *gin.Context) {
-		handlers.AddUser(ctx, mockCfg)
-	})
+	router.POST("/addUser", h.AddUser)
 	tests := []struct {
 		name           string
 		requestBody    string

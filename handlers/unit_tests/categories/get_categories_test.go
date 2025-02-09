@@ -12,6 +12,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/seanhuebl/unity-wealth/cache"
 	"github.com/seanhuebl/unity-wealth/handlers"
+	"github.com/seanhuebl/unity-wealth/internal/config"
 )
 
 // TestGetCategories is a table-driven test for the GetCategories handler.
@@ -95,9 +96,12 @@ func TestGetCategories(t *testing.T) {
 			c, _ := gin.CreateTestContext(w)
 			req, _ := http.NewRequest("GET", "/categories", nil)
 			c.Request = req
+			
+			blankConfig := &config.ApiConfig{}
+			h := handlers.NewHandler(blankConfig)
 
 			// Call the handler.
-			handlers.GetCategories(c)
+			h.GetCategories(c)
 
 			// Check the status code.
 			if w.Code != tt.expectedStatus {

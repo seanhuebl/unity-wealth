@@ -3,26 +3,23 @@ package handlers
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/seanhuebl/unity-wealth/internal/config"
+	"github.com/seanhuebl/unity-wealth/middleware"
 )
 
 func RegisterRoutes(router *gin.Engine, cfg *config.ApiConfig) {
+	h := NewHandler(cfg)
+	m := middleware.NewMiddleware(cfg)
 
 	home := router.Group("/")
 	{
-		home.GET("/health", func(ctx *gin.Context) {
-			health(ctx)
-		})
-		home.POST("/signup", func(ctx *gin.Context) {
-			AddUser(ctx, cfg)
-		})
+		home.GET("/health", health)
+		home.POST("/signup", h.AddUser)
 
-		home.POST("/login", func(ctx *gin.Context) {
-			Login(ctx, cfg)
-		})
+		home.POST("/login", h.Login)
 	}
 
 	app := router.Group("/app")
-	app.Use(UserAuthMiddleware(cfg))
+	app.Use(m.UserAuthMiddleware())
 	{
 
 		app.POST("/transactions", func(ctx *gin.Context) {
@@ -40,9 +37,9 @@ func RegisterRoutes(router *gin.Engine, cfg *config.ApiConfig) {
 		{
 			categories := lookups.Group("/categories")
 			{
-				categories.GET("/", GetCategories)
-				categories.GET("/primary/:id", GetPrimaryCategoryByID)
-				categories.GET("/detailed/:id", GetDetailedCategoryByID)
+				categories.GET("/", h.GetCategories)
+				categories.GET("/primary/:id", h.GetPrimaryCategoryByID)
+				categories.GET("/detailed/:id", h.GetDetailedCategoryByID)
 			}
 
 		}

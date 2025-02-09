@@ -10,9 +10,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/seanhuebl/unity-wealth/handlers"
 	"github.com/seanhuebl/unity-wealth/internal/auth"
 	"github.com/seanhuebl/unity-wealth/internal/config"
+	"github.com/seanhuebl/unity-wealth/middleware"
 )
 
 func TestUserAuthMiddleware_TableDriven(t *testing.T) {
@@ -62,9 +62,10 @@ func TestUserAuthMiddleware_TableDriven(t *testing.T) {
 			// Create a new Gin engine for this sub-test.
 			router := gin.New()
 
+			m := middleware.NewMiddleware(cfg)
 			// Attach the middleware. (Since our middleware is defined as a method on ApiConfig,
 			// it automatically uses cfg.TokenSecret.)
-			router.Use(handlers.UserAuthMiddleware(cfg))
+			router.Use(m.UserAuthMiddleware())
 
 			// Define a dummy final handler that will return a JSON response if the request passes.
 			router.GET("/test", func(c *gin.Context) {

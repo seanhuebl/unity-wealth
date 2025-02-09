@@ -190,12 +190,10 @@ func TestLoginHandler(t *testing.T) {
 				Database:    db,
 				Auth:        mockAuth,
 			}
-
+			h := handlers.NewHandler(cfg)
 			// Create Gin Engine
 			router := gin.Default()
-			router.POST("/login", func(ctx *gin.Context) {
-				handlers.Login(ctx, cfg)
-			})
+			router.POST("/login", h.Login)
 
 			// Create Request
 			jsonBody, err := json.Marshal(tc.inputBody)

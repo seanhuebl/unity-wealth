@@ -13,7 +13,7 @@ type CategoriesResponse struct {
 	DetailedCategories map[string]string `json:"detailed_categories"`
 }
 
-func GetCategories(ctx *gin.Context) {
+func (h *Handler) GetCategories(ctx *gin.Context) {
 	primaryHash, err := cache.RedisClient.HGetAll(ctx.Request.Context(), "primary_categories").Result()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -37,7 +37,7 @@ func GetCategories(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, response)
 }
 
-func GetPrimaryCategoryByID(ctx *gin.Context) {
+func (h *Handler) GetPrimaryCategoryByID(ctx *gin.Context) {
 	id := ctx.Param("id")
 	primaryCategory, err := cache.RedisClient.HGet(ctx.Request.Context(), "primary_categories", id).Result()
 	if err != nil {
@@ -57,7 +57,7 @@ func GetPrimaryCategoryByID(ctx *gin.Context) {
 	})
 }
 
-func GetDetailedCategoryByID(ctx *gin.Context) {
+func (h *Handler) GetDetailedCategoryByID(ctx *gin.Context) {
 	id := ctx.Param("id")
 	detailedCategory, err := cache.RedisClient.HGet(ctx.Request.Context(), "detailed_categories", id).Result()
 	if err != nil {

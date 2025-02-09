@@ -32,7 +32,8 @@ type DeviceInfo struct {
 	OsVersion      string `json:"os_version"`
 }
 
-func Login(ctx *gin.Context, cfg *config.ApiConfig) {
+func (h *Handler) Login(ctx *gin.Context) {
+	cfg := h.cfg
 	var input LoginInput
 
 	if err := ctx.ShouldBindJSON(&input); err != nil {

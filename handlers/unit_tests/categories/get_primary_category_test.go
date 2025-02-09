@@ -12,6 +12,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/seanhuebl/unity-wealth/cache"
 	"github.com/seanhuebl/unity-wealth/handlers"
+	"github.com/seanhuebl/unity-wealth/internal/config"
 )
 
 func TestGetPrimaryCategoryByID_WithRedismock(t *testing.T) {
@@ -75,8 +76,11 @@ func TestGetPrimaryCategoryByID_WithRedismock(t *testing.T) {
 			c.Request = httptest.NewRequest(http.MethodGet, "/primary_categories/"+tc.id, nil)
 			c.Params = gin.Params{{Key: "id", Value: tc.id}}
 
+			blankConfig := &config.ApiConfig{}
+			h := handlers.NewHandler(blankConfig)
+
 			// Call the handler.
-			handlers.GetPrimaryCategoryByID(c)
+			h.GetPrimaryCategoryByID(c)
 
 			// Assert the HTTP status.
 			if w.Code != tc.expectedStatus {
