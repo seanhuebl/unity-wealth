@@ -99,6 +99,36 @@ func (_m *Quierier) CreateUser(ctx context.Context, params database.CreateUserPa
 	return r0
 }
 
+// GetDetailedCategories provides a mock function with given fields: ctx
+func (_m *Quierier) GetDetailedCategories(ctx context.Context) ([]database.DetailedCategory, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDetailedCategories")
+	}
+
+	var r0 []database.DetailedCategory
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]database.DetailedCategory, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []database.DetailedCategory); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]database.DetailedCategory)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetDetailedCategoryId provides a mock function with given fields: ctx, name
 func (_m *Quierier) GetDetailedCategoryId(ctx context.Context, name string) (int64, error) {
 	ret := _m.Called(ctx, name)
@@ -148,6 +178,36 @@ func (_m *Quierier) GetDeviceInfoByUser(ctx context.Context, arg database.GetDev
 
 	if rf, ok := ret.Get(1).(func(context.Context, database.GetDeviceInfoByUserParams) error); ok {
 		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetPrimaryCategories provides a mock function with given fields: ctx
+func (_m *Quierier) GetPrimaryCategories(ctx context.Context) ([]database.PrimaryCategory, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPrimaryCategories")
+	}
+
+	var r0 []database.PrimaryCategory
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]database.PrimaryCategory, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []database.PrimaryCategory); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]database.PrimaryCategory)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/seanhuebl/unity-wealth/handlers"
+	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/mocks"
 	"github.com/stretchr/testify/mock"
@@ -182,7 +183,7 @@ func TestLoginHandler(t *testing.T) {
 				tc.mockSetup(mockQ, mockAuth)
 			}
 
-			cfg := &handlers.ApiConfig{
+			cfg := &config.ApiConfig{
 				Port:        ":8080",
 				Queries:     queries,
 				TokenSecret: "test-secret",
@@ -192,7 +193,9 @@ func TestLoginHandler(t *testing.T) {
 
 			// Create Gin Engine
 			router := gin.Default()
-			router.POST("/login", cfg.Login)
+			router.POST("/login", func(ctx *gin.Context) {
+				handlers.Login(ctx, cfg)
+			})
 
 			// Create Request
 			jsonBody, err := json.Marshal(tc.inputBody)

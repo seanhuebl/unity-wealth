@@ -5,9 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/seanhuebl/unity-wealth/internal/auth"
+	"github.com/seanhuebl/unity-wealth/internal/config"
 )
 
-func (cfg *ApiConfig) UserAuthMiddleware() gin.HandlerFunc {
+func UserAuthMiddleware(cfg *config.ApiConfig) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authSvc := auth.NewAuthService()
 

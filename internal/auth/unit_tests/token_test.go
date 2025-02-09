@@ -11,12 +11,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/seanhuebl/unity-wealth/handlers"
 	"github.com/seanhuebl/unity-wealth/internal/auth"
+	"github.com/seanhuebl/unity-wealth/internal/config"
 )
 
 func TestMakeJWT(t *testing.T) {
-	cfg := handlers.ApiConfig{
+	cfg := config.ApiConfig{
 		Auth: auth.NewAuthService(),
 	}
 
@@ -92,7 +92,7 @@ func TestMakeJWT(t *testing.T) {
 
 func TestValidateJWT(t *testing.T) {
 	userID := uuid.New()
-	cfg := handlers.ApiConfig{
+	cfg := config.ApiConfig{
 		Auth: auth.NewAuthService(),
 	}
 	tests := []struct {
@@ -156,7 +156,7 @@ func TestValidateJWT(t *testing.T) {
 }
 
 func TestGetBearerToken(t *testing.T) {
-	cfg := handlers.ApiConfig{
+	cfg := config.ApiConfig{
 		Auth: auth.NewAuthService(),
 	}
 	tests := map[string]struct {
@@ -186,7 +186,7 @@ func TestGetBearerToken(t *testing.T) {
 }
 
 func TestMakeRefreshToken(t *testing.T) {
-	cfg := handlers.ApiConfig{
+	cfg := config.ApiConfig{
 		Auth: auth.NewAuthService(),
 	}
 	tests := []struct {

@@ -12,11 +12,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/handlers"
 	"github.com/seanhuebl/unity-wealth/internal/auth"
+	"github.com/seanhuebl/unity-wealth/internal/config"
 )
 
 func TestUserAuthMiddleware_TableDriven(t *testing.T) {
 	// Create an ApiConfig with the TokenSecret.
-	cfg := &handlers.ApiConfig{
+	cfg := &config.ApiConfig{
 		TokenSecret: "dummysecret",
 	}
 
@@ -63,7 +64,7 @@ func TestUserAuthMiddleware_TableDriven(t *testing.T) {
 
 			// Attach the middleware. (Since our middleware is defined as a method on ApiConfig,
 			// it automatically uses cfg.TokenSecret.)
-			router.Use(cfg.UserAuthMiddleware())
+			router.Use(handlers.UserAuthMiddleware(cfg))
 
 			// Define a dummy final handler that will return a JSON response if the request passes.
 			router.GET("/test", func(c *gin.Context) {

@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/seanhuebl/unity-wealth/handlers"
 	"github.com/seanhuebl/unity-wealth/internal/auth"
+	"github.com/seanhuebl/unity-wealth/internal/config"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -23,7 +23,7 @@ func CustomHashPassword(password string, cost int) (string, error) {
 }
 
 func TestHashPassword(t *testing.T) {
-	cfg := handlers.ApiConfig{
+	cfg := config.ApiConfig{
 		Auth: auth.NewAuthService(),
 	}
 	tests := []struct {
@@ -80,7 +80,7 @@ func TestHashPassword(t *testing.T) {
 }
 
 func TestCheckPasswordHash(t *testing.T) {
-	cfg := handlers.ApiConfig{
+	cfg := config.ApiConfig{
 		Auth: auth.NewAuthService(),
 	}
 	tests := []struct {
@@ -147,7 +147,7 @@ func TestCheckPasswordHash(t *testing.T) {
 
 func TestValidatePassword(t *testing.T) {
 
-	cfg := handlers.ApiConfig{
+	cfg := config.ApiConfig{
 		Auth: auth.NewAuthService(),
 	}
 	tests := []struct {

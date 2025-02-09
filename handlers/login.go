@@ -14,8 +14,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/mssola/user_agent"
-	"github.com/seanhuebl/unity-wealth/internal/auth"
+	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/interfaces"
 )
 
 type LoginInput struct {
@@ -31,7 +32,7 @@ type DeviceInfo struct {
 	OsVersion      string `json:"os_version"`
 }
 
-func (cfg *ApiConfig) Login(ctx *gin.Context) {
+func Login(ctx *gin.Context, cfg *config.ApiConfig) {
 	var input LoginInput
 
 	if err := ctx.ShouldBindJSON(&input); err != nil {
@@ -271,7 +272,7 @@ func IsValidEmail(email string) bool {
 	return re.MatchString(email)
 }
 
-func HandleDeviceInfo(ctx context.Context, queriesTx Quierier, userID uuid.UUID, info DeviceInfo) (uuid.UUID, error) {
+func HandleDeviceInfo(ctx context.Context, queriesTx interfaces.Quierier, userID uuid.UUID, info DeviceInfo) (uuid.UUID, error) {
 	foundDevice, err := queriesTx.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
 		UserID:         userID.String(),
 		DeviceType:     info.DeviceType,
@@ -317,7 +318,7 @@ func HandleDeviceInfo(ctx context.Context, queriesTx Quierier, userID uuid.UUID,
 	return deviceID, nil
 }
 
-func GenerateTokens(userID uuid.UUID, secret string, auth auth.AuthInterface) (string, string, error) {
+func GenerateTokens(userID uuid.UUID, secret string, auth interfaces.AuthInterface) (string, string, error) {
 	JWT, err := auth.MakeJWT(userID, secret, time.Minute*15)
 	if err != nil {
 		return "", "", err
@@ -350,7 +351,7 @@ func SetRefreshTokenCookie(ctx *gin.Context, refreshToken string) {
 	http.SetCookie(ctx.Writer, &cookie)
 }
 
-func ValidateCredentials(ctx *gin.Context, cfg *ApiConfig, input *LoginInput) (uuid.UUID, error) {
+func ValidateCredentials(ctx *gin.Context, cfg *config.ApiConfig, input *LoginInput) (uuid.UUID, error) {
 	user, err := cfg.Queries.GetUserByEmail(ctx, input.Email)
 
 	if err != nil {

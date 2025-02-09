@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 )
 
@@ -14,7 +15,7 @@ type SignUpInput struct {
 }
 
 // POST
-func (cfg *ApiConfig) AddUser(ctx *gin.Context) {
+func AddUser(ctx *gin.Context, cfg *config.ApiConfig) {
 	var input SignUpInput
 
 	if err := ctx.ShouldBindJSON(&input); err != nil {
