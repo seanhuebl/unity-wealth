@@ -6,9 +6,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/seanhuebl/unity-wealth/internal/config"
+	"github.com/seanhuebl/unity-wealth/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 )
 
@@ -20,18 +19,11 @@ type Transaction struct {
 	DetailedCategory int64   `json:"detailed_category" binding:"required"`
 }
 
-func NewTransaction(ctx *gin.Context, cfg *config.ApiConfig) {
-	claimsInterface, exists := ctx.Get("claims")
-	if !exists {
-		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-			"error": "unauthorized: no claims found",
-		})
-		return
-	}
-	claims, ok := claimsInterface.(*jwt.RegisteredClaims)
-	if !ok {
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"error": "invalid claims format",
+func (h *Handler) NewTransaction(ctx *gin.Context) {
+	claims, err := helpers.ValidateClaims(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": err,
 		})
 		return
 	}
@@ -60,7 +52,7 @@ func NewTransaction(ctx *gin.Context, cfg *config.ApiConfig) {
 		return
 	}
 
-	if err := cfg.Queries.CreateTransaction(ctx, database.CreateTransactionParams{
+	if err := h.cfg.Queries.CreateTransaction(ctx, database.CreateTransactionParams{
 		ID:                 uuid.NewString(),
 		UserID:             userID.String(),
 		TransactionDate:    req.Date,
@@ -80,7 +72,7 @@ func NewTransaction(ctx *gin.Context, cfg *config.ApiConfig) {
 
 }
 
-func UpdateTransaction(ctx *gin.Context, cfg *config.ApiConfig) {
+func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 	var req Transaction
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -98,7 +90,7 @@ func UpdateTransaction(ctx *gin.Context, cfg *config.ApiConfig) {
 	}
 	id := ctx.Param("id")
 
-	txRow, err := cfg.Queries.UpdateTransactionByID(ctx, database.UpdateTransactionByIDParams{
+	txRow, err := h.cfg.Queries.UpdateTransactionByID(ctx, database.UpdateTransactionByIDParams{
 		TransactionDate:    req.Date,
 		Merchant:           req.Merchant,
 		AmountCents:        int64(req.Amount * 100),
@@ -120,4 +112,55 @@ func UpdateTransaction(ctx *gin.Context, cfg *config.ApiConfig) {
 		DetailedCategory: req.DetailedCategory,
 	}
 	ctx.JSON(http.StatusOK, updatedTx)
+}
+
+func (h *Handler) DeleteTransaction(ctx *gin.Context) {
+	claims, err := helpers.ValidateClaims(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": err,
+		})
+		return
+	}
+
+	id := ctx.Param("id")
+
+	userID, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "uuid parsing error",
+		})
+		return
+	}
+
+	if err = h.cfg.Queries.DeleteTransactionById(ctx, database.DeleteTransactionByIdParams{
+		ID:     id,
+		UserID: userID.String(),
+	}); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "error deleting transaction",
+		})
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"delete_transaction": "success",
+	})
+}
+
+func (h *Handler) GetTransactionsByUserID(ctx *gin.Context) {
+	claims, err := helpers.ValidateClaims(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": err,
+		})
+		return
+	}
+
+	userID, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "uuid parsing error",
+		})
+		return
+	}
+
 }

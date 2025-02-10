@@ -20,4 +20,5 @@ type Quierier interface {
 	UpdateTransactionByID(ctx context.Context, arg database.UpdateTransactionByIDParams) (database.UpdateTransactionByIDRow, error)
 	GetPrimaryCategories(ctx context.Context) ([]database.PrimaryCategory, error)
 	GetDetailedCategories(ctx context.Context) ([]database.DetailedCategory, error)
+	DeleteTransactionById(ctx context.Context, arg database.DeleteTransactionByIdParams) error
 }

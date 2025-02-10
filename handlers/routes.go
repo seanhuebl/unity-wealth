@@ -13,8 +13,8 @@ func RegisterRoutes(router *gin.Engine, cfg *config.ApiConfig) {
 	home := router.Group("/")
 	{
 		home.GET("/health", health)
+		
 		home.POST("/signup", h.AddUser)
-
 		home.POST("/login", h.Login)
 	}
 
@@ -22,13 +22,9 @@ func RegisterRoutes(router *gin.Engine, cfg *config.ApiConfig) {
 	app.Use(m.UserAuthMiddleware())
 	{
 
-		app.POST("/transactions", func(ctx *gin.Context) {
-			NewTransaction(ctx, cfg)
-		})
-
-		app.PUT("/transactions/:id", func(ctx *gin.Context) {
-			UpdateTransaction(ctx, cfg)
-		})
+		app.POST("/transactions", h.NewTransaction)
+		app.PUT("/transactions/:id", h.UpdateTransaction)
+		app.DELETE("/transactions", h.DeleteTransaction)
 	}
 
 	api := router.Group("/api")

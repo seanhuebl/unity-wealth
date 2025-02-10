@@ -43,6 +43,22 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 	return err
 }
 
+const deleteTransactionById = `-- name: DeleteTransactionById :exec
+DELETE FROM transactions
+WHERE id = ?1
+    AND user_id = ?2
+`
+
+type DeleteTransactionByIdParams struct {
+	ID     string
+	UserID string
+}
+
+func (q *Queries) DeleteTransactionById(ctx context.Context, arg DeleteTransactionByIdParams) error {
+	_, err := q.db.ExecContext(ctx, deleteTransactionById, arg.ID, arg.UserID)
+	return err
+}
+
 const getDetailedCategories = `-- name: GetDetailedCategories :many
 SELECT id, name, description, primary_category_id
 FROM detailed_categories

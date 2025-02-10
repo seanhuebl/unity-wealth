@@ -99,6 +99,24 @@ func (_m *Quierier) CreateUser(ctx context.Context, params database.CreateUserPa
 	return r0
 }
 
+// DeleteTransactionById provides a mock function with given fields: ctx, arg
+func (_m *Quierier) DeleteTransactionById(ctx context.Context, arg database.DeleteTransactionByIdParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteTransactionById")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, database.DeleteTransactionByIdParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetDetailedCategories provides a mock function with given fields: ctx
 func (_m *Quierier) GetDetailedCategories(ctx context.Context) ([]database.DetailedCategory, error) {
 	ret := _m.Called(ctx)
