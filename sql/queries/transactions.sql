@@ -35,4 +35,34 @@ FROM detailed_categories;
 DELETE FROM transactions
 WHERE id = ?1
     AND user_id = ?2;
--- name: GetAllUserTransactions :many
+-- name: GetUserTransactionsFirstPage :many
+SELECT id,
+    user_id,
+    transaction_date,
+    merchant,
+    amount_cents,
+    detailed_category_id
+FROM transactions
+WHERE user_id = ?1
+ORDER BY transaction_date DESC,
+    id ASC
+LIMIT ?2;
+-- name: GetUserTransactionsPaginated :many
+SELECT id,
+    user_id,
+    transaction_date,
+    merchant,
+    amount_cents,
+    detailed_category_id
+FROM transactions
+WHERE user_id = ?1
+    AND (
+        transaction_date < ?2
+        OR (
+            transaction_date = ?3
+            AND id < ?4
+        )
+    )
+ORDER BY transaction_date DESC,
+    id ASC
+LIMIT ?5;

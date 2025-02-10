@@ -133,6 +133,138 @@ func (q *Queries) GetPrimaryCategories(ctx context.Context) ([]PrimaryCategory, 
 	return items, nil
 }
 
+const getUserTransactionsFirstPage = `-- name: GetUserTransactionsFirstPage :many
+SELECT id,
+    user_id,
+    transaction_date,
+    merchant,
+    amount_cents,
+    detailed_category_id
+FROM transactions
+WHERE user_id = ?1
+ORDER BY transaction_date DESC,
+    id ASC
+LIMIT ?2
+`
+
+type GetUserTransactionsFirstPageParams struct {
+	UserID string
+	Limit  int64
+}
+
+type GetUserTransactionsFirstPageRow struct {
+	ID                 string
+	UserID             string
+	TransactionDate    string
+	Merchant           string
+	AmountCents        int64
+	DetailedCategoryID int64
+}
+
+func (q *Queries) GetUserTransactionsFirstPage(ctx context.Context, arg GetUserTransactionsFirstPageParams) ([]GetUserTransactionsFirstPageRow, error) {
+	rows, err := q.db.QueryContext(ctx, getUserTransactionsFirstPage, arg.UserID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUserTransactionsFirstPageRow
+	for rows.Next() {
+		var i GetUserTransactionsFirstPageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.TransactionDate,
+			&i.Merchant,
+			&i.AmountCents,
+			&i.DetailedCategoryID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserTransactionsPaginated = `-- name: GetUserTransactionsPaginated :many
+SELECT id,
+    user_id,
+    transaction_date,
+    merchant,
+    amount_cents,
+    detailed_category_id
+FROM transactions
+WHERE user_id = ?1
+    AND (
+        transaction_date < ?2
+        OR (
+            transaction_date = ?3
+            AND id < ?4
+        )
+    )
+ORDER BY transaction_date DESC,
+    id ASC
+LIMIT ?5
+`
+
+type GetUserTransactionsPaginatedParams struct {
+	UserID            string
+	TransactionDate   string
+	TransactionDate_2 string
+	ID                string
+	Limit             int64
+}
+
+type GetUserTransactionsPaginatedRow struct {
+	ID                 string
+	UserID             string
+	TransactionDate    string
+	Merchant           string
+	AmountCents        int64
+	DetailedCategoryID int64
+}
+
+func (q *Queries) GetUserTransactionsPaginated(ctx context.Context, arg GetUserTransactionsPaginatedParams) ([]GetUserTransactionsPaginatedRow, error) {
+	rows, err := q.db.QueryContext(ctx, getUserTransactionsPaginated,
+		arg.UserID,
+		arg.TransactionDate,
+		arg.TransactionDate_2,
+		arg.ID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUserTransactionsPaginatedRow
+	for rows.Next() {
+		var i GetUserTransactionsPaginatedRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.TransactionDate,
+			&i.Merchant,
+			&i.AmountCents,
+			&i.DetailedCategoryID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateTransactionByID = `-- name: UpdateTransactionByID :one
 UPDATE transactions
 SET transaction_date = ?1,

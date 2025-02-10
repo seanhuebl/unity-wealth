@@ -21,4 +21,6 @@ type Quierier interface {
 	GetPrimaryCategories(ctx context.Context) ([]database.PrimaryCategory, error)
 	GetDetailedCategories(ctx context.Context) ([]database.DetailedCategory, error)
 	DeleteTransactionById(ctx context.Context, arg database.DeleteTransactionByIdParams) error
+	GetUserTransactionsFirstPage(ctx context.Context, arg database.GetUserTransactionsFirstPageParams) ([]database.GetUserTransactionsFirstPageRow, error)
+	GetUserTransactionsPaginated(ctx context.Context, arg database.GetUserTransactionsPaginatedParams) ([]database.GetUserTransactionsPaginatedRow, error)
 }

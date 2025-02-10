@@ -13,6 +13,7 @@ import (
 
 type Transaction struct {
 	ID               string  `json:"id"`
+	UserID           string  `json:"user_id"`
 	Date             string  `json:"date" binding:"required"`
 	Merchant         string  `json:"merchant" binding:"required"`
 	Amount           float64 `json:"amount" binding:"required"`
@@ -162,5 +163,26 @@ func (h *Handler) GetTransactionsByUserID(ctx *gin.Context) {
 		})
 		return
 	}
+	cursorDate := ctx.Query("cursor_date")
+	cursorID := ctx.Query("cursor_id")
 
+	if cursorDate == "" || cursorID == "" {
+
+	}
+}
+func (h *Handler) listUserTransactions(ctx *gin.Context, userID uuid.UUID, cursorDate *string, cursorID *string, pageSize *int64) (transactions []Transaction, nextCursorDate, nextCursorID string, hasMoreData bool, err error) {
+	// Get first page of 50 transactions
+	firstPageTransactions, err := h.cfg.Queries.GetUserTransactionsFirstPage(ctx, database.GetUserTransactionsFirstPageParams{UserID: userID.String(), Limit: *pageSize + 1})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "error loading first page of transactions",
+		})
+		return
+	}
+
+	if len(firstPageTransactions) > 0 {
+		lastTxnRow := firstPageTransactions[len(firstPageTransactions)-1]
+	}
+
+	return transactions, nextCursorDate, nextCursorID, hasMoreData, nil
 }

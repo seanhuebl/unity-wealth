@@ -261,6 +261,66 @@ func (_m *Quierier) GetUserByEmail(ctx context.Context, email string) (database.
 	return r0, r1
 }
 
+// GetUserTransactionsFirstPage provides a mock function with given fields: ctx, arg
+func (_m *Quierier) GetUserTransactionsFirstPage(ctx context.Context, arg database.GetUserTransactionsFirstPageParams) ([]database.GetUserTransactionsFirstPageRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserTransactionsFirstPage")
+	}
+
+	var r0 []database.GetUserTransactionsFirstPageRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, database.GetUserTransactionsFirstPageParams) ([]database.GetUserTransactionsFirstPageRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, database.GetUserTransactionsFirstPageParams) []database.GetUserTransactionsFirstPageRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]database.GetUserTransactionsFirstPageRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, database.GetUserTransactionsFirstPageParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetUserTransactionsPaginated provides a mock function with given fields: ctx, arg
+func (_m *Quierier) GetUserTransactionsPaginated(ctx context.Context, arg database.GetUserTransactionsPaginatedParams) ([]database.GetUserTransactionsPaginatedRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserTransactionsPaginated")
+	}
+
+	var r0 []database.GetUserTransactionsPaginatedRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, database.GetUserTransactionsPaginatedParams) ([]database.GetUserTransactionsPaginatedRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, database.GetUserTransactionsPaginatedParams) []database.GetUserTransactionsPaginatedRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]database.GetUserTransactionsPaginatedRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, database.GetUserTransactionsPaginatedParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // RevokeToken provides a mock function with given fields: ctx, arg
 func (_m *Quierier) RevokeToken(ctx context.Context, arg database.RevokeTokenParams) error {
 	ret := _m.Called(ctx, arg)
