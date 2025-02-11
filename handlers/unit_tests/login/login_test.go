@@ -190,7 +190,7 @@ func TestLoginHandler(t *testing.T) {
 				Database:    db,
 				Auth:        mockAuth,
 			}
-			h := handlers.NewHandler(cfg)
+			h := handlers.NewHandler(cfg, nil)
 			// Create Gin Engine
 			router := gin.Default()
 			router.POST("/login", h.Login)

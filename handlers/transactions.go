@@ -32,7 +32,7 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 	claims, err := helpers.ValidateClaims(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"error": err,
+			"error": err.Error(),
 		})
 		return
 	}
@@ -45,7 +45,7 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 		return
 	}
 
-	var req Transaction
+	var req NewTransactionRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -82,7 +82,7 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 }
 
 func (h *Handler) UpdateTransaction(ctx *gin.Context) {
-	var req Transaction
+	var req NewTransactionRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

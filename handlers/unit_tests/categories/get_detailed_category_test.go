@@ -77,7 +77,7 @@ func TestGetDetailedCategoryByID_WithRedismock(t *testing.T) {
 			c.Params = gin.Params{{Key: "id", Value: tc.id}}
 
 			blankConfig := &config.ApiConfig{}
-			h := handlers.NewHandler(blankConfig)
+			h := handlers.NewHandler(blankConfig, nil)
 
 			// Call the handler.
 			h.GetDetailedCategoryByID(c)

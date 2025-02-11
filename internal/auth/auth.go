@@ -80,6 +80,9 @@ func (a *AuthService) ValidateJWT(tokenString, tokenSecret string) (*jwt.Registe
 
 	// Parse the token using the claims instance.
 	token, err := jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
 		return []byte(tokenSecret), nil
 	})
 	if err != nil {
@@ -89,6 +92,14 @@ func (a *AuthService) ValidateJWT(tokenString, tokenSecret string) (*jwt.Registe
 	// Ensure the token is valid.
 	if !token.Valid {
 		return nil, errors.New("invalid token")
+	}
+
+	now := time.Now().Unix()
+	if claims.ExpiresAt != nil && claims.ExpiresAt.Unix() < now {
+		return nil, fmt.Errorf("token expired")
+	}
+	if claims.NotBefore != nil && claims.NotBefore.Unix() > now {
+		return nil, fmt.Errorf("token not valid yet")
 	}
 
 	// Check the issuer (this example assumes you want the issuer to equal TokenTypeAccess).

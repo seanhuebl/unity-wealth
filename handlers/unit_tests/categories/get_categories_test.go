@@ -98,7 +98,7 @@ func TestGetCategories(t *testing.T) {
 			c.Request = req
 
 			blankConfig := &config.ApiConfig{}
-			h := handlers.NewHandler(blankConfig)
+			h := handlers.NewHandler(blankConfig, nil)
 
 			// Call the handler.
 			h.GetCategories(c)
