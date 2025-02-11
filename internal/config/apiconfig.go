@@ -8,7 +8,7 @@ import (
 
 type ApiConfig struct {
 	Port        string
-	Queries     interfaces.Quierier
+	Queries     interfaces.Querier
 	Database    *sql.DB
 	TokenSecret string
 	Auth        interfaces.AuthInterface

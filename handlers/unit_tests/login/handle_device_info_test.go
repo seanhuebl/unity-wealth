@@ -26,7 +26,7 @@ func TestHandleDeviceInfo(t *testing.T) {
 		name             string
 		userID           string
 		info             handlers.DeviceInfo
-		mockSetup        func(*mocks.Quierier) // how we configure the mock DB
+		mockSetup        func(*mocks.Querier) // how we configure the mock DB
 		expectedDeviceID uuid.UUID
 		expectedError    error
 	}{
@@ -40,7 +40,7 @@ func TestHandleDeviceInfo(t *testing.T) {
 				Os:             "Android",
 				OsVersion:      "12",
 			},
-			mockSetup: func(mockQueries *mocks.Quierier) {
+			mockSetup: func(mockQueries *mocks.Querier) {
 
 				// Mock: GetDeviceInfoByUser returns existingDeviceID (no error)
 				mockQueries.On("GetDeviceInfoByUser", context.Background(), database.GetDeviceInfoByUserParams{
@@ -71,7 +71,7 @@ func TestHandleDeviceInfo(t *testing.T) {
 				Os:             "Windows",
 				OsVersion:      "10",
 			},
-			mockSetup: func(mockQueries *mocks.Quierier) {
+			mockSetup: func(mockQueries *mocks.Querier) {
 				// 1) Simulate no existing device
 				mockQueries.On("GetDeviceInfoByUser", context.Background(), database.GetDeviceInfoByUserParams{
 					UserID:         userID,
@@ -103,7 +103,7 @@ func TestHandleDeviceInfo(t *testing.T) {
 				Os:             "iOS",
 				OsVersion:      "14",
 			},
-			mockSetup: func(mockQueries *mocks.Quierier) {
+			mockSetup: func(mockQueries *mocks.Querier) {
 				mockQueries.On("GetDeviceInfoByUser", context.Background(), database.GetDeviceInfoByUserParams{
 					UserID:         userID,
 					DeviceType:     "tablet",
@@ -127,7 +127,7 @@ func TestHandleDeviceInfo(t *testing.T) {
 				Os:             "Tizen",
 				OsVersion:      "5.5",
 			},
-			mockSetup: func(mockQueries *mocks.Quierier) {
+			mockSetup: func(mockQueries *mocks.Querier) {
 				mockQueries.On("GetDeviceInfoByUser", context.Background(), database.GetDeviceInfoByUserParams{
 					UserID:         userID,
 					DeviceType:     "tv",
@@ -159,7 +159,7 @@ func TestHandleDeviceInfo(t *testing.T) {
 			// Call the function under test
 			gotDeviceID, gotErr := handlers.HandleDeviceInfo(
 				context.Background(),
-				mockQueries, // Our Quierier mock
+				mockQueries, // Our Querier mock
 				uuid.MustParse(tc.userID),
 				tc.info,
 			)

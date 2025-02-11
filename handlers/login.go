@@ -273,7 +273,7 @@ func IsValidEmail(email string) bool {
 	return re.MatchString(email)
 }
 
-func HandleDeviceInfo(ctx context.Context, queriesTx interfaces.Quierier, userID uuid.UUID, info DeviceInfo) (uuid.UUID, error) {
+func HandleDeviceInfo(ctx context.Context, queriesTx interfaces.Querier, userID uuid.UUID, info DeviceInfo) (uuid.UUID, error) {
 	foundDevice, err := queriesTx.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
 		UserID:         userID.String(),
 		DeviceType:     info.DeviceType,

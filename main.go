@@ -42,7 +42,7 @@ func main() {
 	}
 
 	router := gin.Default()
-	txnSvc := services.NewTransactionService(&cfg.Queries)
+	txnSvc := services.NewTransactionService(cfg.Queries)
 	h := handlers.NewHandler(&cfg, txnSvc)
 	authSvc := auth.NewAuthService()
 	m := middleware.NewMiddleware(&cfg, authSvc)

@@ -91,7 +91,7 @@ func TestLoginHandler(t *testing.T) {
 		name           string
 		inputBody      map[string]string
 		xDeviceInfo    string
-		mockSetup      func(q *mocks.Quierier, mockAuth *mocks.AuthInterface)
+		mockSetup      func(q *mocks.Querier, mockAuth *mocks.AuthInterface)
 		expectedStatus int
 		expectedJSON   map[string]string
 	}{
@@ -102,7 +102,7 @@ func TestLoginHandler(t *testing.T) {
 				"password": "correct_password",
 			},
 			xDeviceInfo: "os=iOS; os_version=14.4; device_type=Mobile; browser=Safari; browser_version=14.0",
-			mockSetup: func(q *mocks.Quierier, mockAuth *mocks.AuthInterface) {
+			mockSetup: func(q *mocks.Querier, mockAuth *mocks.AuthInterface) {
 
 				mockAuth.On("CheckPasswordHash", "correct_password", "hashed_correct_password").
 					Return(nil)
@@ -141,7 +141,7 @@ func TestLoginHandler(t *testing.T) {
 				"password": "wrong_password",
 			},
 			xDeviceInfo: "os=Windows; os_version=10; device_type=Desktop; browser=Firefox; browser_version=95.0",
-			mockSetup: func(q *mocks.Quierier, mockAuth *mocks.AuthInterface) {
+			mockSetup: func(q *mocks.Querier, mockAuth *mocks.AuthInterface) {
 				mockAuth.On("CheckPasswordHash", "wrong_password", "hashed_correct_password").Return(fmt.Errorf("invalid email / password"))
 			},
 			expectedStatus: http.StatusUnauthorized,
@@ -176,7 +176,7 @@ func TestLoginHandler(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mockQ := &mocks.Quierier{}
+			mockQ := &mocks.Querier{}
 			mockAuth := &mocks.AuthInterface{}
 
 			if tc.mockSetup != nil {

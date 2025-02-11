@@ -7,7 +7,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 )
 
-type Quierier interface {
+type Querier interface {
 	CreateUser(ctx context.Context, params database.CreateUserParams) error
 	GetUserByEmail(ctx context.Context, email string) (database.GetUserByEmailRow, error)
 	RevokeToken(ctx context.Context, arg database.RevokeTokenParams) error
