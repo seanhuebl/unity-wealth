@@ -59,10 +59,21 @@ WHERE user_id = ?1
     AND (
         transaction_date < ?2
         OR (
-            transaction_date = ?3
-            AND id < ?4
+            transaction_date = ?2
+            AND id < ?3
         )
     )
 ORDER BY transaction_date DESC,
     id ASC
-LIMIT ?5;
+LIMIT ?4;
+-- name: GetUserTransactionByID :one
+SELECT id,
+    user_id,
+    transaction_date,
+    merchant,
+    amount_cents,
+    detailed_category_id
+FROM transactions
+WHERE user_id = ?1
+    AND id = ?2
+LIMIT 1;

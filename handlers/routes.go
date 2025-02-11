@@ -6,16 +6,17 @@ import (
 	"github.com/seanhuebl/unity-wealth/middleware"
 )
 
-func RegisterRoutes(router *gin.Engine, cfg *config.ApiConfig) {
-	h := NewHandler(cfg)
-	m := middleware.NewMiddleware(cfg)
+func RegisterRoutes(router *gin.Engine, cfg *config.ApiConfig, h *Handler, m *middleware.Middleware) {
+	
 
 	home := router.Group("/")
 	{
-		home.GET("/health", health)
-		
 		home.POST("/signup", h.AddUser)
+
 		home.POST("/login", h.Login)
+
+		home.GET("/health", health)
+
 	}
 
 	app := router.Group("/app")
@@ -23,6 +24,8 @@ func RegisterRoutes(router *gin.Engine, cfg *config.ApiConfig) {
 	{
 
 		app.POST("/transactions", h.NewTransaction)
+		app.GET("/transactions", h.GetTransactionsByUserID)
+		app.GET("/transactions/:id", h.GetTransactionByID)
 		app.PUT("/transactions/:id", h.UpdateTransaction)
 		app.DELETE("/transactions", h.DeleteTransaction)
 	}

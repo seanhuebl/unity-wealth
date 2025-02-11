@@ -62,7 +62,7 @@ func TestUserAuthMiddleware_TableDriven(t *testing.T) {
 			// Create a new Gin engine for this sub-test.
 			router := gin.New()
 
-			m := middleware.NewMiddleware(cfg)
+			m := middleware.NewMiddleware(cfg, authSvc)
 			// Attach the middleware. (Since our middleware is defined as a method on ApiConfig,
 			// it automatically uses cfg.TokenSecret.)
 			router.Use(m.UserAuthMiddleware())

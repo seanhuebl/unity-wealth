@@ -133,6 +133,47 @@ func (q *Queries) GetPrimaryCategories(ctx context.Context) ([]PrimaryCategory, 
 	return items, nil
 }
 
+const getUserTransactionByID = `-- name: GetUserTransactionByID :one
+SELECT id,
+    user_id,
+    transaction_date,
+    merchant,
+    amount_cents,
+    detailed_category_id
+FROM transactions
+WHERE user_id = ?1
+    AND id = ?2
+LIMIT 1
+`
+
+type GetUserTransactionByIDParams struct {
+	UserID string
+	ID     string
+}
+
+type GetUserTransactionByIDRow struct {
+	ID                 string
+	UserID             string
+	TransactionDate    string
+	Merchant           string
+	AmountCents        int64
+	DetailedCategoryID int64
+}
+
+func (q *Queries) GetUserTransactionByID(ctx context.Context, arg GetUserTransactionByIDParams) (GetUserTransactionByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getUserTransactionByID, arg.UserID, arg.ID)
+	var i GetUserTransactionByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.TransactionDate,
+		&i.Merchant,
+		&i.AmountCents,
+		&i.DetailedCategoryID,
+	)
+	return i, err
+}
+
 const getUserTransactionsFirstPage = `-- name: GetUserTransactionsFirstPage :many
 SELECT id,
     user_id,
@@ -203,21 +244,20 @@ WHERE user_id = ?1
     AND (
         transaction_date < ?2
         OR (
-            transaction_date = ?3
-            AND id < ?4
+            transaction_date = ?2
+            AND id < ?3
         )
     )
 ORDER BY transaction_date DESC,
     id ASC
-LIMIT ?5
+LIMIT ?4
 `
 
 type GetUserTransactionsPaginatedParams struct {
-	UserID            string
-	TransactionDate   string
-	TransactionDate_2 string
-	ID                string
-	Limit             int64
+	UserID          string
+	TransactionDate string
+	ID              string
+	Limit           int64
 }
 
 type GetUserTransactionsPaginatedRow struct {
@@ -233,7 +273,6 @@ func (q *Queries) GetUserTransactionsPaginated(ctx context.Context, arg GetUserT
 	rows, err := q.db.QueryContext(ctx, getUserTransactionsPaginated,
 		arg.UserID,
 		arg.TransactionDate,
-		arg.TransactionDate_2,
 		arg.ID,
 		arg.Limit,
 	)

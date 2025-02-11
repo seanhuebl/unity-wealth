@@ -261,6 +261,34 @@ func (_m *Quierier) GetUserByEmail(ctx context.Context, email string) (database.
 	return r0, r1
 }
 
+// GetUserTransactionByID provides a mock function with given fields: ctx, arg
+func (_m *Quierier) GetUserTransactionByID(ctx context.Context, arg database.GetUserTransactionByIDParams) (database.GetUserTransactionByIDRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserTransactionByID")
+	}
+
+	var r0 database.GetUserTransactionByIDRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, database.GetUserTransactionByIDParams) (database.GetUserTransactionByIDRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, database.GetUserTransactionByIDParams) database.GetUserTransactionByIDRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Get(0).(database.GetUserTransactionByIDRow)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, database.GetUserTransactionByIDParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetUserTransactionsFirstPage provides a mock function with given fields: ctx, arg
 func (_m *Quierier) GetUserTransactionsFirstPage(ctx context.Context, arg database.GetUserTransactionsFirstPageParams) ([]database.GetUserTransactionsFirstPageRow, error) {
 	ret := _m.Called(ctx, arg)

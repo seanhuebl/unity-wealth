@@ -4,24 +4,19 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/seanhuebl/unity-wealth/internal/auth"
 )
-
-
 
 func (m *Middleware) UserAuthMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		
-		authSvc := auth.NewAuthService()
 
-		token, err := authSvc.GetBearerToken(ctx.Request.Header)
+		token, err := m.authService.GetBearerToken(ctx.Request.Header)
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": err.Error(),
 			})
 			return
 		}
-		claims, err := authSvc.ValidateJWT(token, m.cfg.TokenSecret)
+		claims, err := m.authService.ValidateJWT(token, m.cfg.TokenSecret)
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "invalid token",

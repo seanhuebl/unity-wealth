@@ -96,7 +96,7 @@ func TestGetCategories(t *testing.T) {
 			c, _ := gin.CreateTestContext(w)
 			req, _ := http.NewRequest("GET", "/categories", nil)
 			c.Request = req
-			
+
 			blankConfig := &config.ApiConfig{}
 			h := handlers.NewHandler(blankConfig)
 

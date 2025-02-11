@@ -23,4 +23,5 @@ type Quierier interface {
 	DeleteTransactionById(ctx context.Context, arg database.DeleteTransactionByIdParams) error
 	GetUserTransactionsFirstPage(ctx context.Context, arg database.GetUserTransactionsFirstPageParams) ([]database.GetUserTransactionsFirstPageRow, error)
 	GetUserTransactionsPaginated(ctx context.Context, arg database.GetUserTransactionsPaginatedParams) ([]database.GetUserTransactionsPaginatedRow, error)
+	GetUserTransactionByID(ctx context.Context, arg database.GetUserTransactionByIDParams) (database.GetUserTransactionByIDRow, error)
 }

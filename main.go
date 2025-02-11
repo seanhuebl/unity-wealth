@@ -13,6 +13,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/auth"
 	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/middleware"
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
@@ -40,8 +41,10 @@ func main() {
 	}
 
 	router := gin.Default()
-
-	handlers.RegisterRoutes(router, &cfg)
+	h := handlers.NewHandler(&cfg)
+	authSvc := auth.NewAuthService()
+	m := middleware.NewMiddleware(&cfg, authSvc)
+	handlers.RegisterRoutes(router, &cfg, h, m)
 
 	err = router.Run(cfg.Port)
 	if err != nil {
