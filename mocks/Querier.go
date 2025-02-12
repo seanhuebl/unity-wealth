@@ -17,6 +17,36 @@ type Querier struct {
 	mock.Mock
 }
 
+// BeginTx provides a mock function with given fields: ctx, opts
+func (_m *Querier) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
+	ret := _m.Called(ctx, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BeginTx")
+	}
+
+	var r0 *sql.Tx
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *sql.TxOptions) (*sql.Tx, error)); ok {
+		return rf(ctx, opts)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *sql.TxOptions) *sql.Tx); ok {
+		r0 = rf(ctx, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sql.Tx)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *sql.TxOptions) error); ok {
+		r1 = rf(ctx, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // CreateDeviceInfo provides a mock function with given fields: ctx, arg
 func (_m *Querier) CreateDeviceInfo(ctx context.Context, arg database.CreateDeviceInfoParams) (string, error) {
 	ret := _m.Called(ctx, arg)

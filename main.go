@@ -29,21 +29,23 @@ func main() {
 	if err := db.Ping(); err != nil {
 		log.Fatalf("database connection test failed: %v", err)
 	}
-	authSvc := services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"))
 	cfg := config.ApiConfig{
 		Port:        fmt.Sprintf(":%v", os.Getenv("PORT")),
 		Queries:     database.New(db),
 		TokenSecret: os.Getenv("TOKEN_SECRET"),
 		Database:    db,
-		Auth:        authSvc,
 	}
+	authSvc := services.NewAuthService(os.Getenv("TOKEN_TYPE"), cfg.TokenSecret, cfg.Queries)
+	
 	if err := cache.WarmCategoriesCache(&cfg); err != nil {
 		log.Printf("unable to warm cache: %v", err)
 	}
+	userSvc := services.NewUserService(cfg.Queries, authSvc)
 
 	router := gin.Default()
+
 	txnSvc := services.NewTransactionService(cfg.Queries)
-	h := handlers.NewHandler(cfg.Queries, txnSvc, authSvc)
+	h := handlers.NewHandler(cfg.Queries, txnSvc, authSvc, userSvc)
 	m := middleware.NewMiddleware(&cfg, authSvc)
 	handlers.RegisterRoutes(router, &cfg, h, m)
 

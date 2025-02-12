@@ -14,6 +14,7 @@ type contextKey string
 const (
 	userIDKey contextKey = "userID"
 	claimsKey contextKey = "claims"
+	requestKey contextKey = "httpRequest"
 )
 
 func (m *Middleware) ClaimsAuthMiddleware() gin.HandlerFunc {
@@ -39,7 +40,8 @@ func (m *Middleware) ClaimsAuthMiddleware() gin.HandlerFunc {
 
 		ctx.Request = ctx.Request.WithContext(context.WithValue(ctx.Request.Context(), claimsKey, claims))
 		ctx.Request = ctx.Request.WithContext(context.WithValue(ctx.Request.Context(), userIDKey, userID))
-
+		// Store the request in the standard context.
+		ctx.Request = ctx.Request.WithContext(context.WithValue(ctx.Request.Context(), requestKey, ctx.Request))
 		ctx.Next()
 	}
 }

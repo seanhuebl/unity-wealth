@@ -4,13 +4,12 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/helpers"
 	"github.com/seanhuebl/unity-wealth/models"
 )
 
 func (h *Handler) NewTransaction(ctx *gin.Context) {
-	userID, err := userIDFromClaims(ctx)
+	userID, err := helpers.GetUserID(ctx.Request.Context())
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"error": "unauthorized",
@@ -44,7 +43,7 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 }
 
 func (h *Handler) GetTransactionsByUserID(ctx *gin.Context) {
-	userID, err := userIDFromClaims(ctx)
+	userID, err := helpers.GetUserID(ctx.Request.Context())
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"error": "unauthorized",
@@ -77,7 +76,7 @@ func (h *Handler) GetTransactionsByUserID(ctx *gin.Context) {
 }
 
 func (h *Handler) GetTransactionByID(ctx *gin.Context) {
-	userID, err := userIDFromClaims(ctx)
+	userID, err := helpers.GetUserID(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"error": "unauthorized",
@@ -104,7 +103,7 @@ func (h *Handler) GetTransactionByID(ctx *gin.Context) {
 }
 
 func (h *Handler) UpdateTransaction(ctx *gin.Context) {
-	userID, err := userIDFromClaims(ctx)
+	userID, err := helpers.GetUserID(ctx.Request.Context())
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"error": "unauthorized",
@@ -145,7 +144,7 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 }
 
 func (h *Handler) DeleteTransaction(ctx *gin.Context) {
-	userID, err := userIDFromClaims(ctx)
+	userID, err := helpers.GetUserID(ctx.Request.Context())
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"error": "unauthorized",
@@ -175,14 +174,4 @@ func (h *Handler) DeleteTransaction(ctx *gin.Context) {
 			"transaction_deleted": "success",
 		},
 	})
-}
-
-// Helpers
-func userIDFromClaims(ctx *gin.Context) (uuid.UUID, error) {
-	claims, err := helpers.ValidateClaims(ctx)
-	if err != nil {
-		return uuid.Nil, err
-	}
-
-	return uuid.Parse(claims.Subject)
 }

@@ -11,5 +11,4 @@ type ApiConfig struct {
 	Queries     interfaces.Querier
 	Database    *sql.DB
 	TokenSecret string
-	Auth        interfaces.AuthInterface
 }

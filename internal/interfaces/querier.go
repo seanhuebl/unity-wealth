@@ -15,6 +15,7 @@ type Querier interface {
 	CreateRefreshToken(ctx context.Context, arg database.CreateRefreshTokenParams) error
 	CreateDeviceInfo(ctx context.Context, arg database.CreateDeviceInfoParams) (string, error)
 	WithTx(tx *sql.Tx) *database.Queries
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 	CreateTransaction(ctx context.Context, arg database.CreateTransactionParams) error
 	GetDetailedCategoryId(ctx context.Context, name string) (int64, error)
 	UpdateTransactionByID(ctx context.Context, arg database.UpdateTransactionByIDParams) (database.UpdateTransactionByIDRow, error)

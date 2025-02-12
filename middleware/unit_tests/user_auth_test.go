@@ -23,7 +23,7 @@ func TestUserAuthMiddleware_TableDriven(t *testing.T) {
 	}
 
 	// Create an instance of your auth service to generate a valid token.
-	authSvc := services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"))
+	authSvc := services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"), nil)
 	testUserID := uuid.New()
 	validToken, err := authSvc.MakeJWT(testUserID, time.Hour)
 	if err != nil {

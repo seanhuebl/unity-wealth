@@ -4,46 +4,29 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/models"
 )
-
-type SignUpInput struct {
-	Email    string `json:"email" binding:"required"`
-	Password string `json:"password" binding:"required"`
-}
 
 // POST
 func (h *Handler) AddUser(ctx *gin.Context) {
-	var input SignUpInput
+	var input models.SignUpInput
 
 	if err := ctx.ShouldBindJSON(&input); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"error": "invalid request body",
 		})
 		return
 	}
-	hashedPW, err := h.authService.HashPassword(input.Password)
-	if err != nil {
+	if err := h.userService.SignUp(ctx, input); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+			"error": "failed to create user",
 		})
-		return
-	}
-
-	if err := h.queries.CreateUser(ctx.Request.Context(), database.CreateUserParams{
-		ID:             uuid.NewString(),
-		Email:          input.Email,
-		HashedPassword: hashedPW,
-	}); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-		return
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{
-		"message": "Sign up successful!",
-		"email":   input.Email,
+		"data": gin.H{
+			"message": "Sign up successful!",
+			"email":   input.Email,
+		},
 	})
 }

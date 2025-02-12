@@ -7,15 +7,12 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/services"
 )
 
 func TestGetAPIKey(t *testing.T) {
 
-	cfg := config.ApiConfig{
-		Auth: services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET")),
-	}
+	authSvc := services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"), nil)
 	tests := map[string]struct {
 		input         http.Header
 		expectedValue string
@@ -29,7 +26,7 @@ func TestGetAPIKey(t *testing.T) {
 	for test, tt := range tests {
 		t.Run(test, func(t *testing.T) {
 
-			receivedValue, err := cfg.Auth.GetAPIKey(tt.input)
+			receivedValue, err := authSvc.GetAPIKey(tt.input)
 			var diff string
 			if err != nil {
 				diff = cmp.Diff(tt.expectedValue, fmt.Sprint(err))

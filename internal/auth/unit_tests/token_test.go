@@ -12,14 +12,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/services"
 )
 
 func TestMakeJWT(t *testing.T) {
-	cfg := config.ApiConfig{
-		Auth: services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET")),
-	}
+	authSvc := services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"), nil)
 
 	tests := []struct {
 		name         string
@@ -58,7 +55,7 @@ func TestMakeJWT(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			token, err := cfg.Auth.MakeJWT(tt.userID, tt.expiresIn)
+			token, err := authSvc.MakeJWT(tt.userID, tt.expiresIn)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MakeJWT() error = %v, wantErr %v", err, tt.wantErr)
@@ -93,9 +90,7 @@ func TestMakeJWT(t *testing.T) {
 
 func TestValidateJWT(t *testing.T) {
 	userID := uuid.New()
-	cfg := config.ApiConfig{
-		Auth: services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET")),
-	}
+	authSvc := services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"), nil)
 	tests := []struct {
 		name        string
 		tokenString string
@@ -106,7 +101,7 @@ func TestValidateJWT(t *testing.T) {
 		{
 			name: "Valid token",
 			tokenString: func() string {
-				token, _ := cfg.Auth.MakeJWT(userID, time.Hour)
+				token, _ := authSvc.MakeJWT(userID, time.Hour)
 				return token
 			}(),
 			tokenSecret: "testsecret",
@@ -116,7 +111,7 @@ func TestValidateJWT(t *testing.T) {
 		{
 			name: "Invalid token secret",
 			tokenString: func() string {
-				token, _ := cfg.Auth.MakeJWT(uuid.New(), time.Hour)
+				token, _ := authSvc.MakeJWT(uuid.New(), time.Hour)
 				return token
 			}(),
 			tokenSecret: "wrongsecret",
@@ -134,7 +129,7 @@ func TestValidateJWT(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			claims, err := cfg.Auth.ValidateJWT(tt.tokenString)
+			claims, err := authSvc.ValidateJWT(tt.tokenString)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateJWT() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -157,9 +152,7 @@ func TestValidateJWT(t *testing.T) {
 }
 
 func TestGetBearerToken(t *testing.T) {
-	cfg := config.ApiConfig{
-		Auth: services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET")),
-	}
+	authSvc := services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"), nil)
 	tests := map[string]struct {
 		input         http.Header
 		expectedValue string
@@ -172,7 +165,7 @@ func TestGetBearerToken(t *testing.T) {
 
 	for test, tt := range tests {
 		t.Run(test, func(t *testing.T) {
-			receivedValue, err := cfg.Auth.GetBearerToken(tt.input)
+			receivedValue, err := authSvc.GetBearerToken(tt.input)
 			var diff string
 			if err != nil {
 				diff = cmp.Diff(tt.expectedValue, fmt.Sprint(err))
@@ -187,9 +180,7 @@ func TestGetBearerToken(t *testing.T) {
 }
 
 func TestMakeRefreshToken(t *testing.T) {
-	cfg := config.ApiConfig{
-		Auth: services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET")),
-	}
+	authSvc := services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"), nil)
 	tests := []struct {
 		name     string
 		mockRand func([]byte) (int, error)
@@ -218,7 +209,7 @@ func TestMakeRefreshToken(t *testing.T) {
 			services.RandReader = tt.mockRand
 			defer func() { services.RandReader = origRandReader }()
 
-			token, err := cfg.Auth.MakeRefreshToken()
+			token, err := authSvc.MakeRefreshToken()
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MakeRefreshToken() error = %v, wantErr %v", err, tt.wantErr)
