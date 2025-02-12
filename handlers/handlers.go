@@ -1,15 +1,16 @@
 package handlers
 
 import (
-	"github.com/seanhuebl/unity-wealth/internal/config"
+	"github.com/seanhuebl/unity-wealth/internal/interfaces"
 	"github.com/seanhuebl/unity-wealth/services"
 )
 
 type Handler struct {
-	cfg                *config.ApiConfig
+	queries            interfaces.Querier
 	transactionService *services.TransactionService
+	authService        *services.AuthService
 }
 
-func NewHandler(cfg *config.ApiConfig, txnSvc *services.TransactionService) *Handler {
-	return &Handler{cfg: cfg, transactionService: txnSvc}
+func NewHandler(queries interfaces.Querier, txnSvc *services.TransactionService, authSvc *services.AuthService) *Handler {
+	return &Handler{queries: queries, transactionService: txnSvc, authService: authSvc}
 }

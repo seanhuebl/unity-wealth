@@ -12,7 +12,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/seanhuebl/unity-wealth/cache"
 	"github.com/seanhuebl/unity-wealth/handlers"
-	"github.com/seanhuebl/unity-wealth/internal/config"
 )
 
 func TestGetDetailedCategoryByID_WithRedismock(t *testing.T) {
@@ -76,8 +75,7 @@ func TestGetDetailedCategoryByID_WithRedismock(t *testing.T) {
 			c.Request = httptest.NewRequest(http.MethodGet, "/detailed_categories/"+tc.id, nil)
 			c.Params = gin.Params{{Key: "id", Value: tc.id}}
 
-			blankConfig := &config.ApiConfig{}
-			h := handlers.NewHandler(blankConfig, nil)
+			h := handlers.NewHandler(nil, nil, nil)
 
 			// Call the handler.
 			h.GetDetailedCategoryByID(c)

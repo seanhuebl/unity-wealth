@@ -1,4 +1,4 @@
-package auth
+package services
 
 import (
 	"crypto/rand"
@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -17,18 +16,21 @@ import (
 )
 
 type AuthService struct {
+	tokenTypeAccess TokenType
+	tokenSecret string
+}
+
+func NewAuthService(tokenType, tokenSecret string) *AuthService {
+	return &AuthService{
+		tokenTypeAccess: TokenType(tokenType),
+		tokenSecret: tokenSecret,
+	}
 }
 
 type TokenType string
 
-var TokenTypeAccess = TokenType(os.Getenv("TOKEN_TYPE"))
-
 var ErrNoAuthHeaderIncluded = errors.New("no authorization header included")
 var RandReader = rand.Read
-
-func NewAuthService() *AuthService {
-	return &AuthService{}
-}
 
 func (a *AuthService) GetAPIKey(headers http.Header) (string, error) {
 	authHeader := headers.Get("Authorization")
@@ -57,16 +59,16 @@ func (a *AuthService) CheckPasswordHash(password, hash string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 }
 
-func (a *AuthService) MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
-	if tokenSecret == "" {
+func (a *AuthService) MakeJWT(userID uuid.UUID, expiresIn time.Duration) (string, error) {
+	if a.tokenSecret == "" {
 		return "", errors.New("tokenSecret must not be empty")
 	}
 	if expiresIn <= 0 {
 		return "", errors.New("expiresIn must be positive")
 	}
-	signingKey := []byte(tokenSecret)
+	signingKey := []byte(a.tokenSecret)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
-		Issuer:    string(TokenTypeAccess),
+		Issuer:    string(a.tokenTypeAccess),
 		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(expiresIn)),
 		Subject:   userID.String(),
@@ -74,7 +76,7 @@ func (a *AuthService) MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn ti
 	return token.SignedString(signingKey)
 }
 
-func (a *AuthService) ValidateJWT(tokenString, tokenSecret string) (*jwt.RegisteredClaims, error) {
+func (a *AuthService) ValidateJWT(tokenString string) (*jwt.RegisteredClaims, error) {
 	// Create an instance of RegisteredClaims to hold the parsed token claims.
 	var claims jwt.RegisteredClaims
 
@@ -83,7 +85,7 @@ func (a *AuthService) ValidateJWT(tokenString, tokenSecret string) (*jwt.Registe
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(tokenSecret), nil
+		return []byte(a.tokenSecret), nil
 	})
 	if err != nil {
 		return nil, err
@@ -103,7 +105,7 @@ func (a *AuthService) ValidateJWT(tokenString, tokenSecret string) (*jwt.Registe
 	}
 
 	// Check the issuer (this example assumes you want the issuer to equal TokenTypeAccess).
-	if claims.Issuer != string(TokenTypeAccess) {
+	if claims.Issuer != string(a.tokenTypeAccess) {
 		return nil, errors.New("invalid issuer")
 	}
 

@@ -84,7 +84,7 @@ func TestValidateCredentials(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Initialize mocks
-			mockQueries := mocks.NewQuierier(t)
+			mockQueries := mocks.NewQuerier(t)
 			mockAuth := mocks.NewAuthInterface(t)
 
 			// Set up mock behavior for database queries

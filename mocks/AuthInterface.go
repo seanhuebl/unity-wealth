@@ -121,9 +121,9 @@ func (_m *AuthInterface) HashPassword(password string) (string, error) {
 	return r0, r1
 }
 
-// MakeJWT provides a mock function with given fields: userID, tokenSecret, expiresIn
-func (_m *AuthInterface) MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
-	ret := _m.Called(userID, tokenSecret, expiresIn)
+// MakeJWT provides a mock function with given fields: userID, expiresIn
+func (_m *AuthInterface) MakeJWT(userID uuid.UUID, expiresIn time.Duration) (string, error) {
+	ret := _m.Called(userID, expiresIn)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MakeJWT")
@@ -131,17 +131,17 @@ func (_m *AuthInterface) MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(uuid.UUID, string, time.Duration) (string, error)); ok {
-		return rf(userID, tokenSecret, expiresIn)
+	if rf, ok := ret.Get(0).(func(uuid.UUID, time.Duration) (string, error)); ok {
+		return rf(userID, expiresIn)
 	}
-	if rf, ok := ret.Get(0).(func(uuid.UUID, string, time.Duration) string); ok {
-		r0 = rf(userID, tokenSecret, expiresIn)
+	if rf, ok := ret.Get(0).(func(uuid.UUID, time.Duration) string); ok {
+		r0 = rf(userID, expiresIn)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(uuid.UUID, string, time.Duration) error); ok {
-		r1 = rf(userID, tokenSecret, expiresIn)
+	if rf, ok := ret.Get(1).(func(uuid.UUID, time.Duration) error); ok {
+		r1 = rf(userID, expiresIn)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -177,9 +177,9 @@ func (_m *AuthInterface) MakeRefreshToken() (string, error) {
 	return r0, r1
 }
 
-// ValidateJWT provides a mock function with given fields: tokenString, tokenSecret
-func (_m *AuthInterface) ValidateJWT(tokenString string, tokenSecret string) (*jwt.RegisteredClaims, error) {
-	ret := _m.Called(tokenString, tokenSecret)
+// ValidateJWT provides a mock function with given fields: tokenString
+func (_m *AuthInterface) ValidateJWT(tokenString string) (*jwt.RegisteredClaims, error) {
+	ret := _m.Called(tokenString)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ValidateJWT")
@@ -187,19 +187,19 @@ func (_m *AuthInterface) ValidateJWT(tokenString string, tokenSecret string) (*j
 
 	var r0 *jwt.RegisteredClaims
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, string) (*jwt.RegisteredClaims, error)); ok {
-		return rf(tokenString, tokenSecret)
+	if rf, ok := ret.Get(0).(func(string) (*jwt.RegisteredClaims, error)); ok {
+		return rf(tokenString)
 	}
-	if rf, ok := ret.Get(0).(func(string, string) *jwt.RegisteredClaims); ok {
-		r0 = rf(tokenString, tokenSecret)
+	if rf, ok := ret.Get(0).(func(string) *jwt.RegisteredClaims); ok {
+		r0 = rf(tokenString)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*jwt.RegisteredClaims)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string, string) error); ok {
-		r1 = rf(tokenString, tokenSecret)
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(tokenString)
 	} else {
 		r1 = ret.Error(1)
 	}

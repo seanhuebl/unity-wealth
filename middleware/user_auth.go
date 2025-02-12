@@ -16,7 +16,7 @@ func (m *Middleware) UserAuthMiddleware() gin.HandlerFunc {
 			})
 			return
 		}
-		claims, err := m.authService.ValidateJWT(token, m.cfg.TokenSecret)
+		claims, err := m.authService.ValidateJWT(token)
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "invalid token",

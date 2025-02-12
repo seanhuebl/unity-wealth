@@ -68,7 +68,7 @@ func TestGenerateTokens(t *testing.T) {
 			}
 
 			// Call the function
-			jwt, refreshToken, err := handlers.GenerateTokens(tt.userID, tt.secret, mockAuth)
+			jwt, refreshToken, err := handlers.GenerateTokens(tt.userID, mockAuth)
 
 			// Assert error scenarios
 			if tt.expectError {

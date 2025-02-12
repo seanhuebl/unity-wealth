@@ -17,24 +17,12 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/interfaces"
+	"github.com/seanhuebl/unity-wealth/models"
 )
-
-type LoginInput struct {
-	Email    string `json:"email" binding:"required"`
-	Password string `json:"password" binding:"required"`
-}
-
-type DeviceInfo struct {
-	DeviceType     string `json:"device_type"`
-	Browser        string `json:"browser"`
-	BrowserVersion string `json:"browser_version"`
-	Os             string `json:"os"`
-	OsVersion      string `json:"os_version"`
-}
 
 func (h *Handler) Login(ctx *gin.Context) {
 	cfg := h.cfg
-	var input LoginInput
+	var input models.LoginInput
 
 	if err := ctx.ShouldBindJSON(&input); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -97,7 +85,7 @@ func (h *Handler) Login(ctx *gin.Context) {
 		return
 	}
 
-	JWT, refreshToken, err := GenerateTokens(userID, cfg.TokenSecret, cfg.Auth)
+	JWT, refreshToken, err := GenerateTokens(userID, cfg.Auth)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -147,7 +135,7 @@ func (h *Handler) Login(ctx *gin.Context) {
 	})
 }
 
-func GetDeviceInfo(req *http.Request) (DeviceInfo, error) {
+func GetDeviceInfo(req *http.Request) (models.DeviceInfo, error) {
 	// Check for X-Device-Info header
 	xDeviceInfo := req.Header.Get("X-Device-Info")
 	if xDeviceInfo != "" {
@@ -166,12 +154,12 @@ func GetDeviceInfo(req *http.Request) (DeviceInfo, error) {
 	}
 
 	// If both are invalid, return an error
-	return DeviceInfo{}, fmt.Errorf("invalid or unknown device information")
+	return models.DeviceInfo{}, fmt.Errorf("invalid or unknown device information")
 }
 
 // parseDeviceInfoFromHeader parses the X-Device-Info header into a DeviceInfo struct.
-func ParseDeviceInfoFromHeader(header string) DeviceInfo {
-	deviceInfo := DeviceInfo{}
+func ParseDeviceInfoFromHeader(header string) models.DeviceInfo {
+	deviceInfo := models.DeviceInfo{}
 
 	// Split the header into key-value pairs
 	pairs := strings.Split(header, ";")
@@ -200,7 +188,7 @@ func ParseDeviceInfoFromHeader(header string) DeviceInfo {
 }
 
 // parseUserAgent parses the User-Agent header and provides fallback device info.
-func ParseUserAgent(userAgent string) DeviceInfo {
+func ParseUserAgent(userAgent string) models.DeviceInfo {
 	ua := user_agent.New(userAgent)
 
 	deviceType := "Desktop"
@@ -210,7 +198,7 @@ func ParseUserAgent(userAgent string) DeviceInfo {
 
 	browser, browserVersion := ua.Browser()
 
-	return DeviceInfo{
+	return models.DeviceInfo{
 		DeviceType:     deviceType,
 		Browser:        SanitizeInput(browser),
 		BrowserVersion: SanitizeInput(browserVersion),
@@ -219,7 +207,7 @@ func ParseUserAgent(userAgent string) DeviceInfo {
 	}
 }
 
-func IsValidDeviceInfo(info DeviceInfo) bool {
+func IsValidDeviceInfo(info models.DeviceInfo) bool {
 	// Define valid device types
 	validDeviceTypes := map[string]bool{
 		"Desktop": true,
@@ -273,7 +261,7 @@ func IsValidEmail(email string) bool {
 	return re.MatchString(email)
 }
 
-func HandleDeviceInfo(ctx context.Context, queriesTx interfaces.Querier, userID uuid.UUID, info DeviceInfo) (uuid.UUID, error) {
+func HandleDeviceInfo(ctx context.Context, queriesTx interfaces.Querier, userID uuid.UUID, info models.DeviceInfo) (uuid.UUID, error) {
 	foundDevice, err := queriesTx.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
 		UserID:         userID.String(),
 		DeviceType:     info.DeviceType,
@@ -319,8 +307,8 @@ func HandleDeviceInfo(ctx context.Context, queriesTx interfaces.Querier, userID 
 	return deviceID, nil
 }
 
-func GenerateTokens(userID uuid.UUID, secret string, auth interfaces.AuthInterface) (string, string, error) {
-	JWT, err := auth.MakeJWT(userID, secret, time.Minute*15)
+func GenerateTokens(userID uuid.UUID, auth interfaces.AuthInterface) (string, string, error) {
+	JWT, err := auth.MakeJWT(userID, time.Minute*15)
 	if err != nil {
 		return "", "", err
 	}
@@ -352,7 +340,7 @@ func SetRefreshTokenCookie(ctx *gin.Context, refreshToken string) {
 	http.SetCookie(ctx.Writer, &cookie)
 }
 
-func ValidateCredentials(ctx *gin.Context, cfg *config.ApiConfig, input *LoginInput) (uuid.UUID, error) {
+func ValidateCredentials(ctx *gin.Context, cfg *config.ApiConfig, input *models.LoginInput) (uuid.UUID, error) {
 	user, err := cfg.Queries.GetUserByEmail(ctx, input.Email)
 
 	if err != nil {

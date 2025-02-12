@@ -5,19 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/seanhuebl/unity-wealth/internal/auth"
 	"github.com/seanhuebl/unity-wealth/internal/config"
+	"github.com/seanhuebl/unity-wealth/services"
 )
 
 func TestMakeJWT(t *testing.T) {
 	cfg := config.ApiConfig{
-		Auth: auth.NewAuthService(),
+		Auth: services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET")),
 	}
 
 	tests := []struct {
@@ -35,7 +36,7 @@ func TestMakeJWT(t *testing.T) {
 			expiresIn:   time.Hour,
 			wantErr:     false,
 			verifyClaims: jwt.RegisteredClaims{
-				Issuer:  string(auth.TokenTypeAccess),
+				Issuer:  string(os.Getenv("TOKEN_TYPE")),
 				Subject: "",
 			},
 		},
@@ -57,7 +58,7 @@ func TestMakeJWT(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			token, err := cfg.Auth.MakeJWT(tt.userID, tt.tokenSecret, tt.expiresIn)
+			token, err := cfg.Auth.MakeJWT(tt.userID, tt.expiresIn)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MakeJWT() error = %v, wantErr %v", err, tt.wantErr)
@@ -93,7 +94,7 @@ func TestMakeJWT(t *testing.T) {
 func TestValidateJWT(t *testing.T) {
 	userID := uuid.New()
 	cfg := config.ApiConfig{
-		Auth: auth.NewAuthService(),
+		Auth: services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET")),
 	}
 	tests := []struct {
 		name        string
@@ -105,7 +106,7 @@ func TestValidateJWT(t *testing.T) {
 		{
 			name: "Valid token",
 			tokenString: func() string {
-				token, _ := cfg.Auth.MakeJWT(userID, "testsecret", time.Hour)
+				token, _ := cfg.Auth.MakeJWT(userID, time.Hour)
 				return token
 			}(),
 			tokenSecret: "testsecret",
@@ -115,7 +116,7 @@ func TestValidateJWT(t *testing.T) {
 		{
 			name: "Invalid token secret",
 			tokenString: func() string {
-				token, _ := cfg.Auth.MakeJWT(uuid.New(), "testsecret", time.Hour)
+				token, _ := cfg.Auth.MakeJWT(uuid.New(), time.Hour)
 				return token
 			}(),
 			tokenSecret: "wrongsecret",
@@ -133,7 +134,7 @@ func TestValidateJWT(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			claims, err := cfg.Auth.ValidateJWT(tt.tokenString, tt.tokenSecret)
+			claims, err := cfg.Auth.ValidateJWT(tt.tokenString)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateJWT() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -157,7 +158,7 @@ func TestValidateJWT(t *testing.T) {
 
 func TestGetBearerToken(t *testing.T) {
 	cfg := config.ApiConfig{
-		Auth: auth.NewAuthService(),
+		Auth: services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET")),
 	}
 	tests := map[string]struct {
 		input         http.Header
@@ -166,7 +167,7 @@ func TestGetBearerToken(t *testing.T) {
 		"simple":                 {input: http.Header{"Authorization": []string{"Bearer 1234"}}, expectedValue: "1234"},
 		"wrong auth header":      {input: http.Header{"Authorization": []string{"ApiKey 1234"}}, expectedValue: "malformed authorization header"},
 		"incomplete auth header": {input: http.Header{"Authorization": []string{"Bearer "}}, expectedValue: "malformed authorization header"},
-		"no auth header":         {input: http.Header{"Authorization": []string{""}}, expectedValue: fmt.Sprint(auth.ErrNoAuthHeaderIncluded)},
+		"no auth header":         {input: http.Header{"Authorization": []string{""}}, expectedValue: fmt.Sprint(services.ErrNoAuthHeaderIncluded)},
 	}
 
 	for test, tt := range tests {
@@ -187,7 +188,7 @@ func TestGetBearerToken(t *testing.T) {
 
 func TestMakeRefreshToken(t *testing.T) {
 	cfg := config.ApiConfig{
-		Auth: auth.NewAuthService(),
+		Auth: services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET")),
 	}
 	tests := []struct {
 		name     string
@@ -213,9 +214,9 @@ func TestMakeRefreshToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Override randReader temporarily for this test
-			origRandReader := auth.RandReader
-			auth.RandReader = tt.mockRand
-			defer func() { auth.RandReader = origRandReader }()
+			origRandReader := services.RandReader
+			services.RandReader = tt.mockRand
+			defer func() { services.RandReader = origRandReader }()
 
 			token, err := cfg.Auth.MakeRefreshToken()
 

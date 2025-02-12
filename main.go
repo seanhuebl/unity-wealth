@@ -10,7 +10,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/seanhuebl/unity-wealth/cache"
 	"github.com/seanhuebl/unity-wealth/handlers"
-	"github.com/seanhuebl/unity-wealth/internal/auth"
 	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/middleware"
@@ -30,12 +29,13 @@ func main() {
 	if err := db.Ping(); err != nil {
 		log.Fatalf("database connection test failed: %v", err)
 	}
+	authSvc := services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"))
 	cfg := config.ApiConfig{
 		Port:        fmt.Sprintf(":%v", os.Getenv("PORT")),
 		Queries:     database.New(db),
 		TokenSecret: os.Getenv("TOKEN_SECRET"),
 		Database:    db,
-		Auth:        auth.NewAuthService(),
+		Auth:        authSvc,
 	}
 	if err := cache.WarmCategoriesCache(&cfg); err != nil {
 		log.Printf("unable to warm cache: %v", err)
@@ -43,8 +43,7 @@ func main() {
 
 	router := gin.Default()
 	txnSvc := services.NewTransactionService(cfg.Queries)
-	h := handlers.NewHandler(&cfg, txnSvc)
-	authSvc := auth.NewAuthService()
+	h := handlers.NewHandler(cfg.Queries, txnSvc, authSvc)
 	m := middleware.NewMiddleware(&cfg, authSvc)
 	handlers.RegisterRoutes(router, &cfg, h, m)
 

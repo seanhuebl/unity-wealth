@@ -19,7 +19,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.ApiConfig, h *Handler, m *mi
 	}
 
 	app := router.Group("/app")
-	app.Use(m.UserAuthMiddleware())
+	app.Use(m.UserAuthMiddleware(), m.ClaimsAuthMiddleware())
 	{
 
 		app.POST("/transactions", h.NewTransaction)

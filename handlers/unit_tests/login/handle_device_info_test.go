@@ -151,7 +151,7 @@ func TestHandleDeviceInfo(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create your mocks
-			mockQueries := mocks.NewQuierier(t)
+			mockQueries := mocks.NewQuerier(t)
 
 			// Set up the mock DB behavior
 			tc.mockSetup(mockQueries)

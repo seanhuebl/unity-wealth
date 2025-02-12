@@ -1,12 +1,13 @@
 package auth
 
 import (
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/seanhuebl/unity-wealth/internal/auth"
 	"github.com/seanhuebl/unity-wealth/internal/config"
+	"github.com/seanhuebl/unity-wealth/services"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -24,7 +25,7 @@ func CustomHashPassword(password string, cost int) (string, error) {
 
 func TestHashPassword(t *testing.T) {
 	cfg := config.ApiConfig{
-		Auth: auth.NewAuthService(),
+		Auth: services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET")),
 	}
 	tests := []struct {
 		name     string
@@ -81,7 +82,7 @@ func TestHashPassword(t *testing.T) {
 
 func TestCheckPasswordHash(t *testing.T) {
 	cfg := config.ApiConfig{
-		Auth: auth.NewAuthService(),
+		Auth: services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET")),
 	}
 	tests := []struct {
 		name     string
@@ -148,7 +149,7 @@ func TestCheckPasswordHash(t *testing.T) {
 func TestValidatePassword(t *testing.T) {
 
 	cfg := config.ApiConfig{
-		Auth: auth.NewAuthService(),
+		Auth: services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET")),
 	}
 	tests := []struct {
 		name       string

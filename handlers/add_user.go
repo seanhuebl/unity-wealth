@@ -23,7 +23,7 @@ func (h *Handler) AddUser(ctx *gin.Context) {
 		})
 		return
 	}
-	hashedPW, err := h.cfg.Auth.HashPassword(input.Password)
+	hashedPW, err := h.authService.HashPassword(input.Password)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -31,7 +31,7 @@ func (h *Handler) AddUser(ctx *gin.Context) {
 		return
 	}
 
-	if err := h.cfg.Queries.CreateUser(ctx.Request.Context(), database.CreateUserParams{
+	if err := h.queries.CreateUser(ctx.Request.Context(), database.CreateUserParams{
 		ID:             uuid.NewString(),
 		Email:          input.Email,
 		HashedPassword: hashedPW,

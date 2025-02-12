@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -17,6 +18,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/mocks"
+	"github.com/seanhuebl/unity-wealth/services"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -190,7 +192,7 @@ func TestLoginHandler(t *testing.T) {
 				Database:    db,
 				Auth:        mockAuth,
 			}
-			h := handlers.NewHandler(cfg, nil)
+			h := handlers.NewHandler(cfg.Queries, nil, services.NewAuthService(os.Getenv("TOKEN_TYPE"), cfg.TokenSecret))
 			// Create Gin Engine
 			router := gin.Default()
 			router.POST("/login", h.Login)

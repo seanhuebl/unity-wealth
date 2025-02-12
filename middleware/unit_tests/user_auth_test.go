@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -10,9 +11,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/seanhuebl/unity-wealth/internal/auth"
 	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/middleware"
+	"github.com/seanhuebl/unity-wealth/services"
 )
 
 func TestUserAuthMiddleware_TableDriven(t *testing.T) {
@@ -22,9 +23,9 @@ func TestUserAuthMiddleware_TableDriven(t *testing.T) {
 	}
 
 	// Create an instance of your auth service to generate a valid token.
-	authSvc := auth.NewAuthService()
+	authSvc := services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"))
 	testUserID := uuid.New()
-	validToken, err := authSvc.MakeJWT(testUserID, cfg.TokenSecret, time.Hour)
+	validToken, err := authSvc.MakeJWT(testUserID, time.Hour)
 	if err != nil {
 		t.Fatalf("failed to generate valid token: %v", err)
 	}
