@@ -15,6 +15,7 @@ type Transaction struct {
 	Amount           float64 `json:"amount" binding:"required"`
 	DetailedCategory int64   `json:"detailed_category" binding:"required"`
 }
+
 type TransactionResponse struct {
 	Date             string  `json:"date"`
 	Merchant         string  `json:"merchant"`

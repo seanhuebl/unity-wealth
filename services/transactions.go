@@ -39,7 +39,7 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, userID strin
 	return tx, nil
 }
 
-func (s *TransactionService) UpdateTransaction(ctx context.Context, txnID string, req models.NewTransactionRequest) (*models.Transaction, error) {
+func (s *TransactionService) UpdateTransaction(ctx context.Context, txnID, userID string, req models.NewTransactionRequest) (*models.Transaction, error) {
 
 	_, err := time.Parse("2006-01-02", req.Date)
 	if err != nil {
@@ -58,27 +58,25 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, txnID string
 		return nil, fmt.Errorf("error updating transaction: %w", err)
 	}
 	txn := models.Transaction{
-		ID: txRow.ID,
-		UserID: "",
-		Date: txRow.TransactionDate,
-		Merchant: txRow.Merchant,
-		Amount: float64(txRow.AmountCents) / 100,
+		ID:               txRow.ID,
+		UserID:           userID,
+		Date:             txRow.TransactionDate,
+		Merchant:         txRow.Merchant,
+		Amount:           float64(txRow.AmountCents) / 100.0,
 		DetailedCategory: txRow.DetailedCategoryID,
 	}
 
 	return &txn, err
 }
 
-func (s *TransactionService) DeleteTransaction(ctx context.Context, txnID, userID string) (map[string]any, error) {
+func (s *TransactionService) DeleteTransaction(ctx context.Context, txnID, userID string) error {
 	if err := s.queries.DeleteTransactionById(ctx, database.DeleteTransactionByIdParams{
 		ID:     txnID,
 		UserID: userID,
 	}); err != nil {
-		return nil, fmt.Errorf("error deleting transaction: %w", err)
+		return fmt.Errorf("error deleting transaction: %w", err)
 	}
-	response := make(map[string]any)
-	response["transaction_deleted"] = "success"
-	return response, nil
+	return nil
 }
 
 func (s *TransactionService) GetTransactionByID(ctx context.Context, userID, txnID string) (*models.Transaction, error) {
@@ -87,11 +85,11 @@ func (s *TransactionService) GetTransactionByID(ctx context.Context, userID, txn
 		return nil, fmt.Errorf("error getting transaction by user_id, ID pair: %w", err)
 	}
 	txn := models.Transaction{
-		ID: row.ID,
-		UserID: row.UserID,
-		Date: row.TransactionDate,
-		Merchant: row.Merchant,
-		Amount: float64(row.AmountCents) / 100,
+		ID:               row.ID,
+		UserID:           row.UserID,
+		Date:             row.TransactionDate,
+		Merchant:         row.Merchant,
+		Amount:           float64(row.AmountCents) / 100.0,
 		DetailedCategory: row.DetailedCategoryID,
 	}
 	return &txn, nil
@@ -103,11 +101,11 @@ func (s *TransactionService) ListUserTransactions(
 	userID uuid.UUID,
 	cursorDate *string,
 	cursorID *string,
-	pageSize *int64,
+	pageSize int64,
 ) (transactions []models.Transaction, nextCursorDate, nextCursorID string, hasMoreData bool, err error) {
 
-	transactions = make([]models.Transaction, 0, *pageSize)
-	fetchSize := *pageSize + 1
+	transactions = make([]models.Transaction, 0, pageSize)
+	fetchSize := pageSize + 1
 	if cursorDate == nil || cursorID == nil {
 		firstPageRows, err := s.queries.GetUserTransactionsFirstPage(ctx, database.GetUserTransactionsFirstPageParams{UserID: userID.String(), Limit: fetchSize})
 		if err != nil {
@@ -132,12 +130,12 @@ func (s *TransactionService) ListUserTransactions(
 
 	}
 
-	if int64(len(transactions)) > *pageSize {
+	if int64(len(transactions)) > pageSize {
 		hasMoreData = true
-		lastTxn := transactions[*pageSize-1]
+		lastTxn := transactions[pageSize-1]
 		nextCursorDate = lastTxn.Date
 		nextCursorID = lastTxn.ID
-		transactions = transactions[:*pageSize]
+		transactions = transactions[:pageSize]
 
 	} else {
 		hasMoreData = false
@@ -152,7 +150,7 @@ func (s *TransactionService) convertFirstPageRow(row database.GetUserTransaction
 		UserID:           row.UserID,
 		Date:             row.TransactionDate,
 		Merchant:         row.Merchant,
-		Amount:           float64(row.AmountCents) / 100,
+		Amount:           float64(row.AmountCents) / 100.0,
 		DetailedCategory: row.DetailedCategoryID,
 	}
 }
@@ -163,7 +161,7 @@ func (s *TransactionService) convertPaginatedRow(row database.GetUserTransaction
 		UserID:           row.UserID,
 		Date:             row.TransactionDate,
 		Merchant:         row.Merchant,
-		Amount:           float64(row.AmountCents) / 100,
+		Amount:           float64(row.AmountCents) / 100.0,
 		DetailedCategory: row.DetailedCategoryID,
 	}
 }

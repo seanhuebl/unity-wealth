@@ -7,7 +7,6 @@ import (
 )
 
 func RegisterRoutes(router *gin.Engine, cfg *config.ApiConfig, h *Handler, m *middleware.Middleware) {
-	
 
 	home := router.Group("/")
 	{
