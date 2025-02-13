@@ -37,7 +37,8 @@ func (u *UserService) SignUp(ctx context.Context, input models.SignUpInput) erro
 	newID := uuid.New()
 
 	if err = u.queries.CreateUser(ctx, database.CreateUserParams{
-		ID: newID.String(),
+		ID:             newID.String(),
+		Email:          input.Email,
 		HashedPassword: hashedPW,
 	}); err != nil {
 		return fmt.Errorf("unable to create user: %w", err)

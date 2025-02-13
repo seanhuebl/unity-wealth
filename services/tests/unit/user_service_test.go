@@ -85,25 +85,29 @@ func TestSignup(t *testing.T) {
 			mockAuth := mocks.NewAuthInterface(t)
 
 			if models.IsValidEmail(tc.input.Email) {
-				mockQ.On("CreateUser", mock.Anything, mock.MatchedBy(func(params database.CreateUserParams) bool {
-					// Create an expected value ignoring the generated ID.
-					expected := database.CreateUserParams{
-						Email:          tc.input.Email,
-						HashedPassword: tc.hashPasswordOutput,
-					}
-					// Use cmp.Diff and ignore the ID field.
-					diff := cmp.Diff(expected, params, cmpopts.IgnoreFields(database.CreateUserParams{}, "ID"))
-					if diff != "" {
-						t.Logf("CreateUserParams mismatch (-want +got):\n%s", diff)
-						return false
-					}
-					// Additionally, ensure that ID is not empty.
-					return params.ID != ""
-				})).Return(tc.createUserError)
+				mockAuth.On("ValidatePassword", tc.input.Password).Return(tc.validatePasswordError)
+				
+				if tc.validatePasswordError == nil {
+					mockAuth.On("HashPassword", tc.input.Password).Return(tc.hashPasswordOutput, tc.hashPasswordError)
+					if tc.hashPasswordError == nil {
+						mockQ.On("CreateUser", mock.Anything, mock.MatchedBy(func(params database.CreateUserParams) bool {
+							// Create an expected value ignoring the generated ID.
+							expected := database.CreateUserParams{
+								Email:          tc.input.Email,
+								HashedPassword: tc.hashPasswordOutput,
+							}
+							// Use cmp.Diff and ignore the ID field.
+							diff := cmp.Diff(expected, params, cmpopts.IgnoreFields(database.CreateUserParams{}, "ID"))
+							if diff != "" {
+								t.Logf("CreateUserParams mismatch (-want +got):\n%s", diff)
+								return false
+							}
+							// Additionally, ensure that ID is not empty.
+							return params.ID != ""
+						})).Return(tc.createUserError)
+					}				
+				}				
 			}
-
-			mockAuth.On("ValidatePassword", tc.input.Password).Return(tc.validatePasswordError)
-			mockAuth.On("HashPassword", tc.input.Password).Return(tc.hashPasswordOutput, tc.hashPasswordError)
 
 			userSvc := services.NewUserService(mockQ, mockAuth)
 			err := userSvc.SignUp(context.Background(), tc.input)
