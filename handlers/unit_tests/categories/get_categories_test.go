@@ -96,7 +96,7 @@ func TestGetCategories(t *testing.T) {
 			req, _ := http.NewRequest("GET", "/categories", nil)
 			c.Request = req
 
-			h := handlers.NewHandler(nil, nil, nil)
+			h := handlers.NewHandler(nil, nil, nil, nil)
 
 			// Call the handler.
 			h.GetCategories(c)

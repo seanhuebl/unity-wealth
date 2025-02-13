@@ -75,7 +75,7 @@ func TestGetPrimaryCategoryByID_WithRedismock(t *testing.T) {
 			c.Request = httptest.NewRequest(http.MethodGet, "/primary_categories/"+tc.id, nil)
 			c.Params = gin.Params{{Key: "id", Value: tc.id}}
 
-			h := handlers.NewHandler(nil, nil, nil)
+			h := handlers.NewHandler(nil, nil, nil, nil)
 
 			// Call the handler.
 			h.GetPrimaryCategoryByID(c)
