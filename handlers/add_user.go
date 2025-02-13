@@ -17,7 +17,7 @@ func (h *Handler) AddUser(ctx *gin.Context) {
 		})
 		return
 	}
-	if err := h.userService.SignUp(ctx, input); err != nil {
+	if err := h.UserService.SignUp(ctx, input); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to create user",
 		})
@@ -25,7 +25,7 @@ func (h *Handler) AddUser(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusCreated, gin.H{
 		"data": gin.H{
-			"message": "Sign up successful!",
+			"message": "sign up successful!",
 			"email":   input.Email,
 		},
 	})

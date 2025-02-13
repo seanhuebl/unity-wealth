@@ -86,7 +86,7 @@ func TestSignup(t *testing.T) {
 
 			if models.IsValidEmail(tc.input.Email) {
 				mockAuth.On("ValidatePassword", tc.input.Password).Return(tc.validatePasswordError)
-				
+
 				if tc.validatePasswordError == nil {
 					mockAuth.On("HashPassword", tc.input.Password).Return(tc.hashPasswordOutput, tc.hashPasswordError)
 					if tc.hashPasswordError == nil {
@@ -105,8 +105,8 @@ func TestSignup(t *testing.T) {
 							// Additionally, ensure that ID is not empty.
 							return params.ID != ""
 						})).Return(tc.createUserError)
-					}				
-				}				
+					}
+				}
 			}
 
 			userSvc := services.NewUserService(mockQ, mockAuth)
