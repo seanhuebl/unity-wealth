@@ -1,4 +1,4 @@
-package auth
+package services__test
 
 import (
 	"fmt"

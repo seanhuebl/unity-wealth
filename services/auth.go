@@ -195,7 +195,7 @@ func (a *AuthService) Login(ctx context.Context, input models.LoginInput) (model
 		return models.LoginResponse{}, err
 	}
 	// 3. Extract device information.
-	deviceInfo, err := GetDeviceInfoFromRequest(req)
+	deviceInfo, err := getDeviceInfoFromRequest(req)
 	if err != nil {
 		return models.LoginResponse{}, fmt.Errorf("device information could not be verified")
 	}
@@ -255,7 +255,7 @@ func (a *AuthService) Login(ctx context.Context, input models.LoginInput) (model
 	}, nil
 }
 
-// Example helper method for credential validation.
+// Helpers
 func (a *AuthService) validateCredentials(ctx context.Context, input models.LoginInput) (uuid.UUID, error) {
 	user, err := a.queries.GetUserByEmail(ctx, input.Email)
 	if err != nil {
@@ -334,7 +334,7 @@ func (a *AuthService) generateTokens(userID uuid.UUID) (string, string, error) {
 	return jwtToken, refreshToken, nil
 }
 
-func GetDeviceInfoFromRequest(req *http.Request) (models.DeviceInfo, error) {
+func getDeviceInfoFromRequest(req *http.Request) (models.DeviceInfo, error) {
 	// Check for the X-Device-Info header first.
 	xDeviceInfo := req.Header.Get("X-Device-Info")
 	if xDeviceInfo != "" {
