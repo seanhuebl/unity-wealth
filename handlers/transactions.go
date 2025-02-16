@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/seanhuebl/unity-wealth/helpers"
-	"github.com/seanhuebl/unity-wealth/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 )
 
 func (h *Handler) NewTransaction(ctx *gin.Context) {
@@ -17,7 +17,7 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 		return
 	}
 
-	var req models.NewTransactionRequest
+	var req transaction.NewTransactionRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -111,7 +111,7 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 		return
 	}
 
-	var req models.NewTransactionRequest
+	var req transaction.NewTransactionRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{

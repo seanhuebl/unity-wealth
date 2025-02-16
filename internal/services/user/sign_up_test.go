@@ -1,4 +1,4 @@
-package services_test
+package user
 
 import (
 	"context"
@@ -8,9 +8,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/seanhuebl/unity-wealth/mocks"
-	"github.com/seanhuebl/unity-wealth/models"
-	"github.com/seanhuebl/unity-wealth/services"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +17,7 @@ import (
 func TestSignup(t *testing.T) {
 	tests := []struct {
 		name                  string
-		input                 models.SignUpInput
+		input                 SignUpInput
 		validatePasswordError error
 		hashPasswordOutput    string
 		hashPasswordError     error
@@ -27,7 +26,7 @@ func TestSignup(t *testing.T) {
 	}{
 		{
 			name: "success",
-			input: models.SignUpInput{
+			input: SignUpInput{
 				Email:    "valid@example.com",
 				Password: "Validpass1!",
 			},
@@ -39,7 +38,7 @@ func TestSignup(t *testing.T) {
 		},
 		{
 			name: "invalid email",
-			input: models.SignUpInput{
+			input: SignUpInput{
 				Email:    "invalid",
 				Password: "Validpass1!",
 			},
@@ -47,7 +46,7 @@ func TestSignup(t *testing.T) {
 		},
 		{
 			name: "invalid password",
-			input: models.SignUpInput{
+			input: SignUpInput{
 				Email:    "valid@example.com",
 				Password: "invalid",
 			},
@@ -56,7 +55,7 @@ func TestSignup(t *testing.T) {
 		},
 		{
 			name: "hashing failure",
-			input: models.SignUpInput{
+			input: SignUpInput{
 				Email:    "valid@example.com",
 				Password: "Validpass1!",
 			},
@@ -66,7 +65,7 @@ func TestSignup(t *testing.T) {
 		},
 		{
 			name: "create user failure",
-			input: models.SignUpInput{
+			input: SignUpInput{
 				Email:    "valid@example.com",
 				Password: "Validpass1!",
 			},
@@ -84,7 +83,7 @@ func TestSignup(t *testing.T) {
 			mockQ := mocks.NewQuerier(t)
 			mockAuth := mocks.NewAuthInterface(t)
 
-			if models.IsValidEmail(tc.input.Email) {
+			if auth.IsValidEmail(tc.input.Email) {
 				mockAuth.On("ValidatePassword", tc.input.Password).Return(tc.validatePasswordError)
 
 				if tc.validatePasswordError == nil {
@@ -109,7 +108,7 @@ func TestSignup(t *testing.T) {
 				}
 			}
 
-			userSvc := services.NewUserService(mockQ, mockAuth)
+			userSvc := NewUserService(mockQ, mockAuth)
 			err := userSvc.SignUp(context.Background(), tc.input)
 
 			if tc.expectedError == "" {

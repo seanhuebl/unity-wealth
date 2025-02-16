@@ -1,4 +1,4 @@
-package services
+package auth
 
 import (
 	"context"
@@ -18,7 +18,6 @@ import (
 	"github.com/seanhuebl/unity-wealth/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/interfaces"
-	"github.com/seanhuebl/unity-wealth/models"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -35,13 +34,6 @@ func NewAuthService(tokenType, tokenSecret string, queries interfaces.Querier) *
 		queries:         queries,
 	}
 }
-
-var (
-	uppercaseRegex = regexp.MustCompile(`[A-Z]`)
-	lowercaseRegex = regexp.MustCompile(`[a-z]`)
-	digitRegex     = regexp.MustCompile(`\d`)
-	specialRegex   = regexp.MustCompile(`[!@#\$%\^&\*\(\)_\+\-=\[\]\{\};':"\\|,.<>\/?]`)
-)
 
 type TokenType string
 
@@ -158,52 +150,33 @@ func (a *AuthService) MakeRefreshToken() (string, error) {
 	return hex.EncodeToString(token), nil
 }
 
-func (a *AuthService) ValidatePassword(password string) error {
-	if len(password) < 8 {
-		return fmt.Errorf("password must be at least 8 characters long")
-	}
-	if !uppercaseRegex.MatchString(password) {
-		return fmt.Errorf("password must contain at least one uppercase letter")
-	}
-	if !lowercaseRegex.MatchString(password) {
-		return fmt.Errorf("password must contain at least one lowercase letter")
-	}
-	if !digitRegex.MatchString(password) {
-		return fmt.Errorf("password must contain at least one digit")
-	}
-	if !specialRegex.MatchString(password) {
-		return fmt.Errorf("password must contain at least one special character")
-	}
-	return nil
-}
-
 // Login encapsulates the entire login process.
-func (a *AuthService) Login(ctx context.Context, input models.LoginInput) (models.LoginResponse, error) {
+func (a *AuthService) Login(ctx context.Context, input LoginInput) (LoginResponse, error) {
 	// 1. Validate the email format (optionally done here or in the handler)
-	if !models.IsValidEmail(input.Email) {
-		return models.LoginResponse{}, fmt.Errorf("invalid email format")
+	if !IsValidEmail(input.Email) {
+		return LoginResponse{}, fmt.Errorf("invalid email format")
 	}
 
 	// 2. Validate credentials and fetch user.
 	userID, err := a.validateCredentials(ctx, input)
 	if err != nil {
-		return models.LoginResponse{}, err
+		return LoginResponse{}, err
 	}
 
 	req, err := helpers.GetRequestFromContext(ctx)
 	if err != nil {
-		return models.LoginResponse{}, err
+		return LoginResponse{}, err
 	}
 	// 3. Extract device information.
 	deviceInfo, err := getDeviceInfoFromRequest(req)
 	if err != nil {
-		return models.LoginResponse{}, fmt.Errorf("device information could not be verified")
+		return LoginResponse{}, fmt.Errorf("device information could not be verified")
 	}
 
 	// 4. Start a database transaction.
 	tx, err := a.queries.BeginTx(ctx, nil)
 	if err != nil {
-		return models.LoginResponse{}, fmt.Errorf("failed to start transaction: %w", err)
+		return LoginResponse{}, fmt.Errorf("failed to start transaction: %w", err)
 	}
 	defer tx.Rollback()
 	queriesTx := a.queries.WithTx(tx)
@@ -211,19 +184,19 @@ func (a *AuthService) Login(ctx context.Context, input models.LoginInput) (model
 	// 5. Handle device information.
 	deviceID, err := a.handleDeviceInfo(ctx, queriesTx, userID, deviceInfo)
 	if err != nil {
-		return models.LoginResponse{}, err
+		return LoginResponse{}, err
 	}
 
 	// 6. Generate JWT and refresh token.
 	jwtToken, refreshToken, err := a.generateTokens(userID)
 	if err != nil {
-		return models.LoginResponse{}, err
+		return LoginResponse{}, err
 	}
 
 	// 7. Hash the refresh token.
 	refreshHash, err := a.HashPassword(refreshToken)
 	if err != nil {
-		return models.LoginResponse{}, fmt.Errorf("failed to hash refresh token: %w", err)
+		return LoginResponse{}, fmt.Errorf("failed to hash refresh token: %w", err)
 	}
 
 	// 8. Create a refresh token record.
@@ -239,16 +212,16 @@ func (a *AuthService) Login(ctx context.Context, input models.LoginInput) (model
 		DeviceInfoID: deviceID.String(),
 	})
 	if err != nil {
-		return models.LoginResponse{}, fmt.Errorf("failed to create refresh token entry: %w", err)
+		return LoginResponse{}, fmt.Errorf("failed to create refresh token entry: %w", err)
 	}
 
 	// 9. Commit the transaction.
 	if err := tx.Commit(); err != nil {
-		return models.LoginResponse{}, fmt.Errorf("failed to commit transaction: %w", err)
+		return LoginResponse{}, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	// 10. Return a structured login response.
-	return models.LoginResponse{
+	return LoginResponse{
 		UserID:       userID,
 		JWT:          jwtToken,
 		RefreshToken: refreshToken,
@@ -256,7 +229,7 @@ func (a *AuthService) Login(ctx context.Context, input models.LoginInput) (model
 }
 
 // Helpers
-func (a *AuthService) validateCredentials(ctx context.Context, input models.LoginInput) (uuid.UUID, error) {
+func (a *AuthService) validateCredentials(ctx context.Context, input LoginInput) (uuid.UUID, error) {
 	user, err := a.queries.GetUserByEmail(ctx, input.Email)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -270,7 +243,7 @@ func (a *AuthService) validateCredentials(ctx context.Context, input models.Logi
 	return uuid.Parse(user.ID)
 }
 
-func (a *AuthService) handleDeviceInfo(ctx context.Context, queriesTx interfaces.Querier, userID uuid.UUID, info models.DeviceInfo) (uuid.UUID, error) {
+func (a *AuthService) handleDeviceInfo(ctx context.Context, queriesTx interfaces.Querier, userID uuid.UUID, info DeviceInfo) (uuid.UUID, error) {
 	// Try to fetch an existing device record for this user with matching attributes.
 	foundDevice, err := queriesTx.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
 		UserID:         userID.String(),
@@ -334,7 +307,7 @@ func (a *AuthService) generateTokens(userID uuid.UUID) (string, string, error) {
 	return jwtToken, refreshToken, nil
 }
 
-func getDeviceInfoFromRequest(req *http.Request) (models.DeviceInfo, error) {
+func getDeviceInfoFromRequest(req *http.Request) (DeviceInfo, error) {
 	// Check for the X-Device-Info header first.
 	xDeviceInfo := req.Header.Get("X-Device-Info")
 	if xDeviceInfo != "" {
@@ -351,12 +324,12 @@ func getDeviceInfoFromRequest(req *http.Request) (models.DeviceInfo, error) {
 			return deviceInfo, nil
 		}
 	}
-	return models.DeviceInfo{}, fmt.Errorf("invalid or unknown device information")
+	return DeviceInfo{}, fmt.Errorf("invalid or unknown device information")
 }
 
 // parseDeviceInfoFromHeader parses the X-Device-Info header into a DeviceInfo struct.
-func parseDeviceInfoFromHeader(header string) models.DeviceInfo {
-	var info models.DeviceInfo
+func parseDeviceInfoFromHeader(header string) DeviceInfo {
+	var info DeviceInfo
 	pairs := strings.Split(header, ";")
 	for _, pair := range pairs {
 		kv := strings.Split(strings.TrimSpace(pair), "=")
@@ -381,14 +354,14 @@ func parseDeviceInfoFromHeader(header string) models.DeviceInfo {
 }
 
 // parseUserAgent parses the User-Agent header using the mssola/user_agent package.
-func parseUserAgent(userAgent string) models.DeviceInfo {
+func parseUserAgent(userAgent string) DeviceInfo {
 	ua := user_agent.New(userAgent)
 	deviceType := "Desktop"
 	if ua.Mobile() {
 		deviceType = "Mobile"
 	}
 	browser, browserVersion := ua.Browser()
-	return models.DeviceInfo{
+	return DeviceInfo{
 		DeviceType:     deviceType,
 		Browser:        sanitizeInput(browser),
 		BrowserVersion: sanitizeInput(browserVersion),
@@ -398,7 +371,7 @@ func parseUserAgent(userAgent string) models.DeviceInfo {
 }
 
 // isValidDeviceInfo checks that the device info meets basic criteria.
-func isValidDeviceInfo(info models.DeviceInfo) bool {
+func isValidDeviceInfo(info DeviceInfo) bool {
 	// Define valid device types (case-insensitive).
 	validDeviceTypes := map[string]bool{
 		"desktop": true,

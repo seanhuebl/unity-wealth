@@ -12,8 +12,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/config"
-	"github.com/seanhuebl/unity-wealth/middleware"
-	"github.com/seanhuebl/unity-wealth/services"
+	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 )
 
 func TestUserAuthMiddleware_TableDriven(t *testing.T) {
@@ -23,7 +22,7 @@ func TestUserAuthMiddleware_TableDriven(t *testing.T) {
 	}
 
 	// Create an instance of your auth service to generate a valid token.
-	authSvc := services.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"), nil)
+	authSvc := auth.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"), nil)
 	testUserID := uuid.New()
 	validToken, err := authSvc.MakeJWT(testUserID, time.Hour)
 	if err != nil {
@@ -63,7 +62,7 @@ func TestUserAuthMiddleware_TableDriven(t *testing.T) {
 			// Create a new Gin engine for this sub-test.
 			router := gin.New()
 
-			m := middleware.NewMiddleware(cfg, authSvc)
+			m := NewMiddleware(cfg, authSvc)
 			// Attach the middleware. (Since our middleware is defined as a method on ApiConfig,
 			// it automatically uses cfg.TokenSecret.)
 			router.Use(m.UserAuthMiddleware())

@@ -14,9 +14,9 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/seanhuebl/unity-wealth/handlers"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/services/auth"
+	"github.com/seanhuebl/unity-wealth/internal/services/user"
 	"github.com/seanhuebl/unity-wealth/mocks"
-	"github.com/seanhuebl/unity-wealth/models"
-	"github.com/seanhuebl/unity-wealth/services"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -95,7 +95,7 @@ func TestAddUserHandler(t *testing.T) {
 			mockQ := mocks.NewQuerier(t)
 			mockAuth := mocks.NewAuthInterface(t)
 			if json.Valid([]byte(tc.reqBody)) {
-				if models.IsValidEmail(getEmailFromBody(tc.reqBody)) {
+				if auth.IsValidEmail(getEmailFromBody(tc.reqBody)) {
 					mockAuth.On("ValidatePassword", getPasswordFromBody(tc.reqBody)).Return(tc.validPasswordError)
 					if tc.validPasswordError == nil {
 						mockAuth.On("HashPassword", getPasswordFromBody(tc.reqBody)).Return(tc.hashPasswordOutput, tc.hashPasswordError)
@@ -117,7 +117,7 @@ func TestAddUserHandler(t *testing.T) {
 					}
 				}
 			}
-			userSvc := services.NewUserService(mockQ, mockAuth)
+			userSvc := user.NewUserService(mockQ, mockAuth)
 			h := &handlers.Handler{
 				UserService: userSvc,
 			}

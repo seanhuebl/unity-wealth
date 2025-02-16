@@ -1,4 +1,4 @@
-package models
+package transaction
 
 type NewTransactionRequest struct {
 	Date             string  `json:"date" binding:"required"`

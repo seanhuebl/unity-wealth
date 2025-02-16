@@ -1,4 +1,4 @@
-package services
+package transaction
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/interfaces"
-	"github.com/seanhuebl/unity-wealth/models"
 )
 
 type TransactionService struct {
@@ -20,12 +19,12 @@ func NewTransactionService(queries interfaces.Querier) *TransactionService {
 	return &TransactionService{queries: queries}
 }
 
-func (s *TransactionService) CreateTransaction(ctx context.Context, userID string, req models.NewTransactionRequest) (*models.Transaction, error) {
+func (s *TransactionService) CreateTransaction(ctx context.Context, userID string, req NewTransactionRequest) (*Transaction, error) {
 	_, err := time.Parse("2006-01-02", req.Date)
 	if err != nil {
 		return nil, fmt.Errorf("invalid date format: %w", err)
 	}
-	tx := models.NewTransaction(uuid.NewString(), userID, req.Date, req.Merchant, req.Amount, req.DetailedCategory)
+	tx := NewTransaction(uuid.NewString(), userID, req.Date, req.Merchant, req.Amount, req.DetailedCategory)
 	if err := s.queries.CreateTransaction(ctx, database.CreateTransactionParams{
 		ID:                 tx.ID,
 		UserID:             tx.UserID,
@@ -39,7 +38,7 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, userID strin
 	return tx, nil
 }
 
-func (s *TransactionService) UpdateTransaction(ctx context.Context, txnID, userID string, req models.NewTransactionRequest) (*models.Transaction, error) {
+func (s *TransactionService) UpdateTransaction(ctx context.Context, txnID, userID string, req NewTransactionRequest) (*Transaction, error) {
 
 	_, err := time.Parse("2006-01-02", req.Date)
 	if err != nil {
@@ -57,7 +56,7 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, txnID, userI
 	if err != nil {
 		return nil, fmt.Errorf("error updating transaction: %w", err)
 	}
-	txn := models.Transaction{
+	txn := Transaction{
 		ID:               txRow.ID,
 		UserID:           userID,
 		Date:             txRow.TransactionDate,
@@ -79,12 +78,12 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, txnID, userI
 	return nil
 }
 
-func (s *TransactionService) GetTransactionByID(ctx context.Context, userID, txnID string) (*models.Transaction, error) {
+func (s *TransactionService) GetTransactionByID(ctx context.Context, userID, txnID string) (*Transaction, error) {
 	row, err := s.queries.GetUserTransactionByID(ctx, database.GetUserTransactionByIDParams{UserID: userID, ID: txnID})
 	if err != nil {
 		return nil, fmt.Errorf("error getting transaction by user_id, ID pair: %w", err)
 	}
-	txn := models.Transaction{
+	txn := Transaction{
 		ID:               row.ID,
 		UserID:           row.UserID,
 		Date:             row.TransactionDate,
@@ -102,9 +101,9 @@ func (s *TransactionService) ListUserTransactions(
 	cursorDate *string,
 	cursorID *string,
 	pageSize int64,
-) (transactions []models.Transaction, nextCursorDate, nextCursorID string, hasMoreData bool, err error) {
+) (transactions []Transaction, nextCursorDate, nextCursorID string, hasMoreData bool, err error) {
 
-	transactions = make([]models.Transaction, 0, pageSize)
+	transactions = make([]Transaction, 0, pageSize)
 	fetchSize := pageSize + 1
 	if cursorDate == nil || cursorID == nil {
 		firstPageRows, err := s.queries.GetUserTransactionsFirstPage(ctx, database.GetUserTransactionsFirstPageParams{UserID: userID.String(), Limit: fetchSize})
@@ -144,8 +143,8 @@ func (s *TransactionService) ListUserTransactions(
 	return transactions, nextCursorDate, nextCursorID, hasMoreData, nil
 }
 
-func (s *TransactionService) convertFirstPageRow(row database.GetUserTransactionsFirstPageRow) models.Transaction {
-	return models.Transaction{
+func (s *TransactionService) convertFirstPageRow(row database.GetUserTransactionsFirstPageRow) Transaction {
+	return Transaction{
 		ID:               row.ID,
 		UserID:           row.UserID,
 		Date:             row.TransactionDate,
@@ -155,8 +154,8 @@ func (s *TransactionService) convertFirstPageRow(row database.GetUserTransaction
 	}
 }
 
-func (s *TransactionService) convertPaginatedRow(row database.GetUserTransactionsPaginatedRow) models.Transaction {
-	return models.Transaction{
+func (s *TransactionService) convertPaginatedRow(row database.GetUserTransactionsPaginatedRow) Transaction {
+	return Transaction{
 		ID:               row.ID,
 		UserID:           row.UserID,
 		Date:             row.TransactionDate,
@@ -166,8 +165,8 @@ func (s *TransactionService) convertPaginatedRow(row database.GetUserTransaction
 	}
 }
 
-func (s *TransactionService) ConvertToResponse(txn *models.Transaction) *models.TransactionResponse {
-	return &models.TransactionResponse{
+func (s *TransactionService) ConvertToResponse(txn *Transaction) *TransactionResponse {
+	return &TransactionResponse{
 		Date:             txn.Date,
 		Merchant:         txn.Merchant,
 		Amount:           txn.Amount,

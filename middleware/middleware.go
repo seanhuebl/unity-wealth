@@ -2,14 +2,14 @@ package middleware
 
 import (
 	"github.com/seanhuebl/unity-wealth/internal/config"
-	"github.com/seanhuebl/unity-wealth/services"
+	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 )
 
 type Middleware struct {
 	cfg         *config.ApiConfig
-	authService *services.AuthService
+	authService *auth.AuthService
 }
 
-func NewMiddleware(cfg *config.ApiConfig, authSvc *services.AuthService) *Middleware {
+func NewMiddleware(cfg *config.ApiConfig, authSvc *auth.AuthService) *Middleware {
 	return &Middleware{cfg: cfg, authService: authSvc}
 }

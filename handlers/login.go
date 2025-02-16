@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/seanhuebl/unity-wealth/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 )
 
 func (h *Handler) Login(ctx *gin.Context) {
-	var input models.LoginInput
+	var input auth.LoginInput
 	if err := ctx.ShouldBindJSON(&input); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request data"})
 		return
