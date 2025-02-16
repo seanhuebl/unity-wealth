@@ -59,27 +59,28 @@ func TestAddUserHandler(t *testing.T) {
 		},
 		{
 			name:               "invalid email",
-			reqBody:            `{"email": "invalid", "password": "Validpass1!}`,
+			reqBody:            `{"email": "invalid", "password": "Validpass1!"}`,
 			expectedError:      "invalid email",
 			expectedStatusCode: http.StatusInternalServerError,
 		},
 		{
 			name:               "invalid password",
-			reqBody:            `{"email": "valid@example.com, "password": "invalid"}`,
+			reqBody:            `{"email": "valid@example.com", "password": "invalid"}`,
 			validPasswordError: errors.New("passwords must contain at least one uppercase letter"),
 			expectedError:      "invalid password",
 			expectedStatusCode: http.StatusInternalServerError,
 		},
 		{
 			name:               "hash password error",
-			reqBody:            `{"email": "valid@example.com, "password": "Validpass1!"}`,
+			reqBody:            `{"email": "valid@example.com", "password": "Validpass1!"}`,
 			validPasswordError: nil,
 			hashPasswordError:  errors.New("hash error"),
+			expectedError:      "failed to hash password",
 			expectedStatusCode: http.StatusInternalServerError,
 		},
 		{
 			name:               "create user error",
-			reqBody:            `{"email": "valid@example.com, "password": "Validpass1!"}`,
+			reqBody:            `{"email": "valid@example.com", "password": "Validpass1!"}`,
 			validPasswordError: nil,
 			hashPasswordOutput: "hashedpassword",
 			hashPasswordError:  nil,
@@ -98,19 +99,21 @@ func TestAddUserHandler(t *testing.T) {
 					mockAuth.On("ValidatePassword", getPasswordFromBody(tc.reqBody)).Return(tc.validPasswordError)
 					if tc.validPasswordError == nil {
 						mockAuth.On("HashPassword", getPasswordFromBody(tc.reqBody)).Return(tc.hashPasswordOutput, tc.hashPasswordError)
-						mockQ.On("CreateUser", mock.Anything, mock.MatchedBy(func(params database.CreateUserParams) bool {
-							expected := database.CreateUserParams{
-								Email:          getEmailFromBody(tc.reqBody),
-								HashedPassword: tc.hashPasswordOutput,
-							}
-	
-							diff := cmp.Diff(expected, params, cmpopts.IgnoreFields(database.CreateUserParams{}, "ID"))
-							if diff != "" {
-								t.Logf("CreateUserParams mismatch (-want, +got):\n%s", diff)
-								return false
-							}
-							return params.ID != ""
-						})).Return(tc.createUserError)
+						if tc.hashPasswordError == nil {
+							mockQ.On("CreateUser", mock.Anything, mock.MatchedBy(func(params database.CreateUserParams) bool {
+								expected := database.CreateUserParams{
+									Email:          getEmailFromBody(tc.reqBody),
+									HashedPassword: tc.hashPasswordOutput,
+								}
+
+								diff := cmp.Diff(expected, params, cmpopts.IgnoreFields(database.CreateUserParams{}, "ID"))
+								if diff != "" {
+									t.Logf("CreateUserParams mismatch (-want, +got):\n%s", diff)
+									return false
+								}
+								return params.ID != ""
+							})).Return(tc.createUserError)
+						}
 					}
 				}
 			}
