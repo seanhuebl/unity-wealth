@@ -37,13 +37,17 @@ func main() {
 		TokenSecret: os.Getenv("TOKEN_SECRET"),
 		Database:    db,
 	}
-	authSvc := auth.NewAuthService(os.Getenv("TOKEN_TYPE"), cfg.TokenSecret, cfg.Queries)
+	tokenGen := auth.NewRealTokenGenerator(cfg.TokenSecret, auth.TokenType(os.Getenv("TOKEN_TYPE")))
+	tokenExtract := auth.NewRealTokenExtractor()
+	pwdHasher := auth.NewRealPwdHasher()
+
+	authSvc := auth.NewAuthService(cfg.Queries, tokenGen, tokenExtract, pwdHasher)
+
+	userSvc := user.NewUserService(cfg.Queries, pwdHasher)
 
 	if err := cache.WarmCategoriesCache(&cfg); err != nil {
 		log.Printf("unable to warm cache: %v", err)
 	}
-	userSvc := user.NewUserService(cfg.Queries, authSvc)
-
 	router := gin.Default()
 
 	txnSvc := transaction.NewTransactionService(cfg.Queries)

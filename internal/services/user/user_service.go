@@ -12,14 +12,14 @@ import (
 )
 
 type UserService struct {
-	queries     interfaces.Querier
-	authService interfaces.AuthInterface
+	queries   interfaces.Querier
+	pwdHasher auth.PasswordHasher
 }
 
-func NewUserService(queries interfaces.Querier, authSvc interfaces.AuthInterface) *UserService {
+func NewUserService(queries interfaces.Querier, pwdHasher auth.PasswordHasher) *UserService {
 	return &UserService{
-		queries:     queries,
-		authService: authSvc,
+		queries:   queries,
+		pwdHasher: pwdHasher,
 	}
 }
 
@@ -37,7 +37,7 @@ func (u *UserService) SignUp(ctx context.Context, input SignUpInput) error {
 	if err := validatePassword(input.Password); err != nil {
 		return fmt.Errorf("invalid password: %w", err)
 	}
-	hashedPW, err := u.authService.HashPassword(input.Password)
+	hashedPW, err := u.pwdHasher.HashPassword(input.Password)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}

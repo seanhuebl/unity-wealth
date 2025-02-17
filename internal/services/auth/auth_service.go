@@ -2,9 +2,7 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,142 +10,27 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/mssola/user_agent"
 	"github.com/seanhuebl/unity-wealth/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/interfaces"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
-	tokenTypeAccess TokenType
-	tokenSecret     string
-	queries         interfaces.Querier
+	queries      interfaces.Querier
+	tokenGen     TokenGenerator
+	tokenExtract TokenExtractor
+	pwdHasher    PasswordHasher
 }
 
-func NewAuthService(tokenType, tokenSecret string, queries interfaces.Querier) *AuthService {
+func NewAuthService(queries interfaces.Querier, tokenGen TokenGenerator, tokenExtract TokenExtractor, pwdHasher PasswordHasher) *AuthService {
 	return &AuthService{
-		tokenTypeAccess: TokenType(tokenType),
-		tokenSecret:     tokenSecret,
-		queries:         queries,
+		queries:      queries,
+		tokenGen:     tokenGen,
+		tokenExtract: tokenExtract,
+		pwdHasher:    pwdHasher,
 	}
-}
-
-type TokenType string
-
-var ErrNoAuthHeaderIncluded = errors.New("no authorization header included")
-var RandReader = rand.Read
-
-func (a *AuthService) GetAPIKey(headers http.Header) (string, error) {
-	authHeader := headers.Get("Authorization")
-	if authHeader == "" {
-		return "", ErrNoAuthHeaderIncluded
-	}
-	splitAuth := strings.Split(authHeader, " ")
-	if len(splitAuth) < 2 || splitAuth[0] != "ApiKey" {
-		return "", errors.New("malformed authorization header")
-	}
-	if splitAuth[1] == "" {
-		return "", errors.New("malformed authorization header")
-	}
-	return splitAuth[1], nil
-}
-
-func (a *AuthService) HashPassword(password string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", err
-	}
-	return string(hash), nil
-}
-
-func (a *AuthService) CheckPasswordHash(password, hash string) error {
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-}
-
-func (a *AuthService) MakeJWT(userID uuid.UUID, expiresIn time.Duration) (string, error) {
-	if a.tokenSecret == "" {
-		return "", errors.New("tokenSecret must not be empty")
-	}
-	if expiresIn <= 0 {
-		return "", errors.New("expiresIn must be positive")
-	}
-	signingKey := []byte(a.tokenSecret)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
-		Issuer:    string(a.tokenTypeAccess),
-		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(expiresIn)),
-		Subject:   userID.String(),
-	})
-	return token.SignedString(signingKey)
-}
-
-func (a *AuthService) ValidateJWT(tokenString string) (*jwt.RegisteredClaims, error) {
-	// Create an instance of RegisteredClaims to hold the parsed token claims.
-	var claims jwt.RegisteredClaims
-
-	// Parse the token using the claims instance.
-	token, err := jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(a.tokenSecret), nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// Ensure the token is valid.
-	if !token.Valid {
-		return nil, errors.New("invalid token")
-	}
-
-	now := time.Now().Unix()
-	if claims.ExpiresAt != nil && claims.ExpiresAt.Unix() < now {
-		return nil, fmt.Errorf("token expired")
-	}
-	if claims.NotBefore != nil && claims.NotBefore.Unix() > now {
-		return nil, fmt.Errorf("token not valid yet")
-	}
-
-	// Check the issuer (this example assumes you want the issuer to equal TokenTypeAccess).
-	if claims.Issuer != string(a.tokenTypeAccess) {
-		return nil, errors.New("invalid issuer")
-	}
-
-	// Optionally, if you expect the Subject (user ID) to be a valid UUID, you can verify that.
-	if _, err := uuid.Parse(claims.Subject); err != nil {
-		return nil, fmt.Errorf("invalid user ID: %w", err)
-	}
-
-	// Return the complete claims struct.
-	return &claims, nil
-}
-
-func (a *AuthService) GetBearerToken(headers http.Header) (string, error) {
-	authHeader := headers.Get("Authorization")
-	if authHeader == "" {
-		return "", ErrNoAuthHeaderIncluded
-	}
-	splitAuth := strings.Split(authHeader, " ")
-	if len(splitAuth) < 2 || splitAuth[0] != "Bearer" {
-		return "", errors.New("malformed authorization header")
-	}
-	if splitAuth[1] == "" {
-		return "", errors.New("malformed authorization header")
-	}
-	return splitAuth[1], nil
-}
-
-func (a *AuthService) MakeRefreshToken() (string, error) {
-	token := make([]byte, 32)
-	_, err := RandReader(token)
-	if err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(token), nil
 }
 
 // Login encapsulates the entire login process.
@@ -194,7 +77,7 @@ func (a *AuthService) Login(ctx context.Context, input LoginInput) (LoginRespons
 	}
 
 	// 7. Hash the refresh token.
-	refreshHash, err := a.HashPassword(refreshToken)
+	refreshHash, err := a.pwdHasher.HashPassword(refreshToken)
 	if err != nil {
 		return LoginResponse{}, fmt.Errorf("failed to hash refresh token: %w", err)
 	}
@@ -237,7 +120,7 @@ func (a *AuthService) validateCredentials(ctx context.Context, input LoginInput)
 		}
 		return uuid.Nil, fmt.Errorf("failed to fetch user: %w", err)
 	}
-	if err := a.CheckPasswordHash(input.Password, user.HashedPassword); err != nil {
+	if err := a.pwdHasher.CheckPasswordHash(input.Password, user.HashedPassword); err != nil {
 		return uuid.Nil, fmt.Errorf("invalid email / password")
 	}
 	return uuid.Parse(user.ID)
@@ -294,12 +177,12 @@ func (a *AuthService) handleDeviceInfo(ctx context.Context, queriesTx interfaces
 func (a *AuthService) generateTokens(userID uuid.UUID) (string, string, error) {
 	// For this example, assume AuthService has a field tokenSecret (string)
 	// and that a.auth is your AuthInterface.
-	jwtToken, err := a.MakeJWT(userID, 15*time.Minute)
+	jwtToken, err := a.tokenGen.MakeJWT(userID, 15*time.Minute)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate JWT: %w", err)
 	}
 
-	refreshToken, err := a.MakeRefreshToken()
+	refreshToken, err := a.tokenGen.MakeRefreshToken()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate refresh token: %w", err)
 	}
