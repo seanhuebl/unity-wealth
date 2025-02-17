@@ -3,7 +3,6 @@ package auth
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -11,7 +10,8 @@ import (
 
 func TestGetAPIKey(t *testing.T) {
 
-	authSvc := NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"), nil)
+	tokenExtractor := NewRealTokenExtractor()
+
 	tests := map[string]struct {
 		input         http.Header
 		expectedValue string
@@ -25,7 +25,7 @@ func TestGetAPIKey(t *testing.T) {
 	for test, tt := range tests {
 		t.Run(test, func(t *testing.T) {
 
-			receivedValue, err := authSvc.GetAPIKey(tt.input)
+			receivedValue, err := tokenExtractor.GetAPIKey(tt.input)
 			var diff string
 			if err != nil {
 				diff = cmp.Diff(tt.expectedValue, fmt.Sprint(err))

@@ -15,7 +15,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/seanhuebl/unity-wealth/internal/services/user"
-	"github.com/seanhuebl/unity-wealth/middleware"
+	"github.com/seanhuebl/unity-wealth/internal/middleware"
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
@@ -52,7 +52,7 @@ func main() {
 
 	txnSvc := transaction.NewTransactionService(cfg.Queries)
 	h := handlers.NewHandler(cfg.Queries, txnSvc, authSvc, userSvc)
-	m := middleware.NewMiddleware(&cfg, authSvc)
+	m := middleware.NewMiddleware(tokenGen, tokenExtract)
 	handlers.RegisterRoutes(router, &cfg, h, m)
 
 	err = router.Run(cfg.Port)

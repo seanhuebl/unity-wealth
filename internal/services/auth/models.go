@@ -1,10 +1,15 @@
 package auth
 
 import (
+	"crypto/rand"
 	"regexp"
 
 	"github.com/google/uuid"
 )
+
+type TokenType string
+
+var RandReader = rand.Read
 
 type LoginInput struct {
 	Email    string `json:"email" binding:"required"`

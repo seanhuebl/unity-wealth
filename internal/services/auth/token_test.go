@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
@@ -15,7 +14,6 @@ import (
 )
 
 func TestMakeJWT(t *testing.T) {
-	authSvc := NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"), nil)
 
 	tests := []struct {
 		name         string
@@ -32,7 +30,7 @@ func TestMakeJWT(t *testing.T) {
 			expiresIn:   time.Hour,
 			wantErr:     false,
 			verifyClaims: jwt.RegisteredClaims{
-				Issuer:  string(os.Getenv("TOKEN_TYPE")),
+				Issuer:  "testaccess",
 				Subject: "",
 			},
 		},
@@ -52,18 +50,19 @@ func TestMakeJWT(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			token, err := authSvc.MakeJWT(tt.userID, tt.expiresIn)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tokenGen := NewRealTokenGenerator(tc.tokenSecret, "testaccess")
+			token, err := tokenGen.MakeJWT(tc.userID, tc.expiresIn)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("MakeJWT() error = %v, wantErr %v", err, tt.wantErr)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("MakeJWT() error = %v, wantErr %v", err, tc.wantErr)
 				return
 			}
 
-			if !tt.wantErr {
+			if !tc.wantErr {
 				parsedToken, err := jwt.ParseWithClaims(token, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
-					return []byte(tt.tokenSecret), nil
+					return []byte(tc.tokenSecret), nil
 				})
 				if err != nil {
 					t.Errorf("Failed to parse token: %v", err)
@@ -76,10 +75,10 @@ func TestMakeJWT(t *testing.T) {
 					return
 				}
 
-				if diff := cmp.Diff(tt.verifyClaims.Issuer, claims.Issuer); diff != "" {
+				if diff := cmp.Diff(tc.verifyClaims.Issuer, claims.Issuer); diff != "" {
 					t.Errorf("Issuer mismatch (-want +got):\n%s", diff)
 				}
-				if diff := cmp.Diff(tt.userID.String(), claims.Subject); diff != "" {
+				if diff := cmp.Diff(tc.userID.String(), claims.Subject); diff != "" {
 					t.Errorf("Subject mismatch (-want +got):\n%s", diff)
 				}
 			}
@@ -89,7 +88,7 @@ func TestMakeJWT(t *testing.T) {
 
 func TestValidateJWT(t *testing.T) {
 	userID := uuid.New()
-	authSvc := NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"), nil)
+	tokenGen := NewRealTokenGenerator("testsecret", "testaccess")
 	tests := []struct {
 		name        string
 		tokenString string
@@ -100,7 +99,8 @@ func TestValidateJWT(t *testing.T) {
 		{
 			name: "Valid token",
 			tokenString: func() string {
-				token, _ := authSvc.MakeJWT(userID, time.Hour)
+				tokenGen := NewRealTokenGenerator("testsecret", "testaccess")
+				token, _ := tokenGen.MakeJWT(userID, time.Hour)
 				return token
 			}(),
 			tokenSecret: "testsecret",
@@ -110,7 +110,8 @@ func TestValidateJWT(t *testing.T) {
 		{
 			name: "Invalid token secret",
 			tokenString: func() string {
-				token, _ := authSvc.MakeJWT(uuid.New(), time.Hour)
+				tokenGen := NewRealTokenGenerator("wrongsecret", "testaccess")
+				token, _ := tokenGen.MakeJWT(uuid.New(), time.Hour)
 				return token
 			}(),
 			tokenSecret: "wrongsecret",
@@ -126,11 +127,11 @@ func TestValidateJWT(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			claims, err := authSvc.ValidateJWT(tt.tokenString)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ValidateJWT() error = %v, wantErr %v", err, tt.wantErr)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			claims, err := tokenGen.ValidateJWT(tc.tokenString)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("ValidateJWT() error = %v, wantErr %v", err, tc.wantErr)
 				return
 			}
 			if err != nil {
@@ -143,7 +144,7 @@ func TestValidateJWT(t *testing.T) {
 				t.Errorf("failed to parse subject as uuid: %v", err)
 				return
 			}
-			if diff := cmp.Diff(tt.wantUUID, gotUUID); diff != "" {
+			if diff := cmp.Diff(tc.wantUUID, gotUUID); diff != "" {
 				t.Errorf("UUID mismatch (-want +got):\n%s", diff)
 			}
 		})
@@ -151,7 +152,7 @@ func TestValidateJWT(t *testing.T) {
 }
 
 func TestGetBearerToken(t *testing.T) {
-	authSvc := NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"), nil)
+	tokenExtractor := NewRealTokenExtractor()
 	tests := map[string]struct {
 		input         http.Header
 		expectedValue string
@@ -162,14 +163,14 @@ func TestGetBearerToken(t *testing.T) {
 		"no auth header":         {input: http.Header{"Authorization": []string{""}}, expectedValue: fmt.Sprint(ErrNoAuthHeaderIncluded)},
 	}
 
-	for test, tt := range tests {
+	for test, tc := range tests {
 		t.Run(test, func(t *testing.T) {
-			receivedValue, err := authSvc.GetBearerToken(tt.input)
+			receivedValue, err := tokenExtractor.GetBearerToken(tc.input)
 			var diff string
 			if err != nil {
-				diff = cmp.Diff(tt.expectedValue, fmt.Sprint(err))
+				diff = cmp.Diff(tc.expectedValue, fmt.Sprint(err))
 			} else {
-				diff = cmp.Diff(tt.expectedValue, receivedValue)
+				diff = cmp.Diff(tc.expectedValue, receivedValue)
 			}
 			if diff != "" {
 				t.Fatal(diff)
@@ -179,7 +180,7 @@ func TestGetBearerToken(t *testing.T) {
 }
 
 func TestMakeRefreshToken(t *testing.T) {
-	authSvc := NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"), nil)
+	tokenGen := NewRealTokenGenerator("testsecret", "testaccess")
 	tests := []struct {
 		name     string
 		mockRand func([]byte) (int, error)
@@ -201,20 +202,20 @@ func TestMakeRefreshToken(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
 			// Override randReader temporarily for this test
 			origRandReader := RandReader
-			RandReader = tt.mockRand
+			RandReader = tc.mockRand
 			defer func() { RandReader = origRandReader }()
 
-			token, err := authSvc.MakeRefreshToken()
+			token, err := tokenGen.MakeRefreshToken()
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("MakeRefreshToken() error = %v, wantErr %v", err, tt.wantErr)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("MakeRefreshToken() error = %v, wantErr %v", err, tc.wantErr)
 			}
 
-			if !tt.wantErr {
+			if !tc.wantErr {
 				if len(token) != 64 {
 					t.Errorf("Expected token length 64, got %d", len(token))
 				}

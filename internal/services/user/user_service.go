@@ -3,7 +3,6 @@ package user
 import (
 	"context"
 	"fmt"
-	"regexp"
 
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/database"
@@ -22,13 +21,6 @@ func NewUserService(queries interfaces.Querier, pwdHasher auth.PasswordHasher) *
 		pwdHasher: pwdHasher,
 	}
 }
-
-var (
-	uppercaseRegex = regexp.MustCompile(`[A-Z]`)
-	lowercaseRegex = regexp.MustCompile(`[a-z]`)
-	digitRegex     = regexp.MustCompile(`\d`)
-	specialRegex   = regexp.MustCompile(`[!@#\$%\^&\*\(\)_\+\-=\[\]\{\};':"\\|,.<>\/?]`)
-)
 
 func (u *UserService) SignUp(ctx context.Context, input SignUpInput) error {
 	if !auth.IsValidEmail(input.Email) {

@@ -3,7 +3,6 @@ package middleware
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -11,20 +10,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 )
 
 func TestUserAuthMiddleware_TableDriven(t *testing.T) {
-	// Create an ApiConfig with the TokenSecret.
-	cfg := &config.ApiConfig{
-		TokenSecret: "dummysecret",
-	}
 
-	// Create an instance of your auth service to generate a valid token.
-	authSvc := auth.NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"), nil)
+	tokenGen := auth.NewRealTokenGenerator("dummysecret", auth.TokenType("dummytype"))
+	tokenExtractor := auth.NewRealTokenExtractor()
+
 	testUserID := uuid.New()
-	validToken, err := authSvc.MakeJWT(testUserID, time.Hour)
+	validToken, err := tokenGen.MakeJWT(testUserID, time.Hour)
 	if err != nil {
 		t.Fatalf("failed to generate valid token: %v", err)
 	}
@@ -62,9 +57,7 @@ func TestUserAuthMiddleware_TableDriven(t *testing.T) {
 			// Create a new Gin engine for this sub-test.
 			router := gin.New()
 
-			m := NewMiddleware(cfg, authSvc)
-			// Attach the middleware. (Since our middleware is defined as a method on ApiConfig,
-			// it automatically uses cfg.TokenSecret.)
+			m := NewMiddleware(tokenGen, tokenExtractor)
 			router.Use(m.UserAuthMiddleware())
 
 			// Define a dummy final handler that will return a JSON response if the request passes.

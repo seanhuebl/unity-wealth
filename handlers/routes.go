@@ -3,7 +3,7 @@ package handlers
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/seanhuebl/unity-wealth/internal/config"
-	"github.com/seanhuebl/unity-wealth/middleware"
+	"github.com/seanhuebl/unity-wealth/internal/middleware"
 )
 
 func RegisterRoutes(router *gin.Engine, cfg *config.ApiConfig, h *Handler, m *middleware.Middleware) {

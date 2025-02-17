@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"os"
 	"strings"
 	"testing"
 
@@ -21,8 +20,9 @@ func CustomHashPassword(password string, cost int) (string, error) {
 	return string(hash), nil
 }
 
+var pwdHasher = NewRealPwdHasher()
+
 func TestHashPassword(t *testing.T) {
-	authSvc := NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"), nil)
 	tests := []struct {
 		name     string
 		password string
@@ -68,7 +68,7 @@ func TestHashPassword(t *testing.T) {
 				}
 			} else {
 				// Ensure valid hashes are verifiable
-				if err := authSvc.CheckPasswordHash(tt.password, hash); err != nil {
+				if err := pwdHasher.CheckPasswordHash(tt.password, hash); err != nil {
 					t.Errorf("HashPassword() generated a hash that could not be verified: %v", err)
 				}
 			}
@@ -77,7 +77,6 @@ func TestHashPassword(t *testing.T) {
 }
 
 func TestCheckPasswordHash(t *testing.T) {
-	authSvc := NewAuthService(os.Getenv("TOKEN_TYPE"), os.Getenv("TOKEN_SECRET"), nil)
 	tests := []struct {
 		name     string
 		password string
@@ -88,13 +87,13 @@ func TestCheckPasswordHash(t *testing.T) {
 		{
 			name:     "Valid password and hash",
 			password: "securePassword123",
-			hash:     func() string { h, _ := authSvc.HashPassword("securePassword123"); return h }(),
+			hash:     func() string { h, _ := pwdHasher.HashPassword("securePassword123"); return h }(),
 			wantErr:  false,
 		},
 		{
 			name:     "Invalid password",
 			password: "wrongPassword",
-			hash:     func() string { h, _ := authSvc.HashPassword("securePassword123"); return h }(),
+			hash:     func() string { h, _ := pwdHasher.HashPassword("securePassword123"); return h }(),
 			wantErr:  true,
 			errMsg:   bcrypt.ErrMismatchedHashAndPassword.Error(),
 		},
@@ -123,7 +122,7 @@ func TestCheckPasswordHash(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := authSvc.CheckPasswordHash(tt.password, tt.hash)
+			err := pwdHasher.CheckPasswordHash(tt.password, tt.hash)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CheckPasswordHash() error = %v, wantErr %v", err, tt.wantErr)
@@ -139,5 +138,3 @@ func TestCheckPasswordHash(t *testing.T) {
 		})
 	}
 }
-
-

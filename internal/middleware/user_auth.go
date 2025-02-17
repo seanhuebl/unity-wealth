@@ -9,14 +9,14 @@ import (
 func (m *Middleware) UserAuthMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 
-		token, err := m.authService.GetBearerToken(ctx.Request.Header)
+		token, err := m.tokenExtractor.GetBearerToken(ctx.Request.Header)
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": err.Error(),
 			})
 			return
 		}
-		claims, err := m.authService.ValidateJWT(token)
+		claims, err := m.tokenGen.ValidateJWT(token)
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "invalid token",
