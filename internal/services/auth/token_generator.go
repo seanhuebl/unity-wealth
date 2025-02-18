@@ -21,6 +21,7 @@ func NewRealTokenGenerator(tokenSecret string, tokenTypeAccess TokenType) *RealT
 		tokenTypeAccess: tokenTypeAccess,
 	}
 }
+
 func (rtg *RealTokenGenerator) MakeJWT(userID uuid.UUID, expiresIn time.Duration) (string, error) {
 	if rtg.tokenSecret == "" {
 		return "", errors.New("tokenSecret must not be empty")
