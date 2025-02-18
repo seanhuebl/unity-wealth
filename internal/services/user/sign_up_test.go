@@ -8,8 +8,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	authmocks "github.com/seanhuebl/unity-wealth/internal/mocks/auth"
+	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
-	"github.com/seanhuebl/unity-wealth/mocks"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -80,16 +81,16 @@ func TestSignup(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			mockQ := mocks.NewQuerier(t)
-			mockAuth := mocks.NewAuthInterface(t)
-
+			mockUserQ := dbmocks.NewUserQuerier(t)
+			mockPwdHasher := authmocks.NewPasswordHasher(t)
+			userSvc := NewUserService(mockUserQ, mockPwdHasher)
 			if auth.IsValidEmail(tc.input.Email) {
-				mockAuth.On("ValidatePassword", tc.input.Password).Return(tc.validatePasswordError)
+				err := validatePassword(tc.input.Password)
 
-				if tc.validatePasswordError == nil {
-					mockAuth.On("HashPassword", tc.input.Password).Return(tc.hashPasswordOutput, tc.hashPasswordError)
+				if err == nil {
+					mockPwdHasher.On("HashPassword", tc.input.Password).Return(tc.hashPasswordOutput, tc.hashPasswordError)
 					if tc.hashPasswordError == nil {
-						mockQ.On("CreateUser", mock.Anything, mock.MatchedBy(func(params database.CreateUserParams) bool {
+						mockUserQ.On("CreateUser", mock.Anything, mock.MatchedBy(func(params database.CreateUserParams) bool {
 							// Create an expected value ignoring the generated ID.
 							expected := database.CreateUserParams{
 								Email:          tc.input.Email,
@@ -108,7 +109,6 @@ func TestSignup(t *testing.T) {
 				}
 			}
 
-			userSvc := NewUserService(mockQ, mockAuth)
 			err := userSvc.SignUp(context.Background(), tc.input)
 
 			if tc.expectedError == "" {
@@ -118,8 +118,8 @@ func TestSignup(t *testing.T) {
 				require.Contains(t, err.Error(), tc.expectedError)
 			}
 
-			mockQ.AssertExpectations(t)
-			mockAuth.AssertExpectations(t)
+			mockUserQ.AssertExpectations(t)
+			mockPwdHasher.AssertExpectations(t)
 
 		})
 	}

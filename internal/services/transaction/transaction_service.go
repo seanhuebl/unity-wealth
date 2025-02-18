@@ -68,7 +68,7 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, txnID, userI
 }
 
 func (s *TransactionService) DeleteTransaction(ctx context.Context, txnID, userID string) error {
-	if err := s.txQueries.DeleteTransactionById(ctx, database.DeleteTransactionByIdParams{
+	if err := s.txQueries.DeleteTransactionByID(ctx, database.DeleteTransactionByIDParams{
 		ID:     txnID,
 		UserID: userID,
 	}); err != nil {

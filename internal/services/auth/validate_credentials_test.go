@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	authmocks "github.com/seanhuebl/unity-wealth/internal/mocks/auth"
-	"github.com/seanhuebl/unity-wealth/mocks"
+	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/stretchr/testify/require"
 )
 
@@ -75,17 +75,17 @@ func TestValidateCredentials(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			mockQ := mocks.NewQuerier(t)
+			mockUserQ := dbmocks.NewUserQuerier(t)
 			mockPwdHasher := authmocks.NewPasswordHasher(t)
 
-			mockQ.On("GetUserByEmail", ctx, tc.input.Email).Return(func(ctx context.Context, email string) database.GetUserByEmailRow {
+			mockUserQ.On("GetUserByEmail", ctx, tc.input.Email).Return(func(ctx context.Context, email string) database.GetUserByEmailRow {
 				return dummyUser
 			}, tc.getUserErr)
 
 			if tc.getUserErr == nil {
 				mockPwdHasher.On("CheckPasswordHash", tc.input.Password, dummyUser.HashedPassword).Return(tc.pwdHasherErr)
 			}
-			authSvc := NewAuthService(mockQ, nil, nil, mockPwdHasher)
+			authSvc := NewAuthService(nil, mockUserQ, nil, nil, mockPwdHasher)
 
 			userID, err := authSvc.validateCredentials(ctx, tc.input)
 			if tc.expectedErrorSubstring != "" {
@@ -98,7 +98,7 @@ func TestValidateCredentials(t *testing.T) {
 					t.Errorf("validateCredentials() mismatch (-want +got)\n%s", diff)
 				}
 			}
-			mockQ.AssertExpectations(t)
+			mockUserQ.AssertExpectations(t)
 			mockPwdHasher.AssertExpectations(t)
 		})
 	}

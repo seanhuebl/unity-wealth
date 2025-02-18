@@ -17,14 +17,17 @@ import (
 )
 
 type AuthService struct {
+	sqlTxQuerier database.SqlTxQuerier
+	userQuerier  database.UserQuerier
 	tokenGen     TokenGenerator
 	tokenExtract TokenExtractor
 	pwdHasher    PasswordHasher
 }
 
-func NewAuthService(queries interfaces.Querier, tokenGen TokenGenerator, tokenExtract TokenExtractor, pwdHasher PasswordHasher) *AuthService {
+func NewAuthService(sqlTxQuerier database.SqlTxQuerier, userQuerier database.UserQuerier, tokenGen TokenGenerator, tokenExtract TokenExtractor, pwdHasher PasswordHasher) *AuthService {
 	return &AuthService{
-		queries:      queries,
+		sqlTxQuerier: sqlTxQuerier,
+		userQuerier:  userQuerier,
 		tokenGen:     tokenGen,
 		tokenExtract: tokenExtract,
 		pwdHasher:    pwdHasher,
@@ -33,6 +36,7 @@ func NewAuthService(queries interfaces.Querier, tokenGen TokenGenerator, tokenEx
 
 // Login encapsulates the entire login process.
 func (a *AuthService) Login(ctx context.Context, input LoginInput) (LoginResponse, error) {
+
 	// 1. Validate the email format (optionally done here or in the handler)
 	if !IsValidEmail(input.Email) {
 		return LoginResponse{}, fmt.Errorf("invalid email format")
@@ -55,15 +59,17 @@ func (a *AuthService) Login(ctx context.Context, input LoginInput) (LoginRespons
 	}
 
 	// 4. Start a database transaction.
-	tx, err := a.queries.BeginTx(ctx, nil)
+	tx, err := a.sqlTxQuerier.BeginTx(ctx, nil)
 	if err != nil {
 		return LoginResponse{}, fmt.Errorf("failed to start transaction: %w", err)
 	}
 	defer tx.Rollback()
-	queriesTx := a.queries.WithTx(tx)
+	queriesTx := a.sqlTxQuerier.WithTx(tx)
+	deviceQ := database.NewRealDevicequerier(queriesTx)
+	tokenQ := database.NewRealTokenQuerier(queriesTx)
 
 	// 5. Handle device information.
-	deviceID, err := a.handleDeviceInfo(ctx, queriesTx, userID, deviceInfo)
+	deviceID, err := a.handleDeviceInfo(ctx, deviceQ, tokenQ, userID, deviceInfo)
 	if err != nil {
 		return LoginResponse{}, err
 	}
@@ -111,7 +117,7 @@ func (a *AuthService) Login(ctx context.Context, input LoginInput) (LoginRespons
 
 // Helpers
 func (a *AuthService) validateCredentials(ctx context.Context, input LoginInput) (uuid.UUID, error) {
-	user, err := a.queries.GetUserByEmail(ctx, input.Email)
+	user, err := a.userQuerier.GetUserByEmail(ctx, input.Email)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return uuid.Nil, fmt.Errorf("invalid email / password")
@@ -124,9 +130,9 @@ func (a *AuthService) validateCredentials(ctx context.Context, input LoginInput)
 	return uuid.Parse(user.ID)
 }
 
-func (a *AuthService) handleDeviceInfo(ctx context.Context, queriesTx interfaces.Querier, userID uuid.UUID, info DeviceInfo) (uuid.UUID, error) {
+func (a *AuthService) handleDeviceInfo(ctx context.Context, deviceQ database.DeviceQuerier, tokenQ database.TokenQuerier, userID uuid.UUID, info DeviceInfo) (uuid.UUID, error) {
 	// Try to fetch an existing device record for this user with matching attributes.
-	foundDevice, err := queriesTx.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
+	foundDevice, err := deviceQ.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
 		UserID:         userID.String(),
 		DeviceType:     info.DeviceType,
 		Browser:        info.Browser,
@@ -137,7 +143,7 @@ func (a *AuthService) handleDeviceInfo(ctx context.Context, queriesTx interfaces
 	if err != nil {
 		// If no device record exists, create one.
 		if errors.Is(err, sql.ErrNoRows) {
-			newDeviceID, err := queriesTx.CreateDeviceInfo(ctx, database.CreateDeviceInfoParams{
+			newDeviceID, err := deviceQ.CreateDeviceInfo(ctx, database.CreateDeviceInfoParams{
 				ID:             uuid.NewString(),
 				UserID:         userID.String(),
 				DeviceType:     info.DeviceType,
@@ -161,7 +167,7 @@ func (a *AuthService) handleDeviceInfo(ctx context.Context, queriesTx interfaces
 	}
 
 	// Revoke any existing tokens for this device.
-	if err := queriesTx.RevokeToken(ctx, database.RevokeTokenParams{
+	if err := tokenQ.RevokeToken(ctx, database.RevokeTokenParams{
 		RevokedAt:    sql.NullTime{Time: time.Now(), Valid: true},
 		UserID:       userID.String(),
 		DeviceInfoID: deviceID.String(),

@@ -1,0 +1,23 @@
+package database
+
+import (
+	"context"
+)
+
+type RealTokenQuerier struct {
+	q *Queries
+}
+
+func NewRealTokenQuerier(q *Queries) TokenQuerier {
+	return &RealTokenQuerier{
+		q: q,
+	}
+}
+
+func (rt *RealTokenQuerier) CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) error {
+	return rt.q.CreateRefreshToken(ctx, arg)
+}
+
+func (rt *RealTokenQuerier) RevokeToken(ctx context.Context, arg RevokeTokenParams) error {
+	return rt.q.RevokeToken(ctx, arg)
+}

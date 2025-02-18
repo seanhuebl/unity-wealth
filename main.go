@@ -12,10 +12,10 @@ import (
 	"github.com/seanhuebl/unity-wealth/handlers"
 	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/middleware"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/seanhuebl/unity-wealth/internal/services/user"
-	"github.com/seanhuebl/unity-wealth/internal/middleware"
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
@@ -41,7 +41,11 @@ func main() {
 	tokenExtract := auth.NewRealTokenExtractor()
 	pwdHasher := auth.NewRealPwdHasher()
 
-	authSvc := auth.NewAuthService(cfg.Queries, tokenGen, tokenExtract, pwdHasher)
+	sqlTxQ := database.NewRealSqlTxQuerier(cfg.Queries)
+	//tokenQ := database.NewRealTokenQuerier(cfg.Queries)
+	userQ := database.NewRealUserQuerier(cfg.Queries)
+
+	authSvc := auth.NewAuthService(sqlTxQ, userQ, tokenGen, tokenExtract, pwdHasher)
 
 	userSvc := user.NewUserService(cfg.Queries, pwdHasher)
 
@@ -49,8 +53,8 @@ func main() {
 		log.Printf("unable to warm cache: %v", err)
 	}
 	router := gin.Default()
-
-	txnSvc := transaction.NewTransactionService(cfg.Queries)
+	txQ := database.NewRealTransactionQuerier(cfg.Queries)
+	txnSvc := transaction.NewTransactionService(txQ)
 	h := handlers.NewHandler(cfg.Queries, txnSvc, authSvc, userSvc)
 	m := middleware.NewMiddleware(tokenGen, tokenExtract)
 	handlers.RegisterRoutes(router, &cfg, h, m)
