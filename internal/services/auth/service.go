@@ -179,8 +179,6 @@ func (a *AuthService) handleDeviceInfo(ctx context.Context, deviceQ database.Dev
 }
 
 func (a *AuthService) generateTokens(userID uuid.UUID) (string, string, error) {
-	// For this example, assume AuthService has a field tokenSecret (string)
-	// and that a.auth is your AuthInterface.
 	jwtToken, err := a.tokenGen.MakeJWT(userID, 15*time.Minute)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate JWT: %w", err)

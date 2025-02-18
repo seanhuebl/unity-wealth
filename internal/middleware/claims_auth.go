@@ -12,8 +12,8 @@ import (
 type contextKey string
 
 const (
-	userIDKey contextKey = "userID"
-	claimsKey contextKey = "claims"
+	userIDKey  contextKey = "userID"
+	claimsKey  contextKey = "claims"
 	requestKey contextKey = "httpRequest"
 )
 
