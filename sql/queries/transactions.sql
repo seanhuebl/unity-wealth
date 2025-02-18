@@ -8,7 +8,7 @@ INSERT INTO transactions (
         detailed_category_id
     )
 VALUES (?1, ?2, ?3, ?4, ?5, ?6);
--- name: GetDetailedCategoryId :one
+-- name: GetDetailedCategoryID :one
 SELECT id
 FROM detailed_categories
 WHERE name = ?1;
@@ -31,7 +31,7 @@ FROM primary_categories;
 -- name: GetDetailedCategories :many
 SELECT *
 FROM detailed_categories;
--- name: DeleteTransactionById :exec
+-- name: DeleteTransactionByID :exec
 DELETE FROM transactions
 WHERE id = ?1
     AND user_id = ?2;

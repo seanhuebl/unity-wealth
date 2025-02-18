@@ -14,11 +14,9 @@ import (
 	"github.com/mssola/user_agent"
 	"github.com/seanhuebl/unity-wealth/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/database"
-	"github.com/seanhuebl/unity-wealth/internal/interfaces"
 )
 
 type AuthService struct {
-	queries      interfaces.Querier
 	tokenGen     TokenGenerator
 	tokenExtract TokenExtractor
 	pwdHasher    PasswordHasher

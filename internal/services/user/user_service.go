@@ -6,19 +6,18 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/database"
-	"github.com/seanhuebl/unity-wealth/internal/interfaces"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 )
 
 type UserService struct {
-	queries   interfaces.Querier
-	pwdHasher auth.PasswordHasher
+	userQueries database.UserQuerier
+	pwdHasher   auth.PasswordHasher
 }
 
-func NewUserService(queries interfaces.Querier, pwdHasher auth.PasswordHasher) *UserService {
+func NewUserService(userQueries database.UserQuerier, pwdHasher auth.PasswordHasher) *UserService {
 	return &UserService{
-		queries:   queries,
-		pwdHasher: pwdHasher,
+		userQueries: userQueries,
+		pwdHasher:   pwdHasher,
 	}
 }
 
@@ -36,7 +35,7 @@ func (u *UserService) SignUp(ctx context.Context, input SignUpInput) error {
 
 	newID := uuid.New()
 
-	if err = u.queries.CreateUser(ctx, database.CreateUserParams{
+	if err = u.userQueries.CreateUser(ctx, database.CreateUserParams{
 		ID:             newID.String(),
 		Email:          input.Email,
 		HashedPassword: hashedPW,

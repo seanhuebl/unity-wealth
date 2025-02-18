@@ -43,19 +43,19 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 	return err
 }
 
-const deleteTransactionById = `-- name: DeleteTransactionById :exec
+const deleteTransactionByID = `-- name: DeleteTransactionByID :exec
 DELETE FROM transactions
 WHERE id = ?1
     AND user_id = ?2
 `
 
-type DeleteTransactionByIdParams struct {
+type DeleteTransactionByIDParams struct {
 	ID     string
 	UserID string
 }
 
-func (q *Queries) DeleteTransactionById(ctx context.Context, arg DeleteTransactionByIdParams) error {
-	_, err := q.db.ExecContext(ctx, deleteTransactionById, arg.ID, arg.UserID)
+func (q *Queries) DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) error {
+	_, err := q.db.ExecContext(ctx, deleteTransactionByID, arg.ID, arg.UserID)
 	return err
 }
 
@@ -92,14 +92,14 @@ func (q *Queries) GetDetailedCategories(ctx context.Context) ([]DetailedCategory
 	return items, nil
 }
 
-const getDetailedCategoryId = `-- name: GetDetailedCategoryId :one
+const getDetailedCategoryID = `-- name: GetDetailedCategoryID :one
 SELECT id
 FROM detailed_categories
 WHERE name = ?1
 `
 
-func (q *Queries) GetDetailedCategoryId(ctx context.Context, name string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, getDetailedCategoryId, name)
+func (q *Queries) GetDetailedCategoryID(ctx context.Context, name string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getDetailedCategoryID, name)
 	var id int64
 	err := row.Scan(&id)
 	return id, err

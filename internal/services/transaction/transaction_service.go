@@ -8,15 +8,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/database"
-	"github.com/seanhuebl/unity-wealth/internal/interfaces"
 )
 
 type TransactionService struct {
-	queries interfaces.Querier
+	txQueries database.TransactionQuerier
 }
 
-func NewTransactionService(queries interfaces.Querier) *TransactionService {
-	return &TransactionService{queries: queries}
+func NewTransactionService(txQueries database.TransactionQuerier) *TransactionService {
+	return &TransactionService{txQueries: txQueries}
 }
 
 func (s *TransactionService) CreateTransaction(ctx context.Context, userID string, req NewTransactionRequest) (*Transaction, error) {
@@ -25,7 +24,7 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, userID strin
 		return nil, fmt.Errorf("invalid date format: %w", err)
 	}
 	tx := NewTransaction(uuid.NewString(), userID, req.Date, req.Merchant, req.Amount, req.DetailedCategory)
-	if err := s.queries.CreateTransaction(ctx, database.CreateTransactionParams{
+	if err := s.txQueries.CreateTransaction(ctx, database.CreateTransactionParams{
 		ID:                 tx.ID,
 		UserID:             tx.UserID,
 		TransactionDate:    tx.Date,
@@ -45,7 +44,7 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, txnID, userI
 		return nil, fmt.Errorf("invalid date format: %w", err)
 	}
 
-	txRow, err := s.queries.UpdateTransactionByID(ctx, database.UpdateTransactionByIDParams{
+	txRow, err := s.txQueries.UpdateTransactionByID(ctx, database.UpdateTransactionByIDParams{
 		TransactionDate:    req.Date,
 		Merchant:           req.Merchant,
 		AmountCents:        int64(req.Amount * 100),
@@ -69,7 +68,7 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, txnID, userI
 }
 
 func (s *TransactionService) DeleteTransaction(ctx context.Context, txnID, userID string) error {
-	if err := s.queries.DeleteTransactionById(ctx, database.DeleteTransactionByIdParams{
+	if err := s.txQueries.DeleteTransactionById(ctx, database.DeleteTransactionByIdParams{
 		ID:     txnID,
 		UserID: userID,
 	}); err != nil {
@@ -79,7 +78,7 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, txnID, userI
 }
 
 func (s *TransactionService) GetTransactionByID(ctx context.Context, userID, txnID string) (*Transaction, error) {
-	row, err := s.queries.GetUserTransactionByID(ctx, database.GetUserTransactionByIDParams{UserID: userID, ID: txnID})
+	row, err := s.txQueries.GetUserTransactionByID(ctx, database.GetUserTransactionByIDParams{UserID: userID, ID: txnID})
 	if err != nil {
 		return nil, fmt.Errorf("error getting transaction by user_id, ID pair: %w", err)
 	}
@@ -106,7 +105,7 @@ func (s *TransactionService) ListUserTransactions(
 	transactions = make([]Transaction, 0, pageSize)
 	fetchSize := pageSize + 1
 	if cursorDate == nil || cursorID == nil {
-		firstPageRows, err := s.queries.GetUserTransactionsFirstPage(ctx, database.GetUserTransactionsFirstPageParams{UserID: userID.String(), Limit: fetchSize})
+		firstPageRows, err := s.txQueries.GetUserTransactionsFirstPage(ctx, database.GetUserTransactionsFirstPageParams{UserID: userID.String(), Limit: fetchSize})
 		if err != nil {
 			return nil, "", "", false, fmt.Errorf("error loading first page of transactions: %w", err)
 		}
@@ -114,7 +113,7 @@ func (s *TransactionService) ListUserTransactions(
 			transactions = append(transactions, s.convertFirstPageRow(txn))
 		}
 	} else {
-		nextRows, err := s.queries.GetUserTransactionsPaginated(ctx, database.GetUserTransactionsPaginatedParams{
+		nextRows, err := s.txQueries.GetUserTransactionsPaginated(ctx, database.GetUserTransactionsPaginatedParams{
 			UserID:          userID.String(),
 			TransactionDate: *cursorDate,
 			ID:              *cursorID,
