@@ -1,5 +1,4 @@
-package handlers
-
+package category
 import (
 	"net/http"
 
@@ -7,11 +6,6 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/seanhuebl/unity-wealth/cache"
 )
-
-type CategoriesResponse struct {
-	PrimaryCategories  map[string]string `json:"primary_categories"`
-	DetailedCategories map[string]string `json:"detailed_categories"`
-}
 
 func (h *Handler) GetCategories(ctx *gin.Context) {
 	primaryHash, err := cache.RedisClient.HGetAll(ctx.Request.Context(), "primary_categories").Result()

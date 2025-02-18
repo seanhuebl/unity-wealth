@@ -1,4 +1,4 @@
-package handlers_test
+package user
 
 import (
 	"bytes"
@@ -12,11 +12,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/seanhuebl/unity-wealth/handlers"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	authmocks "github.com/seanhuebl/unity-wealth/internal/mocks/auth"
+	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/seanhuebl/unity-wealth/internal/services/user"
-	"github.com/seanhuebl/unity-wealth/mocks"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -92,15 +92,14 @@ func TestAddUserHandler(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			mockQ := mocks.NewQuerier(t)
-			mockAuth := mocks.NewAuthInterface(t)
+			mockUserQ := dbmocks.NewUserQuerier(t)
+			mockPwdHasher := authmocks.NewPasswordHasher(t)
 			if json.Valid([]byte(tc.reqBody)) {
 				if auth.IsValidEmail(getEmailFromBody(tc.reqBody)) {
-					mockAuth.On("ValidatePassword", getPasswordFromBody(tc.reqBody)).Return(tc.validPasswordError)
 					if tc.validPasswordError == nil {
-						mockAuth.On("HashPassword", getPasswordFromBody(tc.reqBody)).Return(tc.hashPasswordOutput, tc.hashPasswordError)
+						mockPwdHasher.On("HashPassword", getPasswordFromBody(tc.reqBody)).Return(tc.hashPasswordOutput, tc.hashPasswordError)
 						if tc.hashPasswordError == nil {
-							mockQ.On("CreateUser", mock.Anything, mock.MatchedBy(func(params database.CreateUserParams) bool {
+							mockUserQ.On("CreateUser", mock.Anything, mock.MatchedBy(func(params database.CreateUserParams) bool {
 								expected := database.CreateUserParams{
 									Email:          getEmailFromBody(tc.reqBody),
 									HashedPassword: tc.hashPasswordOutput,
@@ -117,10 +116,8 @@ func TestAddUserHandler(t *testing.T) {
 					}
 				}
 			}
-			userSvc := user.NewUserService(mockQ, mockAuth)
-			h := &handlers.Handler{
-				UserService: userSvc,
-			}
+			userSvc := user.NewUserService(mockUserQ, mockPwdHasher)
+			h := NewHandler(userSvc)
 			req := httptest.NewRequest(http.MethodPost, "/signup", bytes.NewBufferString(tc.reqBody))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
@@ -140,8 +137,8 @@ func TestAddUserHandler(t *testing.T) {
 					t.Errorf("response mismatch (-want, +got):\n%s", diff)
 				}
 			}
-			mockQ.AssertExpectations(t)
-			mockAuth.AssertExpectations(t)
+			mockUserQ.AssertExpectations(t)
+			mockPwdHasher.AssertExpectations(t)
 		})
 	}
 }

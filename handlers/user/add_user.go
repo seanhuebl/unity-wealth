@@ -1,4 +1,4 @@
-package handlers
+package user
 
 import (
 	"net/http"
@@ -17,7 +17,7 @@ func (h *Handler) AddUser(ctx *gin.Context) {
 		})
 		return
 	}
-	if err := h.UserService.SignUp(ctx, input); err != nil {
+	if err := h.userService.SignUp(ctx, input); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})

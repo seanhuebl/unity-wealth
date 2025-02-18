@@ -1,19 +1,27 @@
 package handlers
 
 import (
-	"github.com/seanhuebl/unity-wealth/internal/interfaces"
-	"github.com/seanhuebl/unity-wealth/internal/services/auth"
-	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
-	"github.com/seanhuebl/unity-wealth/internal/services/user"
+	"github.com/seanhuebl/unity-wealth/handlers/auth"
+	"github.com/seanhuebl/unity-wealth/handlers/category"
+	"github.com/seanhuebl/unity-wealth/handlers/common"
+	"github.com/seanhuebl/unity-wealth/handlers/transaction"
+	"github.com/seanhuebl/unity-wealth/handlers/user"
 )
 
-type Handler struct {
-	queries            interfaces.Querier
-	transactionService *transaction.TransactionService
-	authService        *auth.AuthService
-	UserService        *user.UserService
+type Handlers struct {
+	authHandler   *auth.Handler
+	catHandler    *category.Handler
+	commonHandler *common.Handler
+	txHandler     *transaction.Handler
+	userHandler   *user.Handler
 }
 
-func NewHandler(queries interfaces.Querier, txnSvc *transaction.TransactionService, authSvc *auth.AuthService, userSvc *user.UserService) *Handler {
-	return &Handler{queries: queries, transactionService: txnSvc, authService: authSvc, UserService: userSvc}
+func NewHandlers(authHandler *auth.Handler, catHandler *category.Handler, commonHandler *common.Handler, txHandler *transaction.Handler, userHandler *user.Handler) *Handlers {
+	return &Handlers{
+		authHandler:   authHandler,
+		catHandler:    catHandler,
+		commonHandler: commonHandler,
+		txHandler:     txHandler,
+		userHandler:   userHandler,
+	}
 }

@@ -1,4 +1,4 @@
-package handlers
+package common
 
 import (
 	"net/http"
@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func health(ctx *gin.Context) {
+func (h *Handler) Health(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"status": "ok",
 	})

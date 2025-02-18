@@ -1,4 +1,4 @@
-package handlers
+package transaction
 
 import (
 	"net/http"
@@ -26,7 +26,7 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 		return
 	}
 
-	txn, err := h.transactionService.CreateTransaction(ctx.Request.Context(), userID.String(), req)
+	txn, err := h.txSvc.CreateTransaction(ctx.Request.Context(), userID.String(), req)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to create transaction",
@@ -34,7 +34,7 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 		return
 	}
 
-	response := h.transactionService.ConvertToResponse(txn)
+	response := h.txSvc.ConvertToResponse(txn)
 
 	ctx.JSON(http.StatusCreated, gin.H{
 		"data": response,
@@ -56,7 +56,7 @@ func (h *Handler) GetTransactionsByUserID(ctx *gin.Context) {
 	pageSize := int64(50)
 
 	transactions, nextCursorDate, nextCursorID, hasMoreData, err :=
-		h.transactionService.ListUserTransactions(ctx.Request.Context(), userID, &cursorDate, &cursorID, pageSize)
+		h.txSvc.ListUserTransactions(ctx.Request.Context(), userID, &cursorDate, &cursorID, pageSize)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "unable to get transactions",
@@ -86,7 +86,7 @@ func (h *Handler) GetTransactionByID(ctx *gin.Context) {
 
 	id := ctx.Param("id")
 
-	txn, err := h.transactionService.GetTransactionByID(ctx.Request.Context(), userID.String(), id)
+	txn, err := h.txSvc.GetTransactionByID(ctx.Request.Context(), userID.String(), id)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "unable to get transaction",
@@ -95,7 +95,7 @@ func (h *Handler) GetTransactionByID(ctx *gin.Context) {
 
 	}
 
-	response := h.transactionService.ConvertToResponse(txn)
+	response := h.txSvc.ConvertToResponse(txn)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"data": response,
@@ -128,7 +128,7 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 		return
 	}
 
-	txn, err := h.transactionService.UpdateTransaction(ctx.Request.Context(), id, userID.String(), req)
+	txn, err := h.txSvc.UpdateTransaction(ctx.Request.Context(), id, userID.String(), req)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to update transaction",
@@ -136,7 +136,7 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 		return
 	}
 
-	response := h.transactionService.ConvertToResponse(txn)
+	response := h.txSvc.ConvertToResponse(txn)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"data": response,
@@ -160,7 +160,7 @@ func (h *Handler) DeleteTransaction(ctx *gin.Context) {
 		return
 	}
 
-	err = h.transactionService.DeleteTransaction(ctx.Request.Context(), id, userID.String())
+	err = h.txSvc.DeleteTransaction(ctx.Request.Context(), id, userID.String())
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "error deleting transaction",

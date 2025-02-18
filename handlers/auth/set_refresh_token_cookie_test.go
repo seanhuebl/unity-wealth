@@ -1,4 +1,4 @@
-package handlers
+package auth
 
 import (
 	"net/http"
@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/seanhuebl/unity-wealth/handlers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -66,7 +65,7 @@ func TestSetRefreshTokenCookie(t *testing.T) {
 			ctx, _ := gin.CreateTestContext(recorder)
 
 			// Call the function
-			handlers.SetRefreshTokenCookie(ctx, tt.refreshToken)
+			SetRefreshTokenCookie(ctx, tt.refreshToken)
 
 			// Get the cookie from the response
 			result := recorder.Result()

@@ -1,4 +1,4 @@
-package handlers
+package category
 
 import (
 	"encoding/json"
@@ -11,7 +11,6 @@ import (
 	"github.com/go-redis/redismock/v8"
 	"github.com/google/go-cmp/cmp"
 	"github.com/seanhuebl/unity-wealth/cache"
-	"github.com/seanhuebl/unity-wealth/handlers"
 )
 
 // TestGetCategories is a table-driven test for the GetCategories handler.
@@ -96,7 +95,7 @@ func TestGetCategories(t *testing.T) {
 			req, _ := http.NewRequest("GET", "/categories", nil)
 			c.Request = req
 
-			h := handlers.NewHandler(nil, nil, nil, nil)
+			h := NewHandler()
 
 			// Call the handler.
 			h.GetCategories(c)

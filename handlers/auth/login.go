@@ -1,4 +1,4 @@
-package handlers
+package auth
 
 import (
 	"net/http"
@@ -16,7 +16,7 @@ func (h *Handler) Login(ctx *gin.Context) {
 		return
 	}
 
-	loginResp, err := h.authService.Login(ctx.Request.Context(), input)
+	loginResp, err := h.authSvc.Login(ctx.Request.Context(), input)
 	if err != nil {
 		// Return a generic error message for the client.
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "login failed"})
