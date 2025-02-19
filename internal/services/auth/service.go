@@ -131,7 +131,6 @@ func (a *AuthService) validateCredentials(ctx context.Context, input LoginInput)
 }
 
 func (a *AuthService) handleDeviceInfo(ctx context.Context, deviceQ database.DeviceQuerier, tokenQ database.TokenQuerier, userID uuid.UUID, info DeviceInfo) (uuid.UUID, error) {
-	// Try to fetch an existing device record for this user with matching attributes.
 	foundDevice, err := deviceQ.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
 		UserID:         userID.String(),
 		DeviceType:     info.DeviceType,
@@ -141,7 +140,6 @@ func (a *AuthService) handleDeviceInfo(ctx context.Context, deviceQ database.Dev
 		OsVersion:      info.OsVersion,
 	})
 	if err != nil {
-		// If no device record exists, create one.
 		if errors.Is(err, sql.ErrNoRows) {
 			newDeviceID, err := deviceQ.CreateDeviceInfo(ctx, database.CreateDeviceInfoParams{
 				ID:             uuid.NewString(),
@@ -160,13 +158,11 @@ func (a *AuthService) handleDeviceInfo(ctx context.Context, deviceQ database.Dev
 		return uuid.Nil, fmt.Errorf("failed to fetch device info: %w", err)
 	}
 
-	// If found, parse the device ID.
 	deviceID, err := uuid.Parse(foundDevice)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to parse device ID: %w", err)
 	}
 
-	// Revoke any existing tokens for this device.
 	if err := tokenQ.RevokeToken(ctx, database.RevokeTokenParams{
 		RevokedAt:    sql.NullTime{Time: time.Now(), Valid: true},
 		UserID:       userID.String(),
@@ -255,9 +251,7 @@ func parseUserAgent(userAgent string) DeviceInfo {
 	}
 }
 
-// isValidDeviceInfo checks that the device info meets basic criteria.
 func isValidDeviceInfo(info DeviceInfo) bool {
-	// Define valid device types (case-insensitive).
 	validDeviceTypes := map[string]bool{
 		"desktop": true,
 		"mobile":  true,
@@ -265,11 +259,9 @@ func isValidDeviceInfo(info DeviceInfo) bool {
 	if !validDeviceTypes[strings.ToLower(info.DeviceType)] {
 		return false
 	}
-	// Ensure that essential fields are not empty.
 	if info.Browser == "" || info.Os == "" {
 		return false
 	}
-	// Optionally, validate version formats.
 	if info.BrowserVersion != "" && !isValidVersion(info.BrowserVersion) {
 		return false
 	}
@@ -279,14 +271,12 @@ func isValidDeviceInfo(info DeviceInfo) bool {
 	return true
 }
 
-// isValidVersion uses a regex to validate version strings.
 func isValidVersion(version string) bool {
 	versionRegex := `^\d+(\.\d+)*$`
 	matched, _ := regexp.MatchString(versionRegex, version)
 	return matched
 }
 
-// sanitizeInput trims whitespace and enforces length limits.
 func sanitizeInput(input string) string {
 	input = strings.TrimSpace(input)
 	if len(input) > 100 {
