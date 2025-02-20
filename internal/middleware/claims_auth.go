@@ -6,15 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/seanhuebl/unity-wealth/helpers"
-)
-
-type contextKey string
-
-const (
-	userIDKey  contextKey = "userID"
-	claimsKey  contextKey = "claims"
-	requestKey contextKey = "httpRequest"
+	"github.com/seanhuebl/unity-wealth/internal/constants"
+	"github.com/seanhuebl/unity-wealth/internal/helpers"
 )
 
 func (m *Middleware) ClaimsAuthMiddleware() gin.HandlerFunc {
@@ -35,13 +28,13 @@ func (m *Middleware) ClaimsAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		ctx.Set(string(claimsKey), claims)
-		ctx.Set(string(userIDKey), userID)
+		ctx.Set(string(constants.ClaimsKey), claims)
+		ctx.Set(string(constants.UserIDKey), userID)
 
-		ctx.Request = ctx.Request.WithContext(context.WithValue(ctx.Request.Context(), claimsKey, claims))
-		ctx.Request = ctx.Request.WithContext(context.WithValue(ctx.Request.Context(), userIDKey, userID))
+		ctx.Request = ctx.Request.WithContext(context.WithValue(ctx.Request.Context(), constants.ClaimsKey, claims))
+		ctx.Request = ctx.Request.WithContext(context.WithValue(ctx.Request.Context(), constants.UserIDKey, userID))
 		// Store the request in the standard context.
-		ctx.Request = ctx.Request.WithContext(context.WithValue(ctx.Request.Context(), requestKey, ctx.Request))
+		ctx.Request = ctx.Request.WithContext(context.WithValue(ctx.Request.Context(), constants.RequestKey, ctx.Request))
 		ctx.Next()
 	}
 }
