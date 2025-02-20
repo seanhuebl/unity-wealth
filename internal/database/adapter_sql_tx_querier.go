@@ -6,16 +6,16 @@ import (
 )
 
 type RealSqlTxQuerier struct {
-	q *Queries
+	q SqlTransactionalQuerier
 }
 
-func NewRealSqlTxQuerier(q *Queries) SqlTxQuerier {
+func NewRealSqlTxQuerier(q SqlTransactionalQuerier) SqlTxQuerier {
 	return &RealSqlTxQuerier{
 		q: q,
 	}
 }
 
-func (rst *RealSqlTxQuerier) WithTx(tx *sql.Tx) *Queries {
+func (rst *RealSqlTxQuerier) WithTx(tx *sql.Tx) SqlTransactionalQuerier {
 	return rst.q.WithTx(tx)
 }
 

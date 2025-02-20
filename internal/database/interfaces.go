@@ -33,6 +33,14 @@ type TransactionQuerier interface {
 }
 
 type SqlTxQuerier interface {
-	WithTx(tx *sql.Tx) *Queries
+	WithTx(tx *sql.Tx) SqlTransactionalQuerier
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+}
+
+type SqlTransactionalQuerier interface {
+	SqlTxQuerier
+	DeviceQuerier
+	TokenQuerier
+	TransactionQuerier
+	UserQuerier
 }

@@ -3,10 +3,10 @@ package database
 import "context"
 
 type RealDeviceQuerier struct {
-	q *Queries
+	q SqlTransactionalQuerier
 }
 
-func NewRealDevicequerier(q *Queries) DeviceQuerier {
+func NewRealDevicequerier(q SqlTransactionalQuerier) DeviceQuerier {
 	return &RealDeviceQuerier{
 		q: q,
 	}

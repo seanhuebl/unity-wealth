@@ -47,19 +47,19 @@ func (_m *SqlTxQuerier) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.
 }
 
 // WithTx provides a mock function with given fields: tx
-func (_m *SqlTxQuerier) WithTx(tx *sql.Tx) *database.Queries {
+func (_m *SqlTxQuerier) WithTx(tx *sql.Tx) database.SqlTransactionalQuerier {
 	ret := _m.Called(tx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for WithTx")
 	}
 
-	var r0 *database.Queries
-	if rf, ok := ret.Get(0).(func(*sql.Tx) *database.Queries); ok {
+	var r0 database.SqlTransactionalQuerier
+	if rf, ok := ret.Get(0).(func(*sql.Tx) database.SqlTransactionalQuerier); ok {
 		r0 = rf(tx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*database.Queries)
+			r0 = ret.Get(0).(database.SqlTransactionalQuerier)
 		}
 	}
 

@@ -15,6 +15,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	authmocks "github.com/seanhuebl/unity-wealth/internal/mocks/auth"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -65,15 +66,23 @@ func TestLogin(t *testing.T) {
 
 			dummyTx := &sql.Tx{}
 
-			dummyQueries := dbmocks.NewDBTX(t)
+			dummyQueries := dbmocks.NewSqlTransactionalQuerier(t)
 
 			mockUserQ.On("GetUserByEmail", ctx.Request.Context(), tc.input.Email).Return(dummyUserRow, nil)
+
 			mockSqlTxQ.On("BeginTx", ctx.Request.Context(), (*sql.TxOptions)(nil)).Return(dummyTx, nil)
 			mockSqlTxQ.On("WithTx", dummyTx).Return(dummyQueries)
+
 			mockHasher.On("HashPassword", "refresh").Return("hashedrefresh")
 			mockHasher.On("CheckPasswordHash", tc.input.Password, dummyUserRow.HashedPassword).Return(nil)
+
 			mockTokenGen.On("MakeJWT", validUserID, 15*time.Minute).Return("JWT", nil)
 			mockTokenGen.On("MakeRefreshToken").Return("refresh", nil)
+
+			dummyQueries.On("GetDeviceInfoByUser", ctx.Request.Context(), mock.Anything).Return("deviceid", nil)
+			dummyQueries.On("CreateDeviceInfo", ctx.Request.Context(), mock.Anything).Return("deviceid", nil)
+			dummyQueries.On("RevokeToken", ctx.Request.Context(), mock.Anything).Return(nil)
+			dummyQueries.On("CreateRefreshToken", ctx.Request.Context(), mock.Anything).Return(nil)
 
 			svc := NewAuthService(mockSqlTxQ, mockUserQ, mockTokenGen, mockExtractor, mockHasher)
 			response, err := svc.Login(ctx.Request.Context(), tc.input)

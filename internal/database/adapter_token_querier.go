@@ -5,10 +5,10 @@ import (
 )
 
 type RealTokenQuerier struct {
-	q *Queries
+	q SqlTransactionalQuerier
 }
 
-func NewRealTokenQuerier(q *Queries) TokenQuerier {
+func NewRealTokenQuerier(q SqlTransactionalQuerier) TokenQuerier {
 	return &RealTokenQuerier{
 		q: q,
 	}

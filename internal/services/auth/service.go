@@ -12,8 +12,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mssola/user_agent"
-	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/helpers"
 )
 
 type AuthService struct {

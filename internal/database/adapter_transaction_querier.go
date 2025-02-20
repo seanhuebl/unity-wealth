@@ -3,10 +3,10 @@ package database
 import "context"
 
 type RealTransactionQuerier struct {
-	q *Queries
+	q SqlTransactionalQuerier
 }
 
-func NewRealTransactionQuerier(q *Queries) TransactionQuerier {
+func NewRealTransactionQuerier(q SqlTransactionalQuerier) TransactionQuerier {
 	return &RealTransactionQuerier{
 		q: q,
 	}
