@@ -47,10 +47,10 @@ func main() {
 	tokenGen := auth.NewRealTokenGenerator(cfg.TokenSecret, auth.TokenType(os.Getenv("TOKEN_TYPE")))
 	tokenExtract := auth.NewRealTokenExtractor()
 	pwdHasher := auth.NewRealPwdHasher()
-
-	sqlTxQ := database.NewRealSqlTxQuerier(cfg.Queries)
+	transactionalQ := database.NewRealTransactionalQuerier(cfg.Queries)
+	sqlTxQ := database.NewRealSqlTxQuerier(transactionalQ)
 	//tokenQ := database.NewRealTokenQuerier(cfg.Queries)
-	userQ := database.NewRealUserQuerier(cfg.Queries)
+	userQ := database.NewRealUserQuerier(transactionalQ)
 
 	authSvc := auth.NewAuthService(sqlTxQ, userQ, tokenGen, tokenExtract, pwdHasher)
 
@@ -60,7 +60,7 @@ func main() {
 		log.Printf("unable to warm cache: %v", err)
 	}
 	router := gin.Default()
-	txQ := database.NewRealTransactionQuerier(cfg.Queries)
+	txQ := database.NewRealTransactionQuerier(transactionalQ)
 	txnSvc := transaction.NewTransactionService(txQ)
 
 	// Initialize handlers

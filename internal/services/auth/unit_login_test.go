@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
@@ -21,6 +22,7 @@ import (
 
 func TestLogin(t *testing.T) {
 	validUserID := uuid.New()
+	validDeviceID := uuid.New()
 	dummyUserRow := database.GetUserByEmailRow{
 		ID:             validUserID.String(),
 		HashedPassword: "hashedpassword",
@@ -31,6 +33,7 @@ func TestLogin(t *testing.T) {
 		expectedResponse       LoginResponse
 		loginError             error
 		expectedErrorSubstring string
+		deviceFound            bool
 	}{
 		{
 			name: "login successful",
@@ -45,6 +48,7 @@ func TestLogin(t *testing.T) {
 			},
 			loginError:             nil,
 			expectedErrorSubstring: "",
+			deviceFound:            true,
 		},
 	}
 	for _, tc := range tests {
@@ -54,7 +58,7 @@ func TestLogin(t *testing.T) {
 			w := httptest.NewRecorder()
 			ctx, _ := gin.CreateTestContext(w)
 			req, _ := http.NewRequest("GET", "/", nil)
-			req.Header.Set("X-Device-info", "os=Android; os_version=11; device_type=Mobile; browser=Chrome; browser_version=100.0")
+			req.Header.Set("X-Device-Info", "os=Android; os_version=11; device_type=Mobile; browser=Chrome; browser_version=100.0")
 			reqWithCtx := req.WithContext(context.WithValue(req.Context(), constants.RequestKey, req))
 
 			ctx.Request = reqWithCtx
@@ -64,26 +68,36 @@ func TestLogin(t *testing.T) {
 			mockExtractor := authmocks.NewTokenExtractor(t)
 			mockHasher := authmocks.NewPasswordHasher(t)
 
-			dummyTx := &sql.Tx{}
+			db, sqlMock, err := sqlmock.New()
+			require.NoError(t, err)
+
+			sqlMock.ExpectBegin()
+			sqlMock.ExpectCommit()
+
+			dummyTx, err := db.Begin()
+			require.NoError(t, err)
 
 			dummyQueries := dbmocks.NewSqlTransactionalQuerier(t)
 
 			mockUserQ.On("GetUserByEmail", ctx.Request.Context(), tc.input.Email).Return(dummyUserRow, nil)
 
-			mockSqlTxQ.On("BeginTx", ctx.Request.Context(), (*sql.TxOptions)(nil)).Return(dummyTx, nil)
+			mockSqlTxQ.On("BeginTx", ctx.Request.Context(), (*sql.TxOptions)(nil)).Return(dummyTx, nil).Once()
 			mockSqlTxQ.On("WithTx", dummyTx).Return(dummyQueries)
 
-			mockHasher.On("HashPassword", "refresh").Return("hashedrefresh")
+			mockHasher.On("HashPassword", "refresh").Return("hashedrefresh", nil)
 			mockHasher.On("CheckPasswordHash", tc.input.Password, dummyUserRow.HashedPassword).Return(nil)
 
 			mockTokenGen.On("MakeJWT", validUserID, 15*time.Minute).Return("JWT", nil)
 			mockTokenGen.On("MakeRefreshToken").Return("refresh", nil)
 
-			dummyQueries.On("GetDeviceInfoByUser", ctx.Request.Context(), mock.Anything).Return("deviceid", nil)
-			dummyQueries.On("CreateDeviceInfo", ctx.Request.Context(), mock.Anything).Return("deviceid", nil)
-			dummyQueries.On("RevokeToken", ctx.Request.Context(), mock.Anything).Return(nil)
-			dummyQueries.On("CreateRefreshToken", ctx.Request.Context(), mock.Anything).Return(nil)
+			if tc.deviceFound {
+				dummyQueries.On("GetDeviceInfoByUser", ctx.Request.Context(), mock.Anything).Return(validDeviceID.String(), nil)
+				dummyQueries.On("RevokeToken", ctx.Request.Context(), mock.Anything).Return(nil)
+			} else {
+				dummyQueries.On("CreateDeviceInfo", ctx.Request.Context(), mock.Anything).Return(validDeviceID.String(), nil)
+			}
 
+			dummyQueries.On("CreateRefreshToken", ctx.Request.Context(), mock.AnythingOfType("database.CreateRefreshTokenParams")).Return(nil)
 			svc := NewAuthService(mockSqlTxQ, mockUserQ, mockTokenGen, mockExtractor, mockHasher)
 			response, err := svc.Login(ctx.Request.Context(), tc.input)
 			if tc.expectedErrorSubstring != "" {
@@ -95,6 +109,7 @@ func TestLogin(t *testing.T) {
 					t.Errorf("response mismatch (-want +got)\n%s", diff)
 				}
 			}
+
 			mockSqlTxQ.AssertExpectations(t)
 			mockUserQ.AssertExpectations(t)
 			mockTokenGen.AssertExpectations(t)
