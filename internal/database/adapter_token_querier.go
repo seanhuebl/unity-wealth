@@ -21,3 +21,7 @@ func (rt *RealTokenQuerier) CreateRefreshToken(ctx context.Context, arg CreateRe
 func (rt *RealTokenQuerier) RevokeToken(ctx context.Context, arg RevokeTokenParams) error {
 	return rt.q.RevokeToken(ctx, arg)
 }
+
+func (rt *RealTokenQuerier) GetRefreshByUserAndDevice(ctx context.Context, arg GetRefreshByUserAndDeviceParams) (RefreshToken, error) {
+	return rt.q.GetRefreshByUserAndDevice(ctx, arg)
+}

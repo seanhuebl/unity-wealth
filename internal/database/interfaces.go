@@ -18,6 +18,7 @@ type DeviceQuerier interface {
 type TokenQuerier interface {
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) error
 	RevokeToken(ctx context.Context, arg RevokeTokenParams) error
+	GetRefreshByUserAndDevice(ctx context.Context, arg GetRefreshByUserAndDeviceParams) (RefreshToken, error)
 }
 
 type TransactionQuerier interface {

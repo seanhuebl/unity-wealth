@@ -3,31 +3,154 @@ package auth
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
+	_ "github.com/mattn/go-sqlite3"
+	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLoginIntegration(t *testing.T) {
+	tests := []struct {
+		name                 string
+		input                LoginInput
+		xDeviceInfo          DeviceInfo
+		hasErr               bool
+		expectedErrSubstring string
+	}{
+		{
+			name: "sucessful login, device found",
+			input: LoginInput{
+				Email:    "user@example.com",
+				Password: "Validpass1!",
+			},
+			xDeviceInfo: DeviceInfo{
+				DeviceType:     "Mobile",
+				Browser:        "Chrome",
+				BrowserVersion: "100.0",
+				Os:             "Android",
+				OsVersion:      "11",
+			},
+			hasErr: false,
+		},
+		{
+			name: "successful login, device not found",
+			input: LoginInput{
+				Email:    "user@example.com",
+				Password: "Validpass1!",
+			},
+			xDeviceInfo: DeviceInfo{
+				DeviceType:     "Desktop",
+				Browser:        "Chrome",
+				BrowserVersion: "100.0",
+				Os:             "Windows",
+				OsVersion:      "11",
+			},
+			hasErr: false,
+		},
+		{
+			name: "login failed, user not found",
+			input: LoginInput{
+				Email:    "notfound@example.com",
+				Password: "Validpass1!",
+			},
+			xDeviceInfo: DeviceInfo{
+				DeviceType:     "Mobile",
+				Browser:        "Chrome",
+				BrowserVersion: "100.0",
+				Os:             "Android",
+				OsVersion:      "11",
+			},
+			hasErr:               true,
+			expectedErrSubstring: "invalid email / password",
+		},
+		{
+			name: "login failed, incorrect password",
+			input: LoginInput{
+				Email:    "user@example.com",
+				Password: "Wrongpass1!",
+			},
+			xDeviceInfo: DeviceInfo{
+				DeviceType:     "Mobile",
+				Browser:        "Chrome",
+				BrowserVersion: "100.0",
+				Os:             "Android",
+				OsVersion:      "11",
+			},
+			hasErr:               true,
+			expectedErrSubstring: "invalid email / password",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
 
-	db, err := sql.Open("sqlite3", ":memory:")
-	require.NoError(t, err)
-	defer db.Close()
-	_, err = db.Exec("PRAGMA foeriegn_keys = ON")
-	require.NoError(t, err)
+			db, err := sql.Open("sqlite3", ":memory:")
+			require.NoError(t, err)
+			defer db.Close()
+			_, err = db.Exec("PRAGMA foreign_keys = ON")
+			require.NoError(t, err)
 
-	createSchema(t, db)
-	transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
+			createSchema(t, db)
+			transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
+			tokenQ := database.NewRealTokenQuerier(transactionalQ)
+			sqlTxQ := database.NewRealSqlTxQuerier(transactionalQ)
+			userQ := database.NewRealUserQuerier(transactionalQ)
+			tokeGen := NewRealTokenGenerator("tokensecret", TokenType("unity-wealth"))
+			pwdHasher := NewRealPwdHasher()
+			userID := seedTestUser(t, pwdHasher, userQ)
 
-	txQ := database.NewRealTransactionQuerier(transactionalQ)
-	userQ := database.NewRealUserQuerier(transactionalQ)
-	tokeGen := NewRealTokenGenerator("tokensecret", TokenType("unity-wealth"))
-	tokenExt := NewRealTokenExtractor()
-	pwdHasher := NewRealPwdHasher()
-	userID, userEmail, userHashedPW := seedTestUser(t, db, pwdHasher, userQ)
+			req := httptest.NewRequest("GET", "/", nil)
+			req.Header.Set("X-Device-Info", fmt.Sprintf("os=%s; os_version=%s; device_type=%s; browser=%s; browser_version=%s",
+				tc.xDeviceInfo.Os,
+				tc.xDeviceInfo.OsVersion,
+				tc.xDeviceInfo.DeviceType,
+				tc.xDeviceInfo.Browser,
+				tc.xDeviceInfo.BrowserVersion,
+			))
+			ctx := context.WithValue(req.Context(), constants.RequestKey, req)
 
+			svc := NewAuthService(sqlTxQ, userQ, tokeGen, nil, pwdHasher)
+			response, err := svc.Login(ctx, tc.input)
+			if !tc.hasErr {
+				require.NoError(t, err)
+				if diff := cmp.Diff(userID, response.UserID); diff != "" {
+					t.Errorf("response mismatch (-want +got)\n%s", diff)
+				}
+				require.NotEmpty(t, response.JWT)
+				require.NotEmpty(t, response.RefreshToken)
+				deviceID, err := transactionalQ.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
+					UserID:         userID.String(),
+					DeviceType:     tc.xDeviceInfo.DeviceType,
+					Browser:        tc.xDeviceInfo.Browser,
+					BrowserVersion: tc.xDeviceInfo.BrowserVersion,
+					Os:             tc.xDeviceInfo.Os,
+					OsVersion:      tc.xDeviceInfo.OsVersion,
+				})
+				require.NoError(t, err)
+				getRefreshTokenEntry, err := tokenQ.GetRefreshByUserAndDevice(ctx, database.GetRefreshByUserAndDeviceParams{
+					UserID:       userID.String(),
+					DeviceInfoID: deviceID,
+				})
+
+				require.NoError(t, err)
+				require.NotNil(t, getRefreshTokenEntry)
+				err = svc.pwdHasher.CheckPasswordHash(response.RefreshToken, getRefreshTokenEntry.TokenHash)
+				require.NoError(t, err)
+				_, err = svc.tokenGen.ValidateJWT(response.JWT)
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				if diff := cmp.Diff(err.Error(), tc.expectedErrSubstring); diff != "" {
+					t.Errorf("error mismatch (-want +got)\n%s", diff)
+				}
+			}
+		})
+	}
 }
 
 // Helpers
@@ -81,7 +204,7 @@ func createSchema(t *testing.T, db *sql.DB) {
 	require.NoError(t, err)
 }
 
-func seedTestUser(t *testing.T, db *sql.DB, hasher PasswordHasher, userQ database.UserQuerier) (uuid.UUID, string, string) {
+func seedTestUser(t *testing.T, hasher PasswordHasher, userQ database.UserQuerier) uuid.UUID {
 	password := "Validpass1!"
 	email := "user@example.com"
 	userID := uuid.New()
@@ -94,5 +217,5 @@ func seedTestUser(t *testing.T, db *sql.DB, hasher PasswordHasher, userQ databas
 		HashedPassword: hashedPwd,
 	})
 	require.NoError(t, err)
-	return userID, email, hashedPwd
+	return userID
 }

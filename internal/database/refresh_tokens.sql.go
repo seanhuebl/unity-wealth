@@ -48,6 +48,34 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 	return err
 }
 
+const getRefreshByUserAndDevice = `-- name: GetRefreshByUserAndDevice :one
+SELECT id, token_hash, created_at, updated_at, expires_at, revoked_at, user_id, device_info_id
+FROM refresh_tokens
+WHERE user_id = ?1
+    AND device_info_id = ?2
+`
+
+type GetRefreshByUserAndDeviceParams struct {
+	UserID       string
+	DeviceInfoID string
+}
+
+func (q *Queries) GetRefreshByUserAndDevice(ctx context.Context, arg GetRefreshByUserAndDeviceParams) (RefreshToken, error) {
+	row := q.db.QueryRowContext(ctx, getRefreshByUserAndDevice, arg.UserID, arg.DeviceInfoID)
+	var i RefreshToken
+	err := row.Scan(
+		&i.ID,
+		&i.TokenHash,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.UserID,
+		&i.DeviceInfoID,
+	)
+	return i, err
+}
+
 const revokeToken = `-- name: RevokeToken :exec
 UPDATE refresh_tokens
 SET revoked_at = ?1

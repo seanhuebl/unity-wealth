@@ -32,6 +32,34 @@ func (_m *TokenQuerier) CreateRefreshToken(ctx context.Context, arg database.Cre
 	return r0
 }
 
+// GetRefreshByUserAndDevice provides a mock function with given fields: ctx, arg
+func (_m *TokenQuerier) GetRefreshByUserAndDevice(ctx context.Context, arg database.GetRefreshByUserAndDeviceParams) (database.RefreshToken, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRefreshByUserAndDevice")
+	}
+
+	var r0 database.RefreshToken
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, database.GetRefreshByUserAndDeviceParams) (database.RefreshToken, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, database.GetRefreshByUserAndDeviceParams) database.RefreshToken); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Get(0).(database.RefreshToken)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, database.GetRefreshByUserAndDeviceParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // RevokeToken provides a mock function with given fields: ctx, arg
 func (_m *TokenQuerier) RevokeToken(ctx context.Context, arg database.RevokeTokenParams) error {
 	ret := _m.Called(ctx, arg)
