@@ -75,6 +75,9 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, txnID, userI
 		ID:     txnID,
 		UserID: userID,
 	}); err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("no transaction found: %w", err)
+		}
 		return fmt.Errorf("error deleting transaction: %w", err)
 	}
 	return nil
