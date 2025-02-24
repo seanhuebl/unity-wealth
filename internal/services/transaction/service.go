@@ -53,6 +53,9 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, txnID, userI
 		ID:                 txnID,
 	})
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("transaction not found: %w", err)
+		}
 		return nil, fmt.Errorf("error updating transaction: %w", err)
 	}
 	txn := Transaction{
