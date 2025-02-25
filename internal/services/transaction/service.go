@@ -86,6 +86,9 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, txnID, userI
 func (s *TransactionService) GetTransactionByID(ctx context.Context, userID, txnID string) (*Transaction, error) {
 	row, err := s.txQueries.GetUserTransactionByID(ctx, database.GetUserTransactionByIDParams{UserID: userID, ID: txnID})
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("transaction not found: %w", err)
+		}
 		return nil, fmt.Errorf("error getting transaction by user_id, ID pair: %w", err)
 	}
 	txn := Transaction{
@@ -99,7 +102,6 @@ func (s *TransactionService) GetTransactionByID(ctx context.Context, userID, txn
 	return &txn, nil
 }
 
-// Helpers
 func (s *TransactionService) ListUserTransactions(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -148,6 +150,7 @@ func (s *TransactionService) ListUserTransactions(
 	return transactions, nextCursorDate, nextCursorID, hasMoreData, nil
 }
 
+// Helpers
 func (s *TransactionService) convertFirstPageRow(row database.GetUserTransactionsFirstPageRow) Transaction {
 	return Transaction{
 		ID:               row.ID,
