@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/stretchr/testify/require"
 )
@@ -76,20 +77,7 @@ func TestCreateTxIntegration(t *testing.T) {
 }
 
 func createSchema(t *testing.T, db *sql.DB) {
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS users (
-		id TEXT PRIMARY KEY,
-		email TEXT NOT NULL UNIQUE,
-		hashed_password TEXT NOT NULL,
-		risk_preference TEXT NOT NULL DEFAULT 'LOW',
-		plan_type TEXT NOT NULL DEFAULT 'FREE',
-		stripe_customer_id TEXT,
-		stripe_subscription_id TEXT,
-		scholarship_flag INTEGER DEFAULT 0,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		);
-	`)
+	_, err := db.Exec(constants.CreateUsersTable)
 	require.NoError(t, err)
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS primary_categories (
@@ -108,20 +96,7 @@ func createSchema(t *testing.T, db *sql.DB) {
 		);
 	`)
 	require.NoError(t, err)
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS transactions (
-		id TEXT PRIMARY KEY,
-		user_id TEXT NOT NULL,
-		transaction_date TEXT NOT NULL,
-		merchant TEXT NOT NULL,
-		amount_cents INTEGER NOT NULL CHECK(amount_cents <> 0),
-		detailed_category_id INTEGER NOT NULL,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (user_id) REFERENCES users (id),
-		FOREIGN KEY (detailed_category_id) REFERENCES detailed_categories (id)
-		);
-	`)
+	_, err = db.Exec(constants.CreateTxTable)
 	require.NoError(t, err)
 }
 
