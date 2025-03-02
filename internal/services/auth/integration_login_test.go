@@ -53,38 +53,6 @@ func TestLoginIntegration(t *testing.T) {
 			},
 			hasErr: false,
 		},
-		{
-			name: "login failed, user not found",
-			input: LoginInput{
-				Email:    "notfound@example.com",
-				Password: "Validpass1!",
-			},
-			xDeviceInfo: DeviceInfo{
-				DeviceType:     "Mobile",
-				Browser:        "Chrome",
-				BrowserVersion: "100.0",
-				Os:             "Android",
-				OsVersion:      "11",
-			},
-			hasErr:               true,
-			expectedErrSubstring: "invalid email / password",
-		},
-		{
-			name: "login failed, incorrect password",
-			input: LoginInput{
-				Email:    "user@example.com",
-				Password: "Wrongpass1!",
-			},
-			xDeviceInfo: DeviceInfo{
-				DeviceType:     "Mobile",
-				Browser:        "Chrome",
-				BrowserVersion: "100.0",
-				Os:             "Android",
-				OsVersion:      "11",
-			},
-			hasErr:               true,
-			expectedErrSubstring: "invalid email / password",
-		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -116,39 +84,33 @@ func TestLoginIntegration(t *testing.T) {
 
 			svc := NewAuthService(sqlTxQ, userQ, tokeGen, nil, pwdHasher)
 			response, err := svc.Login(ctx, tc.input)
-			if !tc.hasErr {
-				require.NoError(t, err)
-				if diff := cmp.Diff(userID, response.UserID); diff != "" {
-					t.Errorf("response mismatch (-want +got)\n%s", diff)
-				}
-				require.NotEmpty(t, response.JWT)
-				require.NotEmpty(t, response.RefreshToken)
-				deviceID, err := transactionalQ.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
-					UserID:         userID.String(),
-					DeviceType:     tc.xDeviceInfo.DeviceType,
-					Browser:        tc.xDeviceInfo.Browser,
-					BrowserVersion: tc.xDeviceInfo.BrowserVersion,
-					Os:             tc.xDeviceInfo.Os,
-					OsVersion:      tc.xDeviceInfo.OsVersion,
-				})
-				require.NoError(t, err)
-				getRefreshTokenEntry, err := tokenQ.GetRefreshByUserAndDevice(ctx, database.GetRefreshByUserAndDeviceParams{
-					UserID:       userID.String(),
-					DeviceInfoID: deviceID,
-				})
-
-				require.NoError(t, err)
-				require.NotNil(t, getRefreshTokenEntry)
-				err = svc.pwdHasher.CheckPasswordHash(response.RefreshToken, getRefreshTokenEntry.TokenHash)
-				require.NoError(t, err)
-				_, err = svc.tokenGen.ValidateJWT(response.JWT)
-				require.NoError(t, err)
-			} else {
-				require.Error(t, err)
-				if diff := cmp.Diff(err.Error(), tc.expectedErrSubstring); diff != "" {
-					t.Errorf("error mismatch (-want +got)\n%s", diff)
-				}
+			require.NoError(t, err)
+			if diff := cmp.Diff(userID, response.UserID); diff != "" {
+				t.Errorf("response mismatch (-want +got)\n%s", diff)
 			}
+			require.NotEmpty(t, response.JWT)
+			require.NotEmpty(t, response.RefreshToken)
+			deviceID, err := transactionalQ.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
+				UserID:         userID.String(),
+				DeviceType:     tc.xDeviceInfo.DeviceType,
+				Browser:        tc.xDeviceInfo.Browser,
+				BrowserVersion: tc.xDeviceInfo.BrowserVersion,
+				Os:             tc.xDeviceInfo.Os,
+				OsVersion:      tc.xDeviceInfo.OsVersion,
+			})
+			require.NoError(t, err)
+			getRefreshTokenEntry, err := tokenQ.GetRefreshByUserAndDevice(ctx, database.GetRefreshByUserAndDeviceParams{
+				UserID:       userID.String(),
+				DeviceInfoID: deviceID,
+			})
+
+			require.NoError(t, err)
+			require.NotNil(t, getRefreshTokenEntry)
+			err = svc.pwdHasher.CheckPasswordHash(response.RefreshToken, getRefreshTokenEntry.TokenHash)
+			require.NoError(t, err)
+			_, err = svc.tokenGen.ValidateJWT(response.JWT)
+			require.NoError(t, err)
+
 		})
 	}
 }

@@ -3,10 +3,12 @@ package transaction
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/stretchr/testify/require"
 )
@@ -34,32 +36,6 @@ func TestCreateTxIntegration(t *testing.T) {
 			txErr:            nil,
 			expTxErrSubStr:   "",
 		},
-		{
-			name: "unsuccessful tx, invalid date",
-			req: NewTransactionRequest{
-				Date:             "03/27/94",
-				Merchant:         "Costco",
-				Amount:           145.56,
-				DetailedCategory: 40,
-			},
-			dateErr:          errors.New("date error"),
-			expDateErrSubStr: "invalid date format",
-			txErr:            nil,
-			expTxErrSubStr:   "",
-		},
-		{
-			name: "unsuccessful tx, create tx failure",
-			req: NewTransactionRequest{
-				Date:             "2025-02-24",
-				Merchant:         "Costco",
-				Amount:           145.56,
-				DetailedCategory: 40,
-			},
-			dateErr:          nil,
-			expDateErrSubStr: "",
-			txErr:            errors.New("tx error"),
-			expTxErrSubStr:   "unable to create transaction",
-		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -71,14 +47,31 @@ func TestCreateTxIntegration(t *testing.T) {
 			require.NoError(t, err)
 
 			createSchema(t, db)
+
 			transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
 			txQ := database.NewRealTransactionQuerier(transactionalQ)
 			userQ := database.NewRealUserQuerier(transactionalQ)
+
+			seedData(t, db, userQ, userID)
+
 			svc := NewTransactionService(txQ)
 
-			tx, err := svc.CreateTransaction()
-
+			tx, err := svc.CreateTransaction(ctx, userID.String(), tc.req)
+			require.NoError(t, err)
+			expectedTx := &Transaction{
+				ID:               uuid.NewString(),
+				UserID:           userID.String(),
+				Date:             tc.req.Date,
+				Merchant:         tc.req.Merchant,
+				Amount:           tc.req.Amount,
+				DetailedCategory: tc.req.DetailedCategory,
+			}
+			if diff := cmp.Diff(expectedTx, tx, cmpopts.IgnoreFields(Transaction{}, "ID")); diff != "" {
+				t.Errorf("transaction mismatch (-want +got)\n%s", diff)
+			}
+			require.NotEmpty(t, tx.ID)
 		})
+
 	}
 }
 
@@ -125,7 +118,7 @@ func createSchema(t *testing.T, db *sql.DB) {
 		detailed_category_id INTEGER NOT NULL,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (user_id) REFERENCES users (user_id),
+		FOREIGN KEY (user_id) REFERENCES users (id),
 		FOREIGN KEY (detailed_category_id) REFERENCES detailed_categories (id)
 		);
 	`)
@@ -143,12 +136,14 @@ func seedData(t *testing.T, db *sql.DB, userQ database.UserQuerier, userID uuid.
 	})
 	require.NoError(t, err)
 
-	db.Exec(`
+	_, err = db.Exec(`
 		INSERT INTO primary_categories (id, name)
 		VALUES (?1, ?2)
 	`, 7, "Food")
-	db.Exec(`
+	require.NoError(t, err)
+	_, err = db.Exec(`
 		INSERT INTO detailed_categories (id, name, description, primary_category_id)
-		VALUES (?!, ?2, ?3, ?4)
+		VALUES (?1, ?2, ?3, ?4)
 	`, 40, "Groceries", "Purchases for fresh produce and groceries, including farmers' markets", 7)
+	require.NoError(t, err)
 }

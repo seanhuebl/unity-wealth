@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     detailed_category_id INTEGER NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users (user_id),
+    FOREIGN KEY (user_id) REFERENCES users (id),
     FOREIGN KEY (detailed_category_id) REFERENCES detailed_categories (id)
 );
 -- +goose Down

@@ -27,6 +27,7 @@ func NewTransaction(id, userID, date, merchant string, amount float64, detailedC
 	return &Transaction{
 		ID:               id,
 		UserID:           userID,
+		Date:             date,
 		Merchant:         merchant,
 		Amount:           amount,
 		DetailedCategory: detailedCategory,
