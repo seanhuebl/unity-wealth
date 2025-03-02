@@ -3,6 +3,7 @@ package transaction
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -109,7 +110,10 @@ func (s *TransactionService) ListUserTransactions(
 	cursorID *string,
 	pageSize int64,
 ) (transactions []Transaction, nextCursorDate, nextCursorID string, hasMoreData bool, err error) {
-
+	if pageSize <= 0 {
+		err := errors.New("pageSize <= 0")
+		return nil, "", "", false, fmt.Errorf("pageSize must be a positive integer: %w", err)
+	}
 	transactions = make([]Transaction, 0, pageSize)
 	fetchSize := pageSize + 1
 	if cursorDate == nil || cursorID == nil {
@@ -127,6 +131,7 @@ func (s *TransactionService) ListUserTransactions(
 			ID:              *cursorID,
 			Limit:           fetchSize,
 		})
+
 		if err != nil {
 			return nil, "", "", false, fmt.Errorf("error loading next page: %w", err)
 		}
