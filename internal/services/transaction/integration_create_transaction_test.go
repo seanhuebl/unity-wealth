@@ -79,22 +79,9 @@ func TestCreateTxIntegration(t *testing.T) {
 func createSchema(t *testing.T, db *sql.DB) {
 	_, err := db.Exec(constants.CreateUsersTable)
 	require.NoError(t, err)
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS primary_categories (
-    	id INTEGER PRIMARY KEY,
-    	name TEXT NOT NULL
-		);
-	`)
+	_, err = db.Exec(constants.CreatePrimCatTable)
 	require.NoError(t, err)
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS detailed_categories (
-		id INTEGER PRIMARY KEY,
-		name TEXT NOT NULL,
-		description TEXT NOT NULL,
-		primary_category_id INTEGER NOT NULL,
-		FOREIGN KEY (primary_category_id) REFERENCES primary_categories (id) ON DELETE CASCADE
-		);
-	`)
+	_, err = db.Exec(constants.CreateDetCatTable)
 	require.NoError(t, err)
 	_, err = db.Exec(constants.CreateTxTable)
 	require.NoError(t, err)
