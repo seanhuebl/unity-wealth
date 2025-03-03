@@ -9,7 +9,6 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/stretchr/testify/require"
 )
@@ -47,13 +46,13 @@ func TestCreateTxIntegration(t *testing.T) {
 			_, err = db.Exec("PRAGMA foreign_keys = ON")
 			require.NoError(t, err)
 
-			createSchema(t, db)
+			CreateTestingSchema(t, db)
 
 			transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
 			txQ := database.NewRealTransactionQuerier(transactionalQ)
 			userQ := database.NewRealUserQuerier(transactionalQ)
 
-			seedData(t, db, userQ, userID)
+			seedCreateTxTestData(t, db, userQ, userID)
 
 			svc := NewTransactionService(txQ)
 
@@ -76,36 +75,7 @@ func TestCreateTxIntegration(t *testing.T) {
 	}
 }
 
-func createSchema(t *testing.T, db *sql.DB) {
-	_, err := db.Exec(constants.CreateUsersTable)
-	require.NoError(t, err)
-	_, err = db.Exec(constants.CreatePrimCatTable)
-	require.NoError(t, err)
-	_, err = db.Exec(constants.CreateDetCatTable)
-	require.NoError(t, err)
-	_, err = db.Exec(constants.CreateTxTable)
-	require.NoError(t, err)
-}
-
-func seedData(t *testing.T, db *sql.DB, userQ database.UserQuerier, userID uuid.UUID) {
-	hashedPassword := "hashedpwd"
-	email := "user@example.com"
-
-	err := userQ.CreateUser(context.Background(), database.CreateUserParams{
-		ID:             userID.String(),
-		Email:          email,
-		HashedPassword: hashedPassword,
-	})
-	require.NoError(t, err)
-
-	_, err = db.Exec(`
-		INSERT INTO primary_categories (id, name)
-		VALUES (?1, ?2)
-	`, 7, "Food")
-	require.NoError(t, err)
-	_, err = db.Exec(`
-		INSERT INTO detailed_categories (id, name, description, primary_category_id)
-		VALUES (?1, ?2, ?3, ?4)
-	`, 40, "Groceries", "Purchases for fresh produce and groceries, including farmers' markets", 7)
-	require.NoError(t, err)
+func seedCreateTxTestData(t *testing.T, db *sql.DB, userQ database.UserQuerier, userID uuid.UUID) {
+	SeedTestUser(t, userQ, userID)
+	SeedTestCategories(t, db)
 }
