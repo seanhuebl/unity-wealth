@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/helpers"
 )
 
 type TransactionService struct {
@@ -30,7 +31,7 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, userID strin
 		UserID:             tx.UserID,
 		TransactionDate:    tx.Date,
 		Merchant:           tx.Merchant,
-		AmountCents:        int64(tx.Amount * 100),
+		AmountCents:        helpers.ConvertToCents(req.Amount),
 		DetailedCategoryID: tx.DetailedCategory,
 	}); err != nil {
 		return nil, fmt.Errorf("unable to create transaction: %w", err)
@@ -48,7 +49,7 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, txnID, userI
 	txRow, err := s.txQueries.UpdateTransactionByID(ctx, database.UpdateTransactionByIDParams{
 		TransactionDate:    req.Date,
 		Merchant:           req.Merchant,
-		AmountCents:        int64(req.Amount * 100),
+		AmountCents:        helpers.ConvertToCents(req.Amount),
 		DetailedCategoryID: req.DetailedCategory,
 		UpdatedAt:          sql.NullTime{Time: time.Now(), Valid: true},
 		ID:                 txnID,
@@ -64,7 +65,7 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, txnID, userI
 		UserID:           userID,
 		Date:             txRow.TransactionDate,
 		Merchant:         txRow.Merchant,
-		Amount:           float64(txRow.AmountCents) / 100.0,
+		Amount:           helpers.CentsToDollars(txRow.AmountCents),
 		DetailedCategory: txRow.DetailedCategoryID,
 	}
 
@@ -97,7 +98,7 @@ func (s *TransactionService) GetTransactionByID(ctx context.Context, userID, txn
 		UserID:           row.UserID,
 		Date:             row.TransactionDate,
 		Merchant:         row.Merchant,
-		Amount:           float64(row.AmountCents) / 100.0,
+		Amount:           helpers.CentsToDollars(row.AmountCents),
 		DetailedCategory: row.DetailedCategoryID,
 	}
 	return &txn, nil
@@ -162,7 +163,7 @@ func (s *TransactionService) convertFirstPageRow(row database.GetUserTransaction
 		UserID:           row.UserID,
 		Date:             row.TransactionDate,
 		Merchant:         row.Merchant,
-		Amount:           float64(row.AmountCents) / 100.0,
+		Amount:           helpers.CentsToDollars(row.AmountCents),
 		DetailedCategory: row.DetailedCategoryID,
 	}
 }
@@ -173,7 +174,7 @@ func (s *TransactionService) convertPaginatedRow(row database.GetUserTransaction
 		UserID:           row.UserID,
 		Date:             row.TransactionDate,
 		Merchant:         row.Merchant,
-		Amount:           float64(row.AmountCents) / 100.0,
+		Amount:           helpers.CentsToDollars(row.AmountCents),
 		DetailedCategory: row.DetailedCategoryID,
 	}
 }
