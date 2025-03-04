@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,7 +56,7 @@ func SeedTestTransaction(t *testing.T, txQ database.TransactionQuerier, userID, 
 		UserID:             userID.String(),
 		TransactionDate:    req.Date,
 		Merchant:           req.Merchant,
-		AmountCents:        int64(req.Amount * 100.0),
+		AmountCents:        helpers.ConvertToCents(req.Amount),
 		DetailedCategoryID: req.DetailedCategory,
 	})
 	require.NoError(t, err)

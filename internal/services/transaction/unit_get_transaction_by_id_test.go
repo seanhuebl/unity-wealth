@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -62,7 +63,7 @@ func TestGetTransactionByID(t *testing.T) {
 				UserID:           expectedRow.UserID,
 				Date:             expectedRow.TransactionDate,
 				Merchant:         expectedRow.Merchant,
-				Amount:           float64(expectedRow.AmountCents) / 100.0,
+				Amount:           helpers.CentsToDollars(expectedRow.AmountCents),
 				DetailedCategory: expectedRow.DetailedCategoryID,
 			}
 
