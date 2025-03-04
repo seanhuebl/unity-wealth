@@ -44,7 +44,7 @@ SELECT id,
     detailed_category_id
 FROM transactions
 WHERE user_id = ?1
-ORDER BY transaction_date DESC,
+ORDER BY transaction_date ASC,
     id ASC
 LIMIT ?2;
 -- name: GetUserTransactionsPaginated :many
@@ -57,13 +57,13 @@ SELECT id,
 FROM transactions
 WHERE user_id = ?1
     AND (
-        transaction_date < ?2
+        transaction_date > ?2
         OR (
             transaction_date = ?2
             AND id < ?3
         )
     )
-ORDER BY transaction_date DESC,
+ORDER BY transaction_date ASC,
     id ASC
 LIMIT ?4;
 -- name: GetUserTransactionByID :one

@@ -62,16 +62,16 @@ func SeedTestTransaction(t *testing.T, txQ database.TransactionQuerier, userID, 
 	require.NoError(t, err)
 }
 
-func SeedMultipleTestTransactions(t *testing.T, txQ database.TransactionQuerier, userID, txID uuid.UUID, txns) {
+func SeedMultipleTestTransactions[T TxPageRow](t *testing.T, txQ database.TransactionQuerier, rows []T) {
 	ctx := context.Background()
-	for _, req := range *reqs {
+	for _, row := range rows {
 		err := txQ.CreateTransaction(ctx, database.CreateTransactionParams{
-			ID:                 txID.String(),
-			UserID:             userID.String(),
-			TransactionDate:    req.Date,
-			Merchant:           req.Merchant,
-			AmountCents:        helpers.ConvertToCents(req.Amount),
-			DetailedCategoryID: req.DetailedCategory,
+			ID:                 row.GetTxID().String(),
+			UserID:             row.GetUserID().String(),
+			TransactionDate:    row.GetTxDate(),
+			Merchant:           row.GetMerchant(),
+			AmountCents:        row.GetAmountCents(),
+			DetailedCategoryID: row.GetDetailedCatID(),
 		})
 		require.NoError(t, err)
 	}

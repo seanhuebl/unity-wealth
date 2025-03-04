@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/seanhuebl/unity-wealth/internal/database"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,9 +18,8 @@ func TestIntegrationListUserTransactions(t *testing.T) {
 	tests := []struct {
 		name                         string
 		userID                       uuid.UUID
-		cursorDate                   *string
+		isFirstPage                  bool
 		expectedCursorDate           string
-		cursorID                     *string
 		expectedHasMoreData          bool
 		pageSize                     int64
 		expectedPageSizeErrSubStr    string
@@ -33,9 +32,8 @@ func TestIntegrationListUserTransactions(t *testing.T) {
 		{
 			name:                       "first page, more data, success",
 			userID:                     uuid.New(),
-			cursorDate:                 nil,
+			isFirstPage:                true,
 			expectedCursorDate:         "2025-02-05",
-			cursorID:                   nil,
 			expectedHasMoreData:        true,
 			pageSize:                   5,
 			txSliceLength:              10,
@@ -45,9 +43,8 @@ func TestIntegrationListUserTransactions(t *testing.T) {
 		{
 			name:                       "first page, no extra data, success",
 			userID:                     uuid.New(),
-			cursorDate:                 nil,
+			isFirstPage:                true,
 			expectedCursorDate:         "",
-			cursorID:                   nil,
 			expectedHasMoreData:        false,
 			pageSize:                   5,
 			txSliceLength:              2,
@@ -57,9 +54,7 @@ func TestIntegrationListUserTransactions(t *testing.T) {
 		{
 			name:                         "paginated, more data, success",
 			userID:                       uuid.New(),
-			cursorDate:                   strPtr("2025-02-01"),
-			expectedCursorDate:           "2025-02-10",
-			cursorID:                     strPtr(uuid.NewString()),
+			expectedCursorDate:           "2025-02-11",
 			expectedHasMoreData:          true,
 			pageSize:                     10,
 			txSliceLength:                15,
@@ -69,9 +64,7 @@ func TestIntegrationListUserTransactions(t *testing.T) {
 		{
 			name:                         "paginated, no extra data, success",
 			userID:                       uuid.New(),
-			cursorDate:                   strPtr("2025-02-01"),
 			expectedCursorDate:           "",
-			cursorID:                     strPtr(uuid.NewString()),
 			expectedHasMoreData:          false,
 			pageSize:                     10,
 			txSliceLength:                7,
@@ -84,7 +77,6 @@ func TestIntegrationListUserTransactions(t *testing.T) {
 			fetchSize := tc.pageSize + 1
 			expectedTxs := make([]Transaction, 0)
 			ctx := context.Background()
-			txID := uuid.New()
 			db, err := sql.Open("sqlite3", ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
@@ -92,81 +84,71 @@ func TestIntegrationListUserTransactions(t *testing.T) {
 			require.NoError(t, err)
 
 			CreateTestingSchema(t, db)
+			transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
+			txQ := database.NewRealTransactionQuerier(transactionalQ)
+			userQ := database.NewRealUserQuerier(transactionalQ)
+			seedListUserTxTestData(t, db, userQ, tc.userID)
 
-			svc := NewTransactionService()
-
-			firstPageRows := generateFirstPageRows(tc.userID, tc.txSliceLength)
+			firstPageRows := integrationGenerateFirstPageRows(tc.userID, tc.txSliceLength)
 
 			if len(firstPageRows) > int(fetchSize) {
 				firstPageRows = firstPageRows[:fetchSize]
 			}
-			if tc.cursorDate == nil || tc.cursorID == nil {
-				mockTxQ.On("GetUserTransactionsFirstPage", ctx, mock.AnythingOfType("database.GetUserTransactionsFirstPageParams")).Return(firstPageRows, tc.getFirstPageErr).Maybe()
-				transactions, nextCursorDate, nextCursorID, hasMoreData, err := svc.ListUserTransactions(ctx, tc.userID, tc.cursorDate, tc.cursorID, tc.pageSize)
-				if tc.expectedPageSizeErrSubStr != "" {
-					require.Error(t, err)
-					require.Contains(t, err.Error(), tc.expectedPageSizeErrSubStr)
+			if tc.isFirstPage {
+				wrappedFirstPageRows := WrapFirstPageRows(firstPageRows)
+				SeedMultipleTestTransactions(t, txQ, wrappedFirstPageRows)
+				svc := NewTransactionService(txQ)
 
-				} else if tc.getFirstPageErr != nil {
-					require.Error(t, err)
-					require.Contains(t, err.Error(), tc.expectedFirstPageErrSubStr)
-					mockTxQ.AssertExpectations(t)
-				} else {
-					require.NoError(t, err)
-					if len(firstPageRows) > int(tc.pageSize) {
-						firstPageRows = firstPageRows[:tc.pageSize]
-					}
-					for _, row := range firstPageRows {
-						expectedTxs = append(expectedTxs, svc.convertFirstPageRow(row))
-					}
-					if hasMoreData == true {
-						require.NotEmpty(t, nextCursorID)
-					}
-					require.Equal(t, tc.expectedCursorDate, nextCursorDate)
-					require.Equal(t, tc.expectedHasMoreData, hasMoreData)
+				transactions, nextCursorDate, nextCursorID, hasMoreData, err := svc.ListUserTransactions(ctx, tc.userID, nil, nil, tc.pageSize)
+				require.NoError(t, err)
+				if len(firstPageRows) > int(tc.pageSize) {
+					firstPageRows = firstPageRows[:tc.pageSize]
+				}
+				for _, row := range firstPageRows {
+					expectedTxs = append(expectedTxs, svc.convertFirstPageRow(row))
+				}
+				if hasMoreData == true {
+					require.NotEmpty(t, nextCursorID)
+				}
+				require.Equal(t, tc.expectedCursorDate, nextCursorDate)
+				require.Equal(t, tc.expectedHasMoreData, hasMoreData)
 
-					if diff := cmp.Diff(expectedTxs, transactions); diff != "" {
-						t.Errorf("transaction slice mismatch (-want +got)\n%s", diff)
-					}
-					mockTxQ.AssertExpectations(t)
+				if diff := cmp.Diff(expectedTxs, transactions, cmpopts.IgnoreFields(Transaction{}, "ID")); diff != "" {
+					t.Errorf("transaction slice mismatch (-want +got)\n%s", diff)
 				}
 
 			} else {
-				nextRows := generatePaginatedRows(tc.userID, tc.txSliceLength)
+				nextRows := integrationGeneratePaginatedRows(tc.userID, tc.txSliceLength)
+				wrappedPaginatedRows := WrapPaginatedRows(nextRows)
+				SeedMultipleTestTransactions(t, txQ, wrappedPaginatedRows)
+
 				if len(nextRows) > int(fetchSize) {
 					nextRows = nextRows[:fetchSize]
 				}
-				mockTxQ.On("GetUserTransactionsPaginated", ctx, mock.AnythingOfType("database.GetUserTransactionsPaginatedParams")).Return(nextRows, tc.getTxPaginatedErr).Maybe()
-				transactions, nextCursorDate, nextCursorID, hasMoreData, err := svc.ListUserTransactions(ctx, tc.userID, tc.cursorDate, tc.cursorID, tc.pageSize)
-				if tc.expectedPageSizeErrSubStr != "" {
-					require.Error(t, err)
-					require.Contains(t, err.Error(), tc.expectedPageSizeErrSubStr)
-				} else if tc.getTxPaginatedErr != nil {
-					require.Error(t, err)
-					require.Contains(t, err.Error(), tc.expectedTxPaginatedErrSubStr)
-					mockTxQ.AssertExpectations(t)
-				} else {
-					require.NoError(t, err)
-					if len(nextRows) > int(tc.pageSize) {
-						nextRows = nextRows[:tc.pageSize]
-					}
-					for _, row := range nextRows {
-						expectedTxs = append(expectedTxs, svc.convertPaginatedRow(row))
-					}
-					if hasMoreData == true {
-						require.NotEmpty(t, nextCursorID)
-					}
-					require.Equal(t, tc.expectedCursorDate, nextCursorDate)
-					require.Equal(t, tc.expectedHasMoreData, hasMoreData)
+				svc := NewTransactionService(txQ)
+				cursorDate := wrappedPaginatedRows[0].GetTxDate()
+				cursorID := wrappedPaginatedRows[0].GetTxID().String()
+				transactions, nextCursorDate, nextCursorID, hasMoreData, err := svc.ListUserTransactions(ctx, tc.userID, &cursorDate, &cursorID, tc.pageSize)
+				fmt.Println(transactions)
+				require.NoError(t, err)
+				if len(nextRows) > int(tc.pageSize) {
+					nextRows = nextRows[:tc.pageSize]
+				}
+				for _, row := range nextRows {
+					expectedTxs = append(expectedTxs, svc.convertPaginatedRow(row))
 
-					if diff := cmp.Diff(expectedTxs, transactions); diff != "" {
-						t.Errorf("transaction slice mismatch (-want +got)\n%s", diff)
-					}
-					mockTxQ.AssertExpectations(t)
+				}
+				if hasMoreData == true {
+					require.NotEmpty(t, nextCursorID)
+				}
+				require.Equal(t, tc.expectedCursorDate, nextCursorDate)
+				require.Equal(t, tc.expectedHasMoreData, hasMoreData)
+				if diff := cmp.Diff(expectedTxs, transactions, cmpopts.IgnoreFields(Transaction{}, "ID")); diff != "" {
+					t.Errorf("transaction slice mismatch (-want +got)\n%s", diff)
 				}
 			}
-
 		})
+
 	}
 }
 
@@ -203,6 +185,7 @@ func integrationGeneratePaginatedRows(userID uuid.UUID, txSliceLength int) []dat
 	return rows
 }
 
-func integrationStrPtr(s string) *string {
-	return &s
+func seedListUserTxTestData(t *testing.T, db *sql.DB, userQ database.UserQuerier, userID uuid.UUID) {
+	SeedTestUser(t, userQ, userID)
+	SeedTestCategories(t, db)
 }
