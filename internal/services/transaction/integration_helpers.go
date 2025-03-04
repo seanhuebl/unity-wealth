@@ -61,3 +61,18 @@ func SeedTestTransaction(t *testing.T, txQ database.TransactionQuerier, userID, 
 	})
 	require.NoError(t, err)
 }
+
+func SeedMultipleTestTransactions(t *testing.T, txQ database.TransactionQuerier, userID, txID uuid.UUID, txns) {
+	ctx := context.Background()
+	for _, req := range *reqs {
+		err := txQ.CreateTransaction(ctx, database.CreateTransactionParams{
+			ID:                 txID.String(),
+			UserID:             userID.String(),
+			TransactionDate:    req.Date,
+			Merchant:           req.Merchant,
+			AmountCents:        helpers.ConvertToCents(req.Amount),
+			DetailedCategoryID: req.DetailedCategory,
+		})
+		require.NoError(t, err)
+	}
+}
