@@ -104,6 +104,7 @@ func TestIntegrationListUserTransactions(t *testing.T) {
 				if len(firstPageRows) > int(tc.pageSize) {
 					firstPageRows = firstPageRows[:tc.pageSize]
 				}
+
 				for _, row := range firstPageRows {
 					expectedTxs = append(expectedTxs, svc.convertFirstPageRow(row))
 				}
@@ -118,25 +119,27 @@ func TestIntegrationListUserTransactions(t *testing.T) {
 				}
 
 			} else {
-				nextRows := integrationGeneratePaginatedRows(tc.userID, tc.txSliceLength)
-				wrappedPaginatedRows := WrapPaginatedRows(nextRows)
+				paginatedRows := integrationGeneratePaginatedRows(tc.userID, tc.txSliceLength)
+				wrappedPaginatedRows := WrapPaginatedRows(paginatedRows)
 				SeedMultipleTestTransactions(t, txQ, wrappedPaginatedRows)
 
-				if len(nextRows) > int(fetchSize) {
-					nextRows = nextRows[:fetchSize]
+				if len(paginatedRows) > int(fetchSize) {
+					paginatedRows = paginatedRows[:fetchSize]
 				}
 				svc := NewTransactionService(txQ)
 				cursorDate := wrappedPaginatedRows[0].GetTxDate()
 				cursorID := wrappedPaginatedRows[0].GetTxID().String()
 				transactions, nextCursorDate, nextCursorID, hasMoreData, err := svc.ListUserTransactions(ctx, tc.userID, &cursorDate, &cursorID, tc.pageSize)
-				fmt.Println(transactions)
 				require.NoError(t, err)
-				if len(nextRows) > int(tc.pageSize) {
-					nextRows = nextRows[:tc.pageSize]
+				fmt.Println(len(paginatedRows))
+				if len(paginatedRows) > int(tc.pageSize) {
+					// Page size +1 because we are
+					// Simulating the behavior where the query fetches one extra row to determine if there’s more data
+					// Then we discard the first row (used as the cursor) and use the remaining rows as the expected transactions
+					paginatedRows = paginatedRows[:tc.pageSize+1]
 				}
-				for _, row := range nextRows {
-					expectedTxs = append(expectedTxs, svc.convertPaginatedRow(row))
-
+				for i := 1; i < len(paginatedRows); i++ {
+					expectedTxs = append(expectedTxs, svc.convertPaginatedRow(paginatedRows[i]))
 				}
 				if hasMoreData == true {
 					require.NotEmpty(t, nextCursorID)
