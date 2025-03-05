@@ -27,7 +27,7 @@ VALUES (
         ?4,
         ?5
     )
-`
+` // #nosec
 
 type CreateRefreshTokenParams struct {
 	ID           string
@@ -82,7 +82,7 @@ SET revoked_at = ?1
 WHERE user_id = ?2
     AND device_info_id = ?3
     AND revoked_at IS NULL
-`
+` // #nosec
 
 type RevokeTokenParams struct {
 	RevokedAt    sql.NullTime

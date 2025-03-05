@@ -46,6 +46,7 @@ func (r *RealTransactionalQuerier) RevokeToken(ctx context.Context, arg RevokeTo
 func (r *RealTransactionalQuerier) GetRefreshByUserAndDevice(ctx context.Context, arg GetRefreshByUserAndDeviceParams) (RefreshToken, error) {
 	return r.q.GetRefreshByUserAndDevice(ctx, arg)
 }
+
 // TransactionQuerier methods.
 func (r *RealTransactionalQuerier) CreateTransaction(ctx context.Context, arg CreateTransactionParams) error {
 	return r.q.CreateTransaction(ctx, arg)

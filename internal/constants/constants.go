@@ -79,5 +79,5 @@ const (
 		FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
 		FOREIGN KEY (device_info_id) REFERENCES device_info_logs (id) ON DELETE CASCADE
 		);
-	`
+	` // #nosec
 )
