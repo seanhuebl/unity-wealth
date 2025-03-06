@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +12,7 @@ import (
 func (h *Handler) NewTransaction(ctx *gin.Context) {
 	userID, err := helpers.GetUserID(ctx.Request.Context())
 	if err != nil {
+		fmt.Println(err)
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"error": "unauthorized",
 		})

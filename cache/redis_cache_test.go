@@ -1,4 +1,3 @@
-// cache_test.go
 package cache
 
 import (
@@ -13,7 +12,6 @@ import (
 
 	"github.com/go-redis/redismock/v8"
 	"github.com/google/go-cmp/cmp"
-	"github.com/seanhuebl/unity-wealth/cache"
 	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/internal/database" // package that provides New(db) returning the querier
 )
@@ -32,9 +30,9 @@ func setupSQLiteDB(setupFunc func(db *sql.DB) error) (*sql.DB, error) {
 }
 
 func TestWarmCategoriesCache_TableDriven(t *testing.T) {
-	// Save the original cache.RedisClient and restore it after tests.
-	origRedisClient := cache.RedisClient
-	defer func() { cache.RedisClient = origRedisClient }()
+	// Save the original RedisClient and restore it after tests.
+	origRedisClient := RedisClient
+	defer func() { RedisClient = origRedisClient }()
 
 	tests := []struct {
 		name                     string
@@ -180,9 +178,9 @@ func TestWarmCategoriesCache_TableDriven(t *testing.T) {
 				Queries:  database.New(db),
 			}
 
-			// Override the global cache.RedisClient with a redismock client.
+			// Override the global RedisClient with a redismock client.
 			mockRedis, mock := redismock.NewClientMock()
-			cache.RedisClient = mockRedis
+			RedisClient = mockRedis
 
 			ctx := context.Background()
 
@@ -230,7 +228,7 @@ func TestWarmCategoriesCache_TableDriven(t *testing.T) {
 			}
 
 			// Call the function under test.
-			err = cache.WarmCategoriesCache(cfg)
+			err = WarmCategoriesCache(cfg)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("expected error=%v, got error=%v", tc.wantErr, err)
 			}
