@@ -13,7 +13,7 @@ import (
 func GetUserID(ctx context.Context) (uuid.UUID, error) {
 	// First, try to get from Gin context.
 	if ginCtx, ok := ctx.(*gin.Context); ok {
-		if uid, exists := ginCtx.Get(string(constants.UserIDKey)); exists {
+		if uid, exists := ginCtx.Get(string(constants.UserIDKey)); exists && uid != nil && uid != uuid.Nil {
 			if userID, ok := uid.(uuid.UUID); ok {
 				return userID, nil
 			}

@@ -3,6 +3,7 @@ package transaction
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -44,6 +45,30 @@ func TestGetTxByID(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:               "unauthorized: user ID is uuid.NIL",
+			userID:             uuid.Nil,
+			txID:               uuid.NewString(),
+			userIDErr:          errors.New("user ID not found in context"),
+			expectedErr:        "unauthorized",
+			expectedStatusCode: http.StatusUnauthorized,
+		},
+		{
+			name:               "unauthorized: user ID not UUID",
+			userID:             uuid.Nil,
+			userIDErr:          errors.New("user ID is not UUID"),
+			txID:               uuid.NewString(),
+			expectedErr:        "unauthorized",
+			expectedStatusCode: http.StatusUnauthorized,
+		},
+		{
+			name:               "error getting tx",
+			userID:             uuid.New(),
+			txID:               uuid.NewString(),
+			txErr:              errors.New("error getting transaction"),
+			expectedErr:        "unable to get transaction",
+			expectedStatusCode: http.StatusInternalServerError,
+		},
 	}
 	for _, tc := range tests {
 		tc := tc
@@ -61,15 +86,18 @@ func TestGetTxByID(t *testing.T) {
 				AmountCents:        12598,
 				DetailedCategoryID: 40,
 			}
-			mockTxQ.On("GetUserTransactionByID", context.Background(), database.GetUserTransactionByIDParams{
-				UserID: tc.userID.String(),
-				ID:     tc.txID,
-			}).Return(dummyRow, tc.txErr)
+
+			if tc.userIDErr == nil {
+				mockTxQ.On("GetUserTransactionByID", context.Background(), database.GetUserTransactionByIDParams{
+					UserID: tc.userID.String(),
+					ID:     tc.txID,
+				}).Return(dummyRow, tc.txErr)
+			}
 
 			h := NewHandler(svc)
 
 			router := gin.New()
-			router.GET(fmt.Sprintf("/transactions/%v", tc.txID), func(c *gin.Context) {
+			router.GET("/transactions/:id", func(c *gin.Context) {
 				if tc.name == "unauthorized: user ID not UUID" {
 					c.Set(string(constants.UserIDKey), "userID")
 				} else {
