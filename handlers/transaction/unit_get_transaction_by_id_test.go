@@ -94,7 +94,7 @@ func TestGetTxByID(t *testing.T) {
 				DetailedCategoryID: 40,
 			}
 
-			if tc.userIDErr == nil {
+			if tc.userIDErr == nil && tc.txID != "" {
 				mockTxQ.On("GetUserTransactionByID", context.Background(), database.GetUserTransactionByIDParams{
 					UserID: tc.userID.String(),
 					ID:     tc.txID,
@@ -108,6 +108,11 @@ func TestGetTxByID(t *testing.T) {
 				c, _ := gin.CreateTestContext(w)
 				c.Request = req
 				c.Params = gin.Params{{Key: "id", Value: ""}}
+				if tc.name == "unauthorized: user ID not UUID" {
+					c.Set(string(constants.UserIDKey), "userID")
+				} else {
+					c.Set(string(constants.UserIDKey), tc.userID)
+				}
 				h.GetTransactionByID(c)
 			} else {
 
@@ -119,9 +124,8 @@ func TestGetTxByID(t *testing.T) {
 					}
 					h.GetTransactionByID(c)
 				})
+				router.ServeHTTP(w, req)
 			}
-
-			router.ServeHTTP(w, req)
 
 			var actualResponse map[string]interface{}
 			err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
