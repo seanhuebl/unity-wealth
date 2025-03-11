@@ -69,6 +69,13 @@ func TestGetTxByID(t *testing.T) {
 			expectedErr:        "unable to get transaction",
 			expectedStatusCode: http.StatusInternalServerError,
 		},
+		{
+			name:               "invalid txID in req",
+			userID:             uuid.New(),
+			txID:               "",
+			expectedErr:        "invalid id",
+			expectedStatusCode: http.StatusBadRequest,
+		},
 	}
 	for _, tc := range tests {
 		tc := tc
@@ -97,14 +104,22 @@ func TestGetTxByID(t *testing.T) {
 			h := NewHandler(svc)
 
 			router := gin.New()
-			router.GET("/transactions/:id", func(c *gin.Context) {
-				if tc.name == "unauthorized: user ID not UUID" {
-					c.Set(string(constants.UserIDKey), "userID")
-				} else {
-					c.Set(string(constants.UserIDKey), tc.userID)
-				}
+			if tc.txID == "" {
+				c, _ := gin.CreateTestContext(w)
+				c.Request = req
+				c.Params = gin.Params{{Key: "id", Value: ""}}
 				h.GetTransactionByID(c)
-			})
+			} else {
+
+				router.GET("/transactions/:id", func(c *gin.Context) {
+					if tc.name == "unauthorized: user ID not UUID" {
+						c.Set(string(constants.UserIDKey), "userID")
+					} else {
+						c.Set(string(constants.UserIDKey), tc.userID)
+					}
+					h.GetTransactionByID(c)
+				})
+			}
 
 			router.ServeHTTP(w, req)
 

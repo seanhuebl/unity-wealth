@@ -87,6 +87,12 @@ func (h *Handler) GetTransactionByID(ctx *gin.Context) {
 	}
 
 	id := ctx.Param("id")
+	if id == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid id",
+		})
+		return
+	}
 	txn, err := h.txSvc.GetTransactionByID(ctx.Request.Context(), userID.String(), id)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
