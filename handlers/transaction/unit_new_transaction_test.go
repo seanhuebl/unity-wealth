@@ -111,7 +111,7 @@ func TestNewTx(t *testing.T) {
 			// Since we are using maps the dc is a float64 which doesn't match the struct
 			// so we need to convert to int
 			actualResponse = convertResponseFloatToInt(actualResponse)
-			
+
 			if tc.expectedError != "" {
 				require.Contains(t, actualResponse["error"].(string), tc.expectedError)
 			} else {
