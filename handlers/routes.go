@@ -26,7 +26,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.ApiConfig, h *Handlers, m *m
 		app.GET("/transactions", h.txHandler.GetTransactionsByUserID)
 		app.GET("/transactions/:id", h.txHandler.GetTransactionByID)
 		app.PUT("/transactions/:id", h.txHandler.UpdateTransaction)
-		app.DELETE("/transactions", h.txHandler.DeleteTransaction)
+		app.DELETE("/transactions/:id", h.txHandler.DeleteTransaction)
 	}
 
 	api := router.Group("/api")
