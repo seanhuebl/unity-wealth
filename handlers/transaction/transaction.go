@@ -150,7 +150,7 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 }
 
 func (h *Handler) DeleteTransaction(ctx *gin.Context) {
-	userID, err := helpers.GetUserID(ctx.Request.Context())
+	userID, err := helpers.GetUserID(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"error": "unauthorized",

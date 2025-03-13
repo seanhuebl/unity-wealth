@@ -3,6 +3,7 @@ package transaction
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -31,7 +32,7 @@ func TestDeleteTransaction(t *testing.T) {
 		expectedResponse   map[string]interface{}
 	}{
 		{
-			name:               "sucess",
+			name:               "success",
 			userID:             uuid.New(),
 			txID:               uuid.NewString(),
 			expectedStatusCode: http.StatusOK,
@@ -41,7 +42,39 @@ func TestDeleteTransaction(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:               "unauthorized: user ID is uuid.NIL",
+			userID:             uuid.Nil,
+			txID:               uuid.NewString(),
+			userIDErr:          errors.New("user ID not found in context"),
+			expectedErr:        "unauthorized",
+			expectedStatusCode: http.StatusUnauthorized,
+		},
+		{
+			name:               "unauthorized: user ID not UUID",
+			userID:             uuid.Nil,
+			userIDErr:          errors.New("user ID is not UUID"),
+			txID:               uuid.NewString(),
+			expectedErr:        "unauthorized",
+			expectedStatusCode: http.StatusUnauthorized,
+		},
+		{
+			name:               "error deleting tx",
+			userID:             uuid.New(),
+			txID:               uuid.NewString(),
+			txErr:              errors.New("error deleting transaction"),
+			expectedErr:        "error deleting transaction",
+			expectedStatusCode: http.StatusInternalServerError,
+		},
+		{
+			name:               "invalid txID in req",
+			userID:             uuid.New(),
+			txID:               "",
+			expectedErr:        "invalid id",
+			expectedStatusCode: http.StatusBadRequest,
+		},
 	}
+
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
@@ -68,13 +101,13 @@ func TestDeleteTransaction(t *testing.T) {
 				}
 				h.DeleteTransaction(c)
 			} else {
-				router.GET("/transactions/:id", func(c *gin.Context) {
+				router.DELETE("/transactions/:id", func(c *gin.Context) {
 					if tc.name == "unauthorized: user ID not UUID" {
 						c.Set(string(constants.UserIDKey), "userID")
 					} else {
 						c.Set(string(constants.UserIDKey), tc.userID)
 					}
-					h.GetTransactionByID(c)
+					h.DeleteTransaction(c)
 				})
 				router.ServeHTTP(w, req)
 			}
