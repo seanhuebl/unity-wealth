@@ -1,4 +1,4 @@
-package transaction
+package helpers
 
 import (
 	"context"
@@ -8,7 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/database"
-	"github.com/seanhuebl/unity-wealth/internal/helpers"
+	"github.com/seanhuebl/unity-wealth/internal/interfaces"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/stretchr/testify/require"
 )
 
@@ -49,20 +50,20 @@ func SeedTestCategories(t *testing.T, db *sql.DB) {
 	require.NoError(t, err)
 }
 
-func SeedTestTransaction(t *testing.T, txQ database.TransactionQuerier, userID, txID uuid.UUID, req *NewTransactionRequest) {
+func SeedTestTransaction(t *testing.T, txQ database.TransactionQuerier, userID, txID uuid.UUID, req *models.NewTransactionRequest) {
 	ctx := context.Background()
 	err := txQ.CreateTransaction(ctx, database.CreateTransactionParams{
 		ID:                 txID.String(),
 		UserID:             userID.String(),
 		TransactionDate:    req.Date,
 		Merchant:           req.Merchant,
-		AmountCents:        helpers.ConvertToCents(req.Amount),
+		AmountCents:        ConvertToCents(req.Amount),
 		DetailedCategoryID: req.DetailedCategory,
 	})
 	require.NoError(t, err)
 }
 
-func SeedMultipleTestTransactions[T TxPageRow](t *testing.T, txQ database.TransactionQuerier, rows []T) {
+func SeedMultipleTestTransactions[T interfaces.TxPageRow](t *testing.T, txQ database.TransactionQuerier, rows []T) {
 	ctx := context.Background()
 	for _, row := range rows {
 		err := txQ.CreateTransaction(ctx, database.CreateTransactionParams{

@@ -9,6 +9,8 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/helpers"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,7 +18,7 @@ func TestIntegrationUpdateTransaction(t *testing.T) {
 
 	tests := []struct {
 		name                  string
-		req                   NewTransactionRequest
+		req                   models.NewTransactionRequest
 		dateErr               error
 		expectedDateErrSubStr string
 		txErr                 error
@@ -24,7 +26,7 @@ func TestIntegrationUpdateTransaction(t *testing.T) {
 	}{
 		{
 			name: "successful update",
-			req: NewTransactionRequest{
+			req: models.NewTransactionRequest{
 				Date:             "2025-02-24",
 				Merchant:         "costco",
 				Amount:           157.98,
@@ -47,7 +49,7 @@ func TestIntegrationUpdateTransaction(t *testing.T) {
 			_, err = db.Exec("PRAGMA foreign_Keys = ON")
 			require.NoError(t, err)
 
-			CreateTestingSchema(t, db)
+			helpers.CreateTestingSchema(t, db)
 
 			transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
 			txQ := database.NewRealTransactionQuerier(transactionalQ)
@@ -55,7 +57,7 @@ func TestIntegrationUpdateTransaction(t *testing.T) {
 
 			seedUpdateTxTestData(t, db, userQ, userID, txQ, txID)
 
-			expectedTx := &Transaction{
+			expectedTx := &models.Transaction{
 				ID:               txID.String(),
 				UserID:           userID.String(),
 				Date:             tc.req.Date,
@@ -77,9 +79,9 @@ func TestIntegrationUpdateTransaction(t *testing.T) {
 }
 
 func seedUpdateTxTestData(t *testing.T, db *sql.DB, userQ database.UserQuerier, userID uuid.UUID, txQ database.TransactionQuerier, txID uuid.UUID) {
-	SeedTestUser(t, userQ, userID)
-	SeedTestCategories(t, db)
-	SeedTestTransaction(t, txQ, userID, txID, &NewTransactionRequest{
+	helpers.SeedTestUser(t, userQ, userID)
+	helpers.SeedTestCategories(t, db)
+	helpers.SeedTestTransaction(t, txQ, userID, txID, &models.NewTransactionRequest{
 		Date:             "2025-2-24",
 		Merchant:         "sam's club",
 		Amount:           200.25,

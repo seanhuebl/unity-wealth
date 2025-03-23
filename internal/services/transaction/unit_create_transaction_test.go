@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +20,7 @@ func TestCreateTransaction(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		req              NewTransactionRequest
+		req              models.NewTransactionRequest
 		dateErr          error
 		expDateErrSubStr string
 		txErr            error
@@ -27,7 +28,7 @@ func TestCreateTransaction(t *testing.T) {
 	}{
 		{
 			name: "successful create tx",
-			req: NewTransactionRequest{
+			req: models.NewTransactionRequest{
 				Date:             "2025-02-24",
 				Merchant:         "Costco",
 				Amount:           145.56,
@@ -40,7 +41,7 @@ func TestCreateTransaction(t *testing.T) {
 		},
 		{
 			name: "unsuccessful tx, invalid date",
-			req: NewTransactionRequest{
+			req: models.NewTransactionRequest{
 				Date:             "03/27/94",
 				Merchant:         "Costco",
 				Amount:           145.56,
@@ -53,7 +54,7 @@ func TestCreateTransaction(t *testing.T) {
 		},
 		{
 			name: "unsuccessful tx, create tx failure",
-			req: NewTransactionRequest{
+			req: models.NewTransactionRequest{
 				Date:             "2025-02-24",
 				Merchant:         "Costco",
 				Amount:           145.56,
@@ -90,8 +91,8 @@ func TestCreateTransaction(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, tx)
 
-				expectedTx := NewTransaction(txID.String(), userID.String(), tc.req.Date, tc.req.Merchant, tc.req.Amount, tc.req.DetailedCategory)
-				if diff := cmp.Diff(expectedTx, tx, cmpopts.IgnoreFields(Transaction{}, "ID")); diff != "" {
+				expectedTx := models.NewTransaction(txID.String(), userID.String(), tc.req.Date, tc.req.Merchant, tc.req.Amount, tc.req.DetailedCategory)
+				if diff := cmp.Diff(expectedTx, tx, cmpopts.IgnoreFields(models.Transaction{}, "ID")); diff != "" {
 					t.Errorf("transaction mismatch (-want +got)\n%s", diff)
 				}
 				mockTxQ.AssertExpectations(t)

@@ -11,6 +11,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -58,7 +59,7 @@ func TestGetTransactionByID(t *testing.T) {
 				AmountCents:        19725,
 				DetailedCategoryID: 40,
 			}
-			expectedTxn := &Transaction{
+			expectedTxn := &models.Transaction{
 				ID:               expectedRow.ID,
 				UserID:           expectedRow.UserID,
 				Date:             expectedRow.TransactionDate,

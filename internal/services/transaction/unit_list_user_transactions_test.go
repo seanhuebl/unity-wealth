@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -130,7 +131,7 @@ func TestListUserTransactions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockTxQ := dbmocks.NewTransactionQuerier(t)
 			fetchSize := tc.pageSize + 1
-			expectedTxs := make([]Transaction, 0)
+			expectedTxs := make([]models.Transaction, 0)
 
 			svc := NewTransactionService(mockTxQ)
 

@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/helpers"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,7 +39,7 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 				_, err = db.Exec("PRAGMA foreign_keys = ON")
 				require.NoError(t, err)
 
-				CreateTestingSchema(t, db)
+				helpers.CreateTestingSchema(t, db)
 
 				transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
 				txQ := database.NewRealTransactionQuerier(transactionalQ)
@@ -61,9 +63,9 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 }
 
 func seedDeleteTxTestData(t *testing.T, db *sql.DB, userQ database.UserQuerier, userID uuid.UUID, txQ database.TransactionQuerier, txID uuid.UUID) {
-	SeedTestUser(t, userQ, userID)
-	SeedTestCategories(t, db)
-	SeedTestTransaction(t, txQ, userID, txID, &NewTransactionRequest{
+	helpers.SeedTestUser(t, userQ, userID)
+	helpers.SeedTestCategories(t, db)
+	helpers.SeedTestTransaction(t, txQ, userID, txID, &models.NewTransactionRequest{
 		Date:             "2025-02-24",
 		Merchant:         "Costco",
 		Amount:           145.56,

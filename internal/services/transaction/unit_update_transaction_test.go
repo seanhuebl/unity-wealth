@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +22,7 @@ func TestUpdateTransaction(t *testing.T) {
 
 	tests := []struct {
 		name                  string
-		req                   NewTransactionRequest
+		req                   models.NewTransactionRequest
 		dateErr               error
 		expectedDateErrSubStr string
 		txErr                 error
@@ -29,7 +30,7 @@ func TestUpdateTransaction(t *testing.T) {
 	}{
 		{
 			name: "successful update",
-			req: NewTransactionRequest{
+			req: models.NewTransactionRequest{
 				Date:             "2025-02-24",
 				Merchant:         "costco",
 				Amount:           157.98,
@@ -42,7 +43,7 @@ func TestUpdateTransaction(t *testing.T) {
 		},
 		{
 			name: "improper date format",
-			req: NewTransactionRequest{
+			req: models.NewTransactionRequest{
 				Date:             "2/24/25",
 				Merchant:         "costco",
 				Amount:           157.98,
@@ -55,7 +56,7 @@ func TestUpdateTransaction(t *testing.T) {
 		},
 		{
 			name: "update tx failure",
-			req: NewTransactionRequest{
+			req: models.NewTransactionRequest{
 				Date:             "2025-02-24",
 				Merchant:         "costco",
 				Amount:           157.98,
@@ -68,7 +69,7 @@ func TestUpdateTransaction(t *testing.T) {
 		},
 		{
 			name: "transaction not found",
-			req: NewTransactionRequest{
+			req: models.NewTransactionRequest{
 				Date:             "2025-02-24",
 				Merchant:         "costco",
 				Amount:           157.98,
@@ -113,7 +114,7 @@ func TestUpdateTransaction(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, tx)
 				mockTxQ.AssertExpectations(t)
-				expectedTx := &Transaction{
+				expectedTx := &models.Transaction{
 					ID:               expectedRow.ID,
 					UserID:           userID.String(),
 					Date:             expectedRow.TransactionDate,

@@ -9,6 +9,8 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/helpers"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,7 +19,7 @@ func TestIntegrationGetTransactionByID(t *testing.T) {
 		name                string
 		userID              uuid.UUID
 		txnID               uuid.UUID
-		req                 NewTransactionRequest
+		req                 models.NewTransactionRequest
 		txErr               error
 		expectedTxErrSubstr string
 	}{
@@ -25,7 +27,7 @@ func TestIntegrationGetTransactionByID(t *testing.T) {
 			name:   "successful retrieval",
 			userID: uuid.New(),
 			txnID:  uuid.New(),
-			req: NewTransactionRequest{
+			req: models.NewTransactionRequest{
 				Date:             "2025-02-25",
 				Merchant:         "costco",
 				Amount:           197.25,
@@ -45,7 +47,7 @@ func TestIntegrationGetTransactionByID(t *testing.T) {
 			_, err = db.Exec("PRAGMA foreign_keys = ON")
 			require.NoError(t, err)
 
-			CreateTestingSchema(t, db)
+			helpers.CreateTestingSchema(t, db)
 
 			transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
 			txQ := database.NewRealTransactionQuerier(transactionalQ)
@@ -59,7 +61,7 @@ func TestIntegrationGetTransactionByID(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, tx)
 
-			expectedTx := &Transaction{
+			expectedTx := &models.Transaction{
 				ID:               tc.txnID.String(),
 				UserID:           tc.userID.String(),
 				Date:             tc.req.Date,
@@ -77,9 +79,9 @@ func TestIntegrationGetTransactionByID(t *testing.T) {
 }
 
 func seedGetTxByIDTestData(t *testing.T, db *sql.DB, userQ database.UserQuerier, userID uuid.UUID, txQ database.TransactionQuerier, txID uuid.UUID) {
-	SeedTestUser(t, userQ, userID)
-	SeedTestCategories(t, db)
-	SeedTestTransaction(t, txQ, userID, txID, &NewTransactionRequest{
+	helpers.SeedTestUser(t, userQ, userID)
+	helpers.SeedTestCategories(t, db)
+	helpers.SeedTestTransaction(t, txQ, userID, txID, &models.NewTransactionRequest{
 		Date:             "2025-02-25",
 		Merchant:         "costco",
 		Amount:           197.25,

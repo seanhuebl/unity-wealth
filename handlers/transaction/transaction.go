@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
-	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 )
 
 func (h *Handler) NewTransaction(ctx *gin.Context) {
@@ -20,7 +20,7 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 		return
 	}
 
-	var req transaction.NewTransactionRequest
+	var req models.NewTransactionRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -98,7 +98,7 @@ func (h *Handler) GetTransactionsByUserID(ctx *gin.Context) {
 	if cursorDateStr != "" {
 		cursorDatePtr = &cursorDateStr
 	}
-	
+
 	var cursorIDPtr *string
 	if cursorIDStr != "" {
 		cursorIDPtr = &cursorIDStr
@@ -164,7 +164,7 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 		return
 	}
 
-	var req transaction.NewTransactionRequest
+	var req models.NewTransactionRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{

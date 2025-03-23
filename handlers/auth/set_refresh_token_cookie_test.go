@@ -56,25 +56,24 @@ func TestSetRefreshTokenCookie(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set environment variables
+
 			os.Setenv("ENV", tt.env)
 			os.Setenv("COOKIE_DOMAIN", tt.cookieDomainEnv)
 
-			// Create a mock Gin context
+
 			recorder := httptest.NewRecorder()
 			ctx, _ := gin.CreateTestContext(recorder)
 
-			// Call the function
+
 			SetRefreshTokenCookie(ctx, tt.refreshToken)
 
-			// Get the cookie from the response
+
 			result := recorder.Result()
 			cookies := result.Cookies()
 
 			assert.Len(t, cookies, 1)
 			cookie := cookies[0]
 
-			// Validate cookie properties
 			assert.Equal(t, "refresh_token", cookie.Name)
 			assert.Equal(t, tt.refreshToken, cookie.Value)
 			assert.Equal(t, tt.expectedDomain, cookie.Domain)
