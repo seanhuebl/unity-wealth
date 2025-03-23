@@ -21,57 +21,70 @@ import (
 
 func TestDeleteTransaction(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	tests := []struct {
-		name               string
-		userID             uuid.UUID
-		userIDErr          error
-		txID               string
-		txErr              error
-		expectedErr        string
-		expectedStatusCode int
-		expectedResponse   map[string]interface{}
-	}{
+	tests := []DeleteTxTestCase{
 		{
-			name:               "success",
-			userID:             uuid.New(),
-			txID:               uuid.NewString(),
-			expectedStatusCode: http.StatusOK,
-			expectedResponse: map[string]interface{}{
-				"data": map[string]interface{}{
-					"transaction_deleted": "success",
+			GetTxTestCase: GetTxTestCase{
+				BaseHTTPTestCase: BaseHTTPTestCase{
+					name:               "success",
+					userID:             uuid.New(),
+					expectedStatusCode: http.StatusOK,
+					expectedResponse: map[string]interface{}{
+						"data": map[string]interface{}{
+							"transaction_deleted": "success",
+						},
+					},
 				},
+				txID: uuid.NewString(),
 			},
 		},
 		{
-			name:               "unauthorized: user ID is uuid.NIL",
-			userID:             uuid.Nil,
-			txID:               uuid.NewString(),
-			userIDErr:          errors.New("user ID not found in context"),
-			expectedErr:        "unauthorized",
-			expectedStatusCode: http.StatusUnauthorized,
+			GetTxTestCase: GetTxTestCase{
+				BaseHTTPTestCase: BaseHTTPTestCase{
+					name:               "unauthorized: user ID is uuid.NIL",
+					userID:             uuid.Nil,
+					userIDErr:          errors.New("user ID not found in context"),
+					expectedError:      "unauthorized",
+					expectedStatusCode: http.StatusUnauthorized,
+				},
+				txID: uuid.NewString(),
+			},
 		},
 		{
-			name:               "unauthorized: user ID not UUID",
-			userID:             uuid.Nil,
-			userIDErr:          errors.New("user ID is not UUID"),
-			txID:               uuid.NewString(),
-			expectedErr:        "unauthorized",
-			expectedStatusCode: http.StatusUnauthorized,
+			GetTxTestCase: GetTxTestCase{
+				BaseHTTPTestCase: BaseHTTPTestCase{
+
+					name:               "unauthorized: user ID not UUID",
+					userID:             uuid.Nil,
+					userIDErr:          errors.New("user ID is not UUID"),
+					expectedError:      "unauthorized",
+					expectedStatusCode: http.StatusUnauthorized,
+				},
+				txID: uuid.NewString(),
+			},
 		},
 		{
-			name:               "error deleting tx",
-			userID:             uuid.New(),
-			txID:               uuid.NewString(),
-			txErr:              errors.New("error deleting transaction"),
-			expectedErr:        "error deleting transaction",
-			expectedStatusCode: http.StatusInternalServerError,
+			GetTxTestCase: GetTxTestCase{
+				BaseHTTPTestCase: BaseHTTPTestCase{
+
+					name:               "error deleting tx",
+					userID:             uuid.New(),
+					expectedError:      "error deleting transaction",
+					expectedStatusCode: http.StatusInternalServerError,
+				},
+				txID:  uuid.NewString(),
+				txErr: errors.New("error deleting transaction"),
+			},
 		},
 		{
-			name:               "invalid txID in req",
-			userID:             uuid.New(),
-			txID:               "",
-			expectedErr:        "invalid id",
-			expectedStatusCode: http.StatusBadRequest,
+			GetTxTestCase: GetTxTestCase{
+				BaseHTTPTestCase: BaseHTTPTestCase{
+					name:               "invalid txID in req",
+					userID:             uuid.New(),
+					expectedError:      "invalid id",
+					expectedStatusCode: http.StatusBadRequest,
+				},
+				txID: "",
+			},
 		},
 	}
 
@@ -116,8 +129,8 @@ func TestDeleteTransaction(t *testing.T) {
 			err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
 			require.NoError(t, err)
 
-			if tc.expectedErr != "" {
-				require.Contains(t, actualResponse["error"].(string), tc.expectedErr)
+			if tc.expectedError != "" {
+				require.Contains(t, actualResponse["error"].(string), tc.expectedError)
 			} else {
 				if diff := cmp.Diff(tc.expectedResponse, actualResponse); diff != "" {
 					t.Errorf("response mismatch (-want +got)\n%s", diff)

@@ -2,7 +2,6 @@ package transaction
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,71 +9,72 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
-	"github.com/stretchr/testify/require"
 )
 
 func TestGetTxByID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	tests := []struct {
-		name               string
-		userID             uuid.UUID
-		userIDErr          error
-		txID               string
-		txErr              error
-		expectedErr        string
-		expectedStatusCode int
-		expectedResponse   map[string]interface{}
-	}{
+	tests := []GetTxTestCase{
 		{
-			name:               "success",
-			userID:             uuid.New(),
-			txID:               uuid.NewString(),
-			expectedStatusCode: http.StatusOK,
-			expectedResponse: map[string]interface{}{
-				"data": map[string]interface{}{
-					"date":              "2025-03-05",
-					"merchant":          "costco",
-					"amount":            125.98,
-					"detailed_category": 40,
+			BaseHTTPTestCase: BaseHTTPTestCase{
+
+				name:               "success",
+				userID:             uuid.New(),
+				expectedStatusCode: http.StatusOK,
+				expectedResponse: map[string]interface{}{
+					"data": map[string]interface{}{
+						"date":              "2025-03-05",
+						"merchant":          "costco",
+						"amount":            125.98,
+						"detailed_category": 40,
+					},
 				},
 			},
+			txID: uuid.NewString(),
 		},
 		{
-			name:               "unauthorized: user ID is uuid.NIL",
-			userID:             uuid.Nil,
-			txID:               uuid.NewString(),
-			userIDErr:          errors.New("user ID not found in context"),
-			expectedErr:        "unauthorized",
-			expectedStatusCode: http.StatusUnauthorized,
+			BaseHTTPTestCase: BaseHTTPTestCase{
+				name:               "unauthorized: user ID is uuid.NIL",
+				userID:             uuid.Nil,
+				userIDErr:          errors.New("user ID not found in context"),
+				expectedError:      "unauthorized",
+				expectedStatusCode: http.StatusUnauthorized,
+			},
+			txID: uuid.NewString(),
 		},
 		{
-			name:               "unauthorized: user ID not UUID",
-			userID:             uuid.Nil,
-			userIDErr:          errors.New("user ID is not UUID"),
-			txID:               uuid.NewString(),
-			expectedErr:        "unauthorized",
-			expectedStatusCode: http.StatusUnauthorized,
+			BaseHTTPTestCase: BaseHTTPTestCase{
+				name:               "unauthorized: user ID not UUID",
+				userID:             uuid.Nil,
+				userIDErr:          errors.New("user ID is not UUID"),
+				expectedError:      "unauthorized",
+				expectedStatusCode: http.StatusUnauthorized,
+			},
+			txID: uuid.NewString(),
 		},
 		{
-			name:               "error getting tx",
-			userID:             uuid.New(),
-			txID:               uuid.NewString(),
-			txErr:              errors.New("error getting transaction"),
-			expectedErr:        "unable to get transaction",
-			expectedStatusCode: http.StatusInternalServerError,
+			BaseHTTPTestCase: BaseHTTPTestCase{
+
+				name:               "error getting tx",
+				userID:             uuid.New(),
+				expectedError:      "unable to get transaction",
+				expectedStatusCode: http.StatusInternalServerError,
+			},
+			txID:  uuid.NewString(),
+			txErr: errors.New("error getting transaction"),
 		},
 		{
-			name:               "invalid txID in req",
-			userID:             uuid.New(),
-			txID:               "",
-			expectedErr:        "invalid id",
-			expectedStatusCode: http.StatusBadRequest,
+			BaseHTTPTestCase: BaseHTTPTestCase{
+				name:               "invalid txID in req",
+				userID:             uuid.New(),
+				expectedError:      "invalid id",
+				expectedStatusCode: http.StatusBadRequest,
+			},
+			txID: "",
 		},
 	}
 	for _, tc := range tests {
@@ -127,21 +127,8 @@ func TestGetTxByID(t *testing.T) {
 				router.ServeHTTP(w, req)
 			}
 
-			var actualResponse map[string]interface{}
-			err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
-			require.NoError(t, err)
-
-			actualResponse = convertResponseFloatToInt(actualResponse)
-			if tc.expectedErr != "" {
-				require.Contains(t, actualResponse["error"].(string), tc.expectedErr)
-			} else {
-				if diff := cmp.Diff(tc.expectedResponse, actualResponse); diff != "" {
-					t.Errorf("response mismatch (-want +got)\n%s", diff)
-				}
-			}
-			if diff := cmp.Diff(tc.expectedStatusCode, w.Code); diff != "" {
-				t.Errorf("status code mismatch (-want +got)\n%s", diff)
-			}
+			actualResponse := processResponse(w, t)
+			checkTxHTTPResponse(t, w, tc, actualResponse)
 			mockTxQ.AssertExpectations(t)
 		})
 	}

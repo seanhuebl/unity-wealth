@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 )
@@ -45,7 +46,7 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 }
 
 func (h *Handler) GetTransactionsByUserID(ctx *gin.Context) {
-	userID, err := helpers.GetUserID(ctx.Request.Context())
+	userID, err := helpers.GetUserID(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"error": "unauthorized",
@@ -53,12 +54,58 @@ func (h *Handler) GetTransactionsByUserID(ctx *gin.Context) {
 		return
 	}
 
-	cursorDate := ctx.Query("cursor_date")
-	cursorID := ctx.Query("cursor_id")
-	pageSize := int64(50)
+	cursorDateVal, exists := ctx.Get(string(constants.CursorDateKey))
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "cursor date key not set in context",
+		})
+		return
+	}
+	cursorDateStr, ok := cursorDateVal.(string)
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid cursor date",
+		})
+		return
+	}
+	cursorIDVal, exists := ctx.Get(string(constants.CursorIDKey))
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "cursor ID key not set in context",
+		})
+		return
+	}
+	cursorIDStr, ok := cursorIDVal.(string)
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid cursor ID",
+		})
+		return
+	}
+	pageSizeVal, exists := ctx.Get(string(constants.PageSizeKey))
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "page_size not provided"})
+		return
+	}
+	pageSizeInt, ok := pageSizeVal.(int)
+	if !ok || pageSizeInt <= 0 {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid page_size; must be > 0"})
+		return
+	}
+	pageSize := int64(pageSizeInt)
+
+	var cursorDatePtr *string
+	if cursorDateStr != "" {
+		cursorDatePtr = &cursorDateStr
+	}
+	
+	var cursorIDPtr *string
+	if cursorIDStr != "" {
+		cursorIDPtr = &cursorIDStr
+	}
 
 	transactions, nextCursorDate, nextCursorID, hasMoreData, err :=
-		h.txSvc.ListUserTransactions(ctx.Request.Context(), userID, &cursorDate, &cursorID, pageSize)
+		h.txSvc.ListUserTransactions(ctx.Request.Context(), userID, cursorDatePtr, cursorIDPtr, pageSize)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "unable to get transactions",

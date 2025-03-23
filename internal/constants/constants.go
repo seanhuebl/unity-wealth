@@ -6,6 +6,10 @@ const (
 	ClaimsKey     = contextKey("claims")
 	UserIDKey     = contextKey("userID")
 	RequestKey    = contextKey("httpRequest")
+	CursorDateKey = contextKey("cursor_date")
+	CursorIDKey   = contextKey("cursor_id")
+	PageSizeKey   = contextKey("page_size")
+
 	CreateTxTable = `
 			CREATE TABLE IF NOT EXISTS transactions (
 			id TEXT PRIMARY KEY,
