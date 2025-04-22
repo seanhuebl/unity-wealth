@@ -12,7 +12,7 @@ packages:
       # ⤷ write the models file under your external models package
       model:
         package: internal/models      # import path of your models package
-        file:     ../internal/models/database.go
+        file:     ../internal/models/db.go
 
       # ⤷ NEW in post‑March 6 2025 SQLC:
       # emit fully‑qualified type names and imports
