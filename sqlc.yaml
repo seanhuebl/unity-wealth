@@ -1,8 +1,20 @@
 version: "2"
-sql:
-  - schema: "sql/schema"
-    queries: "sql/queries"
+
+packages:
+  - path: "internal/database"         # where your SQLC‑query code lives
     engine: "sqlite"
-    gen:
-      go:
-        out: "internal/database"
+    schema:  "db/schema.sql"
+    queries: "db/queries"
+
+    go:
+      package: database               # the Go package name for your query code
+
+      # ⤷ write the models file under your external models package
+      model:
+        package: internal/models      # import path of your models package
+        file:     ../internal/models/database.go
+
+      # ⤷ NEW in post‑March 6 2025 SQLC:
+      # emit fully‑qualified type names and imports
+      output_models_package: "models"
+      models_package_import_path: "internal/models"
