@@ -1,4 +1,4 @@
-package transaction
+package transaction_test
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -74,7 +75,7 @@ func TestGetTransactionByID(t *testing.T) {
 			}
 			mockTxQ.On("GetUserTransactionByID", ctx, mock.AnythingOfType("database.GetUserTransactionByIDParams")).Return(expectedRow, tc.txErr)
 
-			svc := NewTransactionService(mockTxQ)
+			svc := transaction.NewTransactionService(mockTxQ)
 
 			txn, err := svc.GetTransactionByID(ctx, tc.userID.String(), tc.txnID.String())
 			if tc.expectedTxErrSubstr != "" {

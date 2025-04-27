@@ -1,20 +1,20 @@
-package transaction
+package testmodels
 
 import "github.com/google/uuid"
 
 type BaseHTTPTestCase struct {
-	name               string
-	userID             uuid.UUID
-	userIDErr          error
-	expectedError      string
-	expectedStatusCode int
-	expectedResponse   map[string]interface{}
+	Name               string
+	UserID             uuid.UUID
+	UserIDErr          error
+	ExpectedError      string
+	ExpectedStatusCode int
+	ExpectedResponse   map[string]interface{}
 }
 
 type CreateTxTestCase struct {
 	BaseHTTPTestCase
-	reqBody     string
-	createTxErr error
+	ReqBody     string
+	CreateTxErr error
 }
 
 func (c CreateTxTestCase) BaseAccess() BaseHTTPTestCase {
@@ -23,8 +23,8 @@ func (c CreateTxTestCase) BaseAccess() BaseHTTPTestCase {
 
 type GetTxTestCase struct {
 	BaseHTTPTestCase
-	txID  string
-	txErr error
+	TxID  string
+	TxErr error
 }
 
 func (g GetTxTestCase) BaseAccess() BaseHTTPTestCase {
@@ -33,8 +33,8 @@ func (g GetTxTestCase) BaseAccess() BaseHTTPTestCase {
 
 type UpdateTxTestCase struct {
 	GetTxTestCase
-	reqBody     string
-	updateTxErr error
+	ReqBody     string
+	UpdateTxErr error
 }
 
 func (u UpdateTxTestCase) BaseAccess() BaseHTTPTestCase {
@@ -51,13 +51,13 @@ func (d DeleteTxTestCase) BaseAccess() BaseHTTPTestCase {
 
 type GetAllTxByUserIDTestCase struct {
 	BaseHTTPTestCase
-	cursorDate        string
-	cursorID          string
-	pageSize          int
-	getFirstPageErr   error
-	getTxPaginatedErr error
-	firstPageTest     bool
-	moreData          bool
+	CursorDate        string
+	CursorID          string
+	PageSize          int
+	GetFirstPageErr   error
+	GetTxPaginatedErr error
+	FirstPageTest     bool
+	MoreData          bool
 }
 
 func (allTx GetAllTxByUserIDTestCase) BaseAccess() BaseHTTPTestCase {

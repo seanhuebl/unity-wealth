@@ -1,4 +1,4 @@
-package transaction
+package transaction_test
 
 import (
 	"context"
@@ -10,8 +10,9 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/seanhuebl/unity-wealth/internal/database"
-	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,15 +49,15 @@ func TestCreateTxIntegration(t *testing.T) {
 			_, err = db.Exec("PRAGMA foreign_keys = ON")
 			require.NoError(t, err)
 
-			helpers.CreateTestingSchema(t, db)
+			testhelpers.CreateTestingSchema(t, db)
 
 			transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
 			txQ := database.NewRealTransactionQuerier(transactionalQ)
 			userQ := database.NewRealUserQuerier(transactionalQ)
 
-			seedCreateTxTestData(t, db, userQ, userID)
+			testhelpers.SeedCreateTxTestData(t, db, userQ, userID)
 
-			svc := NewTransactionService(txQ)
+			svc := transaction.NewTransactionService(txQ)
 
 			tx, err := svc.CreateTransaction(ctx, userID.String(), tc.req)
 			require.NoError(t, err)
@@ -75,9 +76,4 @@ func TestCreateTxIntegration(t *testing.T) {
 		})
 
 	}
-}
-
-func seedCreateTxTestData(t *testing.T, db *sql.DB, userQ database.UserQuerier, userID uuid.UUID) {
-	helpers.SeedTestUser(t, userQ, userID)
-	helpers.SeedTestCategories(t, db)
 }

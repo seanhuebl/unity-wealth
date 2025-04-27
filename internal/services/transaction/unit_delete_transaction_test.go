@@ -1,4 +1,4 @@
-package transaction
+package transaction_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
+	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -44,7 +45,7 @@ func TestDeleteTransaction(t *testing.T) {
 
 			mockTxQ.On("DeleteTransactionByID", ctx, mock.AnythingOfType("database.DeleteTransactionByIDParams")).Return(tc.deleteErr)
 
-			svc := NewTransactionService(mockTxQ)
+			svc := transaction.NewTransactionService(mockTxQ)
 
 			err := svc.DeleteTransaction(ctx, txnID.String(), userID.String())
 

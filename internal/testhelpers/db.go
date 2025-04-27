@@ -1,15 +1,20 @@
-package helpers
+package testhelpers
 
 import (
 	"context"
 	"database/sql"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	txhandler "github.com/seanhuebl/unity-wealth/handlers/transaction"
 	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/interfaces"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	"github.com/seanhuebl/unity-wealth/internal/testmodels"
 	"github.com/stretchr/testify/require"
 )
 
@@ -57,7 +62,7 @@ func SeedTestTransaction(t *testing.T, txQ database.TransactionQuerier, userID, 
 		UserID:             userID.String(),
 		TransactionDate:    req.Date,
 		Merchant:           req.Merchant,
-		AmountCents:        ConvertToCents(req.Amount),
+		AmountCents:        helpers.ConvertToCents(req.Amount),
 		DetailedCategoryID: req.DetailedCategory,
 	})
 	require.NoError(t, err)
@@ -75,5 +80,36 @@ func SeedMultipleTestTransactions[T interfaces.TxPageRow](t *testing.T, txQ data
 			DetailedCategoryID: row.GetDetailedCatID(),
 		})
 		require.NoError(t, err)
+	}
+}
+
+func SeedCreateTxTestData(t *testing.T, db *sql.DB, userQ database.UserQuerier, userID uuid.UUID) {
+	SeedTestUser(t, userQ, userID)
+	SeedTestCategories(t, db)
+}
+
+func SetupTestEnv(t *testing.T) *testmodels.TestEnv {
+	t.Helper()
+
+	db, err := sql.Open("sqlite3", ":memory:")
+	require.NoError(t, err)
+
+	_, err = db.Exec("PRAGMA foreign_keys = ON")
+	require.NoError(t, err)
+
+	CreateTestingSchema(t, db)
+	transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
+	txQ := database.NewRealTransactionQuerier(transactionalQ)
+	userQ := database.NewRealUserQuerier(transactionalQ)
+	svc := transaction.NewTransactionService(txQ)
+
+	h := txhandler.NewHandler(svc)
+	r := gin.New()
+	r.POST("/transactions", h.NewTransaction)
+	return &testmodels.TestEnv{
+		Router: r,
+		Db:     db,
+		UserQ:  userQ,
+		TxQ:    txQ,
 	}
 }

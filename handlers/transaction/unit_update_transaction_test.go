@@ -1,4 +1,4 @@
-package transaction
+package transaction_test
 
 import (
 	"bytes"
@@ -13,24 +13,27 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/google/uuid"
+	htx "github.com/seanhuebl/unity-wealth/handlers/transaction"
 	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
+	"github.com/seanhuebl/unity-wealth/internal/testmodels"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestUpdateTransaction(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	tests := []UpdateTxTestCase{
+	tests := []testmodels.UpdateTxTestCase{
 		{
-			GetTxTestCase: GetTxTestCase{
-				BaseHTTPTestCase: BaseHTTPTestCase{
-					name:               "success",
-					userID:             uuid.New(),
-					expectedStatusCode: http.StatusOK,
-					expectedResponse: map[string]interface{}{
+			GetTxTestCase: testmodels.GetTxTestCase{
+				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
+					Name:               "success",
+					UserID:             uuid.New(),
+					ExpectedStatusCode: http.StatusOK,
+					ExpectedResponse: map[string]interface{}{
 						"data": map[string]interface{}{
 							"date":              "2025-03-05",
 							"merchant":          "costco",
@@ -39,105 +42,105 @@ func TestUpdateTransaction(t *testing.T) {
 						},
 					},
 				},
-				txID: uuid.NewString(),
+				TxID: uuid.NewString(),
 			},
-			reqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
+			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
 		},
 		{
-			GetTxTestCase: GetTxTestCase{
-				BaseHTTPTestCase: BaseHTTPTestCase{
+			GetTxTestCase: testmodels.GetTxTestCase{
+				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
 
-					name:               "unauthorized: user ID is uuid.NIL",
-					userID:             uuid.Nil,
-					userIDErr:          errors.New("user ID not found in context"),
-					expectedError:      "unauthorized",
-					expectedStatusCode: http.StatusUnauthorized,
+					Name:               "unauthorized: user ID is uuid.NIL",
+					UserID:             uuid.Nil,
+					UserIDErr:          errors.New("user ID not found in context"),
+					ExpectedError:      "unauthorized",
+					ExpectedStatusCode: http.StatusUnauthorized,
 				},
-				txID: uuid.NewString(),
+				TxID: uuid.NewString(),
 			},
-			reqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
+			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
 		},
 		{
-			GetTxTestCase: GetTxTestCase{
-				BaseHTTPTestCase: BaseHTTPTestCase{
-					name:               "unauthorized: user ID not UUID",
-					userID:             uuid.Nil,
-					userIDErr:          errors.New("user ID is not UUID"),
-					expectedError:      "unauthorized",
-					expectedStatusCode: http.StatusUnauthorized,
+			GetTxTestCase: testmodels.GetTxTestCase{
+				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
+					Name:               "unauthorized: user ID not UUID",
+					UserID:             uuid.Nil,
+					UserIDErr:          errors.New("user ID is not UUID"),
+					ExpectedError:      "unauthorized",
+					ExpectedStatusCode: http.StatusUnauthorized,
 				},
-				txID: uuid.NewString(),
+				TxID: uuid.NewString(),
 			},
-			reqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
+			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
 		},
 		{
-			GetTxTestCase: GetTxTestCase{
-				BaseHTTPTestCase: BaseHTTPTestCase{
-					name:               "invalid request body",
-					userID:             uuid.New(),
-					expectedError:      "invalid request body",
-					expectedStatusCode: http.StatusBadRequest,
+			GetTxTestCase: testmodels.GetTxTestCase{
+				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
+					Name:               "invalid request body",
+					UserID:             uuid.New(),
+					ExpectedError:      "invalid request body",
+					ExpectedStatusCode: http.StatusBadRequest,
 				},
-				txID: uuid.NewString(),
+				TxID: uuid.NewString(),
 			},
-			reqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40`,
+			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40`,
 		},
 		{
-			GetTxTestCase: GetTxTestCase{
-				BaseHTTPTestCase: BaseHTTPTestCase{
-					name:               "failed to update tx",
-					userID:             uuid.New(),
-					expectedError:      "failed to update transaction",
-					expectedStatusCode: http.StatusInternalServerError,
+			GetTxTestCase: testmodels.GetTxTestCase{
+				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
+					Name:               "failed to update tx",
+					UserID:             uuid.New(),
+					ExpectedError:      "failed to update transaction",
+					ExpectedStatusCode: http.StatusInternalServerError,
 				},
-				txID: uuid.NewString(),
+				TxID: uuid.NewString(),
 			},
-			reqBody:     `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
-			updateTxErr: errors.New("update err"),
+			ReqBody:     `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
+			UpdateTxErr: errors.New("update err"),
 		},
 		{
-			GetTxTestCase: GetTxTestCase{
-				BaseHTTPTestCase: BaseHTTPTestCase{
-					name:               "invalid txID in req",
-					userID:             uuid.New(),
-					expectedError:      "invalid id",
-					expectedStatusCode: http.StatusBadRequest,
+			GetTxTestCase: testmodels.GetTxTestCase{
+				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
+					Name:               "invalid txID in req",
+					UserID:             uuid.New(),
+					ExpectedError:      "invalid id",
+					ExpectedStatusCode: http.StatusBadRequest,
 				},
-				txID: "",
+				TxID: "",
 			},
-			reqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
+			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
 		},
 	}
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.Name, func(t *testing.T) {
 			mockTxQ := dbmocks.NewTransactionQuerier(t)
 			w := httptest.NewRecorder()
 			svc := transaction.NewTransactionService(mockTxQ)
-			req := httptest.NewRequest("POST", fmt.Sprintf("/transactions/%v", tc.txID), bytes.NewBufferString(tc.reqBody))
+			req := httptest.NewRequest("POST", fmt.Sprintf("/transactions/%v", tc.TxID), bytes.NewBufferString(tc.ReqBody))
 			req.Header.Set("Content-Type", "application/json")
 
-			if tc.name == "unauthorized:user ID not UUID" {
+			if tc.Name == "unauthorized:user ID not UUID" {
 				req = req.WithContext(context.WithValue(req.Context(), constants.UserIDKey, "userID"))
 			} else {
-				req = req.WithContext(context.WithValue(req.Context(), constants.UserIDKey, tc.userID))
+				req = req.WithContext(context.WithValue(req.Context(), constants.UserIDKey, tc.UserID))
 			}
 
 			dummyRow := database.UpdateTransactionByIDRow{
-				ID:                 tc.txID,
+				ID:                 tc.TxID,
 				TransactionDate:    "2025-03-05",
 				Merchant:           "costco",
 				AmountCents:        helpers.ConvertToCents(125.98),
 				DetailedCategoryID: 40,
 			}
 
-			if json.Valid([]byte(tc.reqBody)) && tc.userIDErr == nil && tc.txID != "" {
+			if json.Valid([]byte(tc.ReqBody)) && tc.UserIDErr == nil && tc.TxID != "" {
 				mockTxQ.On("UpdateTransactionByID", req.Context(), mock.AnythingOfType("database.UpdateTransactionByIDParams")).
-					Return(dummyRow, tc.updateTxErr)
+					Return(dummyRow, tc.UpdateTxErr)
 			}
-			h := NewHandler(svc)
+			h := htx.NewHandler(svc)
 
 			router := gin.New()
-			if tc.txID == "" {
+			if tc.TxID == "" {
 				c, _ := gin.CreateTestContext(w)
 				c.Request = req
 				c.Params = gin.Params{{Key: "id", Value: ""}}
@@ -148,9 +151,9 @@ func TestUpdateTransaction(t *testing.T) {
 
 			}
 
-			actualResponse := processResponse(w, t)
+			actualResponse := testhelpers.ProcessResponse(w, t)
 
-			checkTxHTTPResponse(t, w, tc, actualResponse)
+			testhelpers.CheckTxHTTPResponse(t, w, tc, actualResponse)
 			mockTxQ.AssertExpectations(t)
 		})
 	}

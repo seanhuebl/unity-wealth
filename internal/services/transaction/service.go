@@ -124,7 +124,7 @@ func (s *TransactionService) ListUserTransactions(
 			return nil, "", "", false, fmt.Errorf("error loading first page of transactions: %w", err)
 		}
 		for _, txn := range firstPageRows {
-			transactions = append(transactions, s.convertFirstPageRow(txn))
+			transactions = append(transactions, s.ConvertFirstPageRow(txn))
 		}
 	} else {
 		nextRows, err := s.txQueries.GetUserTransactionsPaginated(ctx, database.GetUserTransactionsPaginatedParams{
@@ -138,7 +138,7 @@ func (s *TransactionService) ListUserTransactions(
 			return nil, "", "", false, fmt.Errorf("error loading next page: %w", err)
 		}
 		for _, txn := range nextRows {
-			transactions = append(transactions, s.convertPaginatedRow(txn))
+			transactions = append(transactions, s.ConvertPaginatedRow(txn))
 		}
 
 	}
@@ -158,7 +158,7 @@ func (s *TransactionService) ListUserTransactions(
 }
 
 // Helpers
-func (s *TransactionService) convertFirstPageRow(row database.GetUserTransactionsFirstPageRow) models.Transaction {
+func (s *TransactionService) ConvertFirstPageRow(row database.GetUserTransactionsFirstPageRow) models.Transaction {
 	return models.Transaction{
 		ID:               row.ID,
 		UserID:           row.UserID,
@@ -169,7 +169,7 @@ func (s *TransactionService) convertFirstPageRow(row database.GetUserTransaction
 	}
 }
 
-func (s *TransactionService) convertPaginatedRow(row database.GetUserTransactionsPaginatedRow) models.Transaction {
+func (s *TransactionService) ConvertPaginatedRow(row database.GetUserTransactionsPaginatedRow) models.Transaction {
 	return models.Transaction{
 		ID:               row.ID,
 		UserID:           row.UserID,

@@ -1,4 +1,4 @@
-package transaction
+package transaction_test
 
 import (
 	"context"
@@ -11,8 +11,9 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/seanhuebl/unity-wealth/internal/database"
-	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/stretchr/testify/require"
 )
 
@@ -85,7 +86,7 @@ func TestIntegrationListUserTransactions(t *testing.T) {
 			_, err = db.Exec("PRAGMA foreign_keys = ON")
 			require.NoError(t, err)
 
-			helpers.CreateTestingSchema(t, db)
+			testhelpers.CreateTestingSchema(t, db)
 			transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
 			txQ := database.NewRealTransactionQuerier(transactionalQ)
 			userQ := database.NewRealUserQuerier(transactionalQ)
@@ -97,9 +98,9 @@ func TestIntegrationListUserTransactions(t *testing.T) {
 				firstPageRows = firstPageRows[:fetchSize]
 			}
 			if tc.isFirstPage {
-				wrappedFirstPageRows := WrapFirstPageRows(firstPageRows)
-				helpers.SeedMultipleTestTransactions(t, txQ, wrappedFirstPageRows)
-				svc := NewTransactionService(txQ)
+				wrappedFirstPageRows := transaction.WrapFirstPageRows(firstPageRows)
+				testhelpers.SeedMultipleTestTransactions(t, txQ, wrappedFirstPageRows)
+				svc := transaction.NewTransactionService(txQ)
 
 				transactions, nextCursorDate, nextCursorID, hasMoreData, err := svc.ListUserTransactions(ctx, tc.userID, nil, nil, tc.pageSize)
 				require.NoError(t, err)
@@ -108,7 +109,7 @@ func TestIntegrationListUserTransactions(t *testing.T) {
 				}
 
 				for _, row := range firstPageRows {
-					expectedTxs = append(expectedTxs, svc.convertFirstPageRow(row))
+					expectedTxs = append(expectedTxs, svc.ConvertFirstPageRow(row))
 				}
 				if hasMoreData == true {
 					require.NotEmpty(t, nextCursorID)
@@ -122,13 +123,13 @@ func TestIntegrationListUserTransactions(t *testing.T) {
 
 			} else {
 				paginatedRows := integrationGeneratePaginatedRows(tc.userID, tc.txSliceLength)
-				wrappedPaginatedRows := WrapPaginatedRows(paginatedRows)
-				helpers.SeedMultipleTestTransactions(t, txQ, wrappedPaginatedRows)
+				wrappedPaginatedRows := transaction.WrapPaginatedRows(paginatedRows)
+				testhelpers.SeedMultipleTestTransactions(t, txQ, wrappedPaginatedRows)
 
 				if len(paginatedRows) > int(fetchSize) {
 					paginatedRows = paginatedRows[:fetchSize]
 				}
-				svc := NewTransactionService(txQ)
+				svc := transaction.NewTransactionService(txQ)
 				cursorDate := wrappedPaginatedRows[0].GetTxDate()
 				cursorID := wrappedPaginatedRows[0].GetTxID().String()
 				transactions, nextCursorDate, nextCursorID, hasMoreData, err := svc.ListUserTransactions(ctx, tc.userID, &cursorDate, &cursorID, tc.pageSize)
@@ -141,7 +142,7 @@ func TestIntegrationListUserTransactions(t *testing.T) {
 					paginatedRows = paginatedRows[:tc.pageSize+1]
 				}
 				for i := 1; i < len(paginatedRows); i++ {
-					expectedTxs = append(expectedTxs, svc.convertPaginatedRow(paginatedRows[i]))
+					expectedTxs = append(expectedTxs, svc.ConvertPaginatedRow(paginatedRows[i]))
 				}
 				if hasMoreData == true {
 					require.NotEmpty(t, nextCursorID)
@@ -191,6 +192,6 @@ func integrationGeneratePaginatedRows(userID uuid.UUID, txSliceLength int) []dat
 }
 
 func seedListUserTxTestData(t *testing.T, db *sql.DB, userQ database.UserQuerier, userID uuid.UUID) {
-	helpers.SeedTestUser(t, userQ, userID)
-	helpers.SeedTestCategories(t, db)
+	testhelpers.SeedTestUser(t, userQ, userID)
+	testhelpers.SeedTestCategories(t, db)
 }

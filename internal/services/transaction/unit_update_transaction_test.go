@@ -1,4 +1,4 @@
-package transaction
+package transaction_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -99,7 +100,7 @@ func TestUpdateTransaction(t *testing.T) {
 				}
 				mockTxQ.On("UpdateTransactionByID", ctx, mock.AnythingOfType("database.UpdateTransactionByIDParams")).Return(returnRow, tc.txErr)
 			}
-			svc := NewTransactionService(mockTxQ)
+			svc := transaction.NewTransactionService(mockTxQ)
 			tx, err := svc.UpdateTransaction(ctx, txID.String(), userID.String(), tc.req)
 			if tc.expectedDateErrSubStr != "" {
 				require.Error(t, err)

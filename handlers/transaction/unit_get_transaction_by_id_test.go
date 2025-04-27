@@ -1,4 +1,4 @@
-package transaction
+package transaction_test
 
 import (
 	"context"
@@ -10,22 +10,25 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	htx "github.com/seanhuebl/unity-wealth/handlers/transaction"
 	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
+	"github.com/seanhuebl/unity-wealth/internal/testmodels"
 )
 
 func TestGetTxByID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	tests := []GetTxTestCase{
+	tests := []testmodels.GetTxTestCase{
 		{
-			BaseHTTPTestCase: BaseHTTPTestCase{
+			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
 
-				name:               "success",
-				userID:             uuid.New(),
-				expectedStatusCode: http.StatusOK,
-				expectedResponse: map[string]interface{}{
+				Name:               "success",
+				UserID:             uuid.New(),
+				ExpectedStatusCode: http.StatusOK,
+				ExpectedResponse: map[string]interface{}{
 					"data": map[string]interface{}{
 						"date":              "2025-03-05",
 						"merchant":          "costco",
@@ -34,101 +37,101 @@ func TestGetTxByID(t *testing.T) {
 					},
 				},
 			},
-			txID: uuid.NewString(),
+			TxID: uuid.NewString(),
 		},
 		{
-			BaseHTTPTestCase: BaseHTTPTestCase{
-				name:               "unauthorized: user ID is uuid.NIL",
-				userID:             uuid.Nil,
-				userIDErr:          errors.New("user ID not found in context"),
-				expectedError:      "unauthorized",
-				expectedStatusCode: http.StatusUnauthorized,
+			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
+				Name:               "unauthorized: user ID is uuid.NIL",
+				UserID:             uuid.Nil,
+				UserIDErr:          errors.New("user ID not found in context"),
+				ExpectedError:      "unauthorized",
+				ExpectedStatusCode: http.StatusUnauthorized,
 			},
-			txID: uuid.NewString(),
+			TxID: uuid.NewString(),
 		},
 		{
-			BaseHTTPTestCase: BaseHTTPTestCase{
-				name:               "unauthorized: user ID not UUID",
-				userID:             uuid.Nil,
-				userIDErr:          errors.New("user ID is not UUID"),
-				expectedError:      "unauthorized",
-				expectedStatusCode: http.StatusUnauthorized,
+			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
+				Name:               "unauthorized: user ID not UUID",
+				UserID:             uuid.Nil,
+				UserIDErr:          errors.New("user ID is not UUID"),
+				ExpectedError:      "unauthorized",
+				ExpectedStatusCode: http.StatusUnauthorized,
 			},
-			txID: uuid.NewString(),
+			TxID: uuid.NewString(),
 		},
 		{
-			BaseHTTPTestCase: BaseHTTPTestCase{
+			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
 
-				name:               "error getting tx",
-				userID:             uuid.New(),
-				expectedError:      "unable to get transaction",
-				expectedStatusCode: http.StatusInternalServerError,
+				Name:               "error getting tx",
+				UserID:             uuid.New(),
+				ExpectedError:      "unable to get transaction",
+				ExpectedStatusCode: http.StatusInternalServerError,
 			},
-			txID:  uuid.NewString(),
-			txErr: errors.New("error getting transaction"),
+			TxID:  uuid.NewString(),
+			TxErr: errors.New("error getting transaction"),
 		},
 		{
-			BaseHTTPTestCase: BaseHTTPTestCase{
-				name:               "invalid txID in req",
-				userID:             uuid.New(),
-				expectedError:      "invalid id",
-				expectedStatusCode: http.StatusBadRequest,
+			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
+				Name:               "invalid txID in req",
+				UserID:             uuid.New(),
+				ExpectedError:      "invalid id",
+				ExpectedStatusCode: http.StatusBadRequest,
 			},
-			txID: "",
+			TxID: "",
 		},
 	}
 	for _, tc := range tests {
 		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.Name, func(t *testing.T) {
 			mockTxQ := dbmocks.NewTransactionQuerier(t)
 			w := httptest.NewRecorder()
 			svc := transaction.NewTransactionService(mockTxQ)
-			req := httptest.NewRequest("GET", fmt.Sprintf("/transactions/%v", tc.txID), nil)
+			req := httptest.NewRequest("GET", fmt.Sprintf("/transactions/%v", tc.TxID), nil)
 
 			dummyRow := database.GetUserTransactionByIDRow{
-				ID:                 tc.txID,
-				UserID:             tc.userID.String(),
+				ID:                 tc.TxID,
+				UserID:             tc.UserID.String(),
 				TransactionDate:    "2025-03-05",
 				Merchant:           "costco",
 				AmountCents:        12598,
 				DetailedCategoryID: 40,
 			}
 
-			if tc.userIDErr == nil && tc.txID != "" {
+			if tc.UserIDErr == nil && tc.TxID != "" {
 				mockTxQ.On("GetUserTransactionByID", context.Background(), database.GetUserTransactionByIDParams{
-					UserID: tc.userID.String(),
-					ID:     tc.txID,
-				}).Return(dummyRow, tc.txErr)
+					UserID: tc.UserID.String(),
+					ID:     tc.TxID,
+				}).Return(dummyRow, tc.TxErr)
 			}
 
-			h := NewHandler(svc)
+			h := htx.NewHandler(svc)
 
 			router := gin.New()
-			if tc.txID == "" {
+			if tc.TxID == "" {
 				c, _ := gin.CreateTestContext(w)
 				c.Request = req
 				c.Params = gin.Params{{Key: "id", Value: ""}}
-				if tc.name == "unauthorized: user ID not UUID" {
+				if tc.Name == "unauthorized: user ID not UUID" {
 					c.Set(string(constants.UserIDKey), "userID")
 				} else {
-					c.Set(string(constants.UserIDKey), tc.userID)
+					c.Set(string(constants.UserIDKey), tc.UserID)
 				}
 				h.GetTransactionByID(c)
 			} else {
 
 				router.GET("/transactions/:id", func(c *gin.Context) {
-					if tc.name == "unauthorized: user ID not UUID" {
+					if tc.Name == "unauthorized: user ID not UUID" {
 						c.Set(string(constants.UserIDKey), "userID")
 					} else {
-						c.Set(string(constants.UserIDKey), tc.userID)
+						c.Set(string(constants.UserIDKey), tc.UserID)
 					}
 					h.GetTransactionByID(c)
 				})
 				router.ServeHTTP(w, req)
 			}
 
-			actualResponse := processResponse(w, t)
-			checkTxHTTPResponse(t, w, tc, actualResponse)
+			actualResponse := testhelpers.ProcessResponse(w, t)
+			testhelpers.CheckTxHTTPResponse(t, w, tc, actualResponse)
 			mockTxQ.AssertExpectations(t)
 		})
 	}

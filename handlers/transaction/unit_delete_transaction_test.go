@@ -1,4 +1,4 @@
-package transaction
+package transaction_test
 
 import (
 	"context"
@@ -12,113 +12,115 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
+	htx "github.com/seanhuebl/unity-wealth/handlers/transaction"
 	"github.com/seanhuebl/unity-wealth/internal/constants"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	"github.com/seanhuebl/unity-wealth/internal/testmodels"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDeleteTransaction(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	tests := []DeleteTxTestCase{
+	tests := []testmodels.DeleteTxTestCase{
 		{
-			GetTxTestCase: GetTxTestCase{
-				BaseHTTPTestCase: BaseHTTPTestCase{
-					name:               "success",
-					userID:             uuid.New(),
-					expectedStatusCode: http.StatusOK,
-					expectedResponse: map[string]interface{}{
+			GetTxTestCase: testmodels.GetTxTestCase{
+				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
+					Name:               "success",
+					UserID:             uuid.New(),
+					ExpectedStatusCode: http.StatusOK,
+					ExpectedResponse: map[string]interface{}{
 						"data": map[string]interface{}{
 							"transaction_deleted": "success",
 						},
 					},
 				},
-				txID: uuid.NewString(),
+				TxID: uuid.NewString(),
 			},
 		},
 		{
-			GetTxTestCase: GetTxTestCase{
-				BaseHTTPTestCase: BaseHTTPTestCase{
-					name:               "unauthorized: user ID is uuid.NIL",
-					userID:             uuid.Nil,
-					userIDErr:          errors.New("user ID not found in context"),
-					expectedError:      "unauthorized",
-					expectedStatusCode: http.StatusUnauthorized,
+			GetTxTestCase: testmodels.GetTxTestCase{
+				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
+					Name:               "unauthorized: user ID is uuid.NIL",
+					UserID:             uuid.Nil,
+					UserIDErr:          errors.New("user ID not found in context"),
+					ExpectedError:      "unauthorized",
+					ExpectedStatusCode: http.StatusUnauthorized,
 				},
-				txID: uuid.NewString(),
+				TxID: uuid.NewString(),
 			},
 		},
 		{
-			GetTxTestCase: GetTxTestCase{
-				BaseHTTPTestCase: BaseHTTPTestCase{
+			GetTxTestCase: testmodels.GetTxTestCase{
+				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
 
-					name:               "unauthorized: user ID not UUID",
-					userID:             uuid.Nil,
-					userIDErr:          errors.New("user ID is not UUID"),
-					expectedError:      "unauthorized",
-					expectedStatusCode: http.StatusUnauthorized,
+					Name:               "unauthorized: user ID not UUID",
+					UserID:             uuid.Nil,
+					UserIDErr:          errors.New("user ID is not UUID"),
+					ExpectedError:      "unauthorized",
+					ExpectedStatusCode: http.StatusUnauthorized,
 				},
-				txID: uuid.NewString(),
+				TxID: uuid.NewString(),
 			},
 		},
 		{
-			GetTxTestCase: GetTxTestCase{
-				BaseHTTPTestCase: BaseHTTPTestCase{
+			GetTxTestCase: testmodels.GetTxTestCase{
+				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
 
-					name:               "error deleting tx",
-					userID:             uuid.New(),
-					expectedError:      "error deleting transaction",
-					expectedStatusCode: http.StatusInternalServerError,
+					Name:               "error deleting tx",
+					UserID:             uuid.New(),
+					ExpectedError:      "error deleting transaction",
+					ExpectedStatusCode: http.StatusInternalServerError,
 				},
-				txID:  uuid.NewString(),
-				txErr: errors.New("error deleting transaction"),
+				TxID:  uuid.NewString(),
+				TxErr: errors.New("error deleting transaction"),
 			},
 		},
 		{
-			GetTxTestCase: GetTxTestCase{
-				BaseHTTPTestCase: BaseHTTPTestCase{
-					name:               "invalid txID in req",
-					userID:             uuid.New(),
-					expectedError:      "invalid id",
-					expectedStatusCode: http.StatusBadRequest,
+			GetTxTestCase: testmodels.GetTxTestCase{
+				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
+					Name:               "invalid txID in req",
+					UserID:             uuid.New(),
+					ExpectedError:      "invalid id",
+					ExpectedStatusCode: http.StatusBadRequest,
 				},
-				txID: "",
+				TxID: "",
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.Name, func(t *testing.T) {
 			mockTxQ := dbmocks.NewTransactionQuerier(t)
 			w := httptest.NewRecorder()
 			svc := transaction.NewTransactionService(mockTxQ)
-			req := httptest.NewRequest("DELETE", fmt.Sprintf("/transactions/%v", tc.txID), nil)
+			req := httptest.NewRequest("DELETE", fmt.Sprintf("/transactions/%v", tc.TxID), nil)
 
-			if tc.userIDErr == nil && tc.txID != "" {
-				mockTxQ.On("DeleteTransactionByID", context.Background(), mock.AnythingOfType("database.DeleteTransactionByIDParams")).Return(tc.txErr)
+			if tc.UserIDErr == nil && tc.TxID != "" {
+				mockTxQ.On("DeleteTransactionByID", context.Background(), mock.AnythingOfType("database.DeleteTransactionByIDParams")).Return(tc.TxErr)
 			}
 
-			h := NewHandler(svc)
+			h := htx.NewHandler(svc)
 
 			router := gin.New()
-			if tc.txID == "" {
+			if tc.TxID == "" {
 				c, _ := gin.CreateTestContext(w)
 				c.Request = req
 				c.Params = gin.Params{{Key: "id", Value: ""}}
-				if tc.name == "unauthorized: user ID not UUID" {
+				if tc.Name == "unauthorized: user ID not UUID" {
 					c.Set(string(constants.UserIDKey), "userID")
 				} else {
-					c.Set(string(constants.UserIDKey), tc.userID)
+					c.Set(string(constants.UserIDKey), tc.UserID)
 				}
 				h.DeleteTransaction(c)
 			} else {
 				router.DELETE("/transactions/:id", func(c *gin.Context) {
-					if tc.name == "unauthorized: user ID not UUID" {
+					if tc.Name == "unauthorized: user ID not UUID" {
 						c.Set(string(constants.UserIDKey), "userID")
 					} else {
-						c.Set(string(constants.UserIDKey), tc.userID)
+						c.Set(string(constants.UserIDKey), tc.UserID)
 					}
 					h.DeleteTransaction(c)
 				})
@@ -129,14 +131,14 @@ func TestDeleteTransaction(t *testing.T) {
 			err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
 			require.NoError(t, err)
 
-			if tc.expectedError != "" {
-				require.Contains(t, actualResponse["error"].(string), tc.expectedError)
+			if tc.ExpectedError != "" {
+				require.Contains(t, actualResponse["error"].(string), tc.ExpectedError)
 			} else {
-				if diff := cmp.Diff(tc.expectedResponse, actualResponse); diff != "" {
+				if diff := cmp.Diff(tc.ExpectedResponse, actualResponse); diff != "" {
 					t.Errorf("response mismatch (-want +got)\n%s", diff)
 				}
 			}
-			if diff := cmp.Diff(tc.expectedStatusCode, w.Code); diff != "" {
+			if diff := cmp.Diff(tc.ExpectedStatusCode, w.Code); diff != "" {
 				t.Errorf("status code mismatch (-want +got)\n%s", diff)
 			}
 			mockTxQ.AssertExpectations(t)

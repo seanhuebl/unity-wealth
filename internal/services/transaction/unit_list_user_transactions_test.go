@@ -1,4 +1,4 @@
-package transaction
+package transaction_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -133,7 +134,7 @@ func TestListUserTransactions(t *testing.T) {
 			fetchSize := tc.pageSize + 1
 			expectedTxs := make([]models.Transaction, 0)
 
-			svc := NewTransactionService(mockTxQ)
+			svc := transaction.NewTransactionService(mockTxQ)
 
 			firstPageRows := generateFirstPageRows(tc.userID, tc.txSliceLength)
 
@@ -157,7 +158,7 @@ func TestListUserTransactions(t *testing.T) {
 						firstPageRows = firstPageRows[:tc.pageSize]
 					}
 					for _, row := range firstPageRows {
-						expectedTxs = append(expectedTxs, svc.convertFirstPageRow(row))
+						expectedTxs = append(expectedTxs, svc.ConvertFirstPageRow(row))
 					}
 					if hasMoreData == true {
 						require.NotEmpty(t, nextCursorID)
@@ -191,7 +192,7 @@ func TestListUserTransactions(t *testing.T) {
 						nextRows = nextRows[:tc.pageSize]
 					}
 					for _, row := range nextRows {
-						expectedTxs = append(expectedTxs, svc.convertPaginatedRow(row))
+						expectedTxs = append(expectedTxs, svc.ConvertPaginatedRow(row))
 					}
 					if hasMoreData == true {
 						require.NotEmpty(t, nextCursorID)

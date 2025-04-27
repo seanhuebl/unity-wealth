@@ -1,4 +1,4 @@
-package transaction
+package transaction_test
 
 import (
 	"context"
@@ -9,8 +9,9 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/seanhuebl/unity-wealth/internal/database"
-	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/stretchr/testify/require"
 )
 
@@ -49,7 +50,7 @@ func TestIntegrationUpdateTransaction(t *testing.T) {
 			_, err = db.Exec("PRAGMA foreign_Keys = ON")
 			require.NoError(t, err)
 
-			helpers.CreateTestingSchema(t, db)
+			testhelpers.CreateTestingSchema(t, db)
 
 			transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
 			txQ := database.NewRealTransactionQuerier(transactionalQ)
@@ -66,7 +67,7 @@ func TestIntegrationUpdateTransaction(t *testing.T) {
 				DetailedCategory: tc.req.DetailedCategory,
 			}
 
-			svc := NewTransactionService(txQ)
+			svc := transaction.NewTransactionService(txQ)
 			tx, err := svc.UpdateTransaction(ctx, txID.String(), userID.String(), tc.req)
 			require.NoError(t, err)
 			require.NotNil(t, tx)
@@ -79,9 +80,9 @@ func TestIntegrationUpdateTransaction(t *testing.T) {
 }
 
 func seedUpdateTxTestData(t *testing.T, db *sql.DB, userQ database.UserQuerier, userID uuid.UUID, txQ database.TransactionQuerier, txID uuid.UUID) {
-	helpers.SeedTestUser(t, userQ, userID)
-	helpers.SeedTestCategories(t, db)
-	helpers.SeedTestTransaction(t, txQ, userID, txID, &models.NewTransactionRequest{
+	testhelpers.SeedTestUser(t, userQ, userID)
+	testhelpers.SeedTestCategories(t, db)
+	testhelpers.SeedTestTransaction(t, txQ, userID, txID, &models.NewTransactionRequest{
 		Date:             "2025-2-24",
 		Merchant:         "sam's club",
 		Amount:           200.25,

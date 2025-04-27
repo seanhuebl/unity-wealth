@@ -1,4 +1,4 @@
-package transaction
+package transaction_test
 
 import (
 	"context"
@@ -8,8 +8,9 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/seanhuebl/unity-wealth/internal/database"
-	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,14 +40,14 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 				_, err = db.Exec("PRAGMA foreign_keys = ON")
 				require.NoError(t, err)
 
-				helpers.CreateTestingSchema(t, db)
+				testhelpers.CreateTestingSchema(t, db)
 
 				transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
 				txQ := database.NewRealTransactionQuerier(transactionalQ)
 				userQ := database.NewRealUserQuerier(transactionalQ)
 				seedDeleteTxTestData(t, db, userQ, userID, txQ, txnID)
 
-				svc := NewTransactionService(txQ)
+				svc := transaction.NewTransactionService(txQ)
 
 				err = svc.DeleteTransaction(ctx, txnID.String(), userID.String())
 				require.NoError(t, err)
@@ -63,9 +64,9 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 }
 
 func seedDeleteTxTestData(t *testing.T, db *sql.DB, userQ database.UserQuerier, userID uuid.UUID, txQ database.TransactionQuerier, txID uuid.UUID) {
-	helpers.SeedTestUser(t, userQ, userID)
-	helpers.SeedTestCategories(t, db)
-	helpers.SeedTestTransaction(t, txQ, userID, txID, &models.NewTransactionRequest{
+	testhelpers.SeedTestUser(t, userQ, userID)
+	testhelpers.SeedTestCategories(t, db)
+	testhelpers.SeedTestTransaction(t, txQ, userID, txID, &models.NewTransactionRequest{
 		Date:             "2025-02-24",
 		Merchant:         "Costco",
 		Amount:           145.56,
