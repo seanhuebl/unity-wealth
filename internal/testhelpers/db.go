@@ -105,11 +105,11 @@ func SetupTestEnv(t *testing.T) *testmodels.TestEnv {
 
 	h := txhandler.NewHandler(svc)
 	r := gin.New()
-	r.POST("/transactions", h.NewTransaction)
 	return &testmodels.TestEnv{
-		Router: r,
-		Db:     db,
-		UserQ:  userQ,
-		TxQ:    txQ,
+		Router:  r,
+		Db:      db,
+		UserQ:   userQ,
+		TxQ:     txQ,
+		Handler: h,
 	}
 }

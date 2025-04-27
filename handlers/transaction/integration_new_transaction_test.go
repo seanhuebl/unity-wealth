@@ -96,6 +96,7 @@ func TestIntegrationNewTx(t *testing.T) {
 				req = req.WithContext(context.WithValue(req.Context(), constants.UserIDKey, tc.UserID))
 			}
 
+			env.Router.POST("/transactions", env.Handler.NewTransaction)
 			env.Router.ServeHTTP(w, req)
 
 			actualResponse := testhelpers.ProcessResponse(w, t)
