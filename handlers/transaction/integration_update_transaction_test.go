@@ -1,6 +1,7 @@
 package transaction_test
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,8 +16,8 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
 )
 
-func TestIntegrationDeleteTransaction(t *testing.T) {
-	tests := []testmodels.DeleteTxTestCase{
+func TestIntegrationUpdateTx(t *testing.T) {
+	tests := []testmodels.UpdateTxTestCase{
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
@@ -25,12 +26,16 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 					ExpectedStatusCode: http.StatusOK,
 					ExpectedResponse: map[string]interface{}{
 						"data": map[string]interface{}{
-							"transaction_deleted": "success",
+							"date":              "2025-03-05",
+							"merchant":          "costco",
+							"amount":            400.00,
+							"detailed_category": 40,
 						},
 					},
 				},
 				TxID: uuid.NewString(),
 			},
+			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 400.00, "detailed_category": 40}`,
 		},
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
@@ -45,6 +50,22 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 				},
 				TxID: "",
 			},
+			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 400.00, "detailed_category": 40}`,
+		},
+		{
+			GetTxTestCase: testmodels.GetTxTestCase{
+				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
+					Name:               "invalid req body",
+					UserID:             uuid.New(),
+					ExpectedError:      "invalid request body",
+					ExpectedStatusCode: http.StatusBadRequest,
+					ExpectedResponse: map[string]interface{}{
+						"error": "invalid request body",
+					},
+				},
+				TxID: uuid.NewString(),
+			},
+			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 400.00, "detailed_category": 40`,
 		},
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
@@ -76,11 +97,26 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 				TxID: uuid.NewString(),
 			},
 		},
+		{
+			GetTxTestCase: testmodels.GetTxTestCase{
+				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
+
+					Name:               "error updating tx",
+					UserID:             uuid.New(),
+					ExpectedStatusCode: http.StatusInternalServerError,
+					ExpectedResponse: map[string]interface{}{
+						"error": "failed to update transaction",
+					},
+				},
+				TxID:  uuid.NewString(),
+				TxErr: errors.New("failed to update transaction"),
+			},
+			ReqBody: `{"date": "1/1/1994", "merchant": "costco", "amount": 400.00, "detailed_category": 40}`,
+		},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-
 			env := testhelpers.SetupTestEnv(t)
 			defer env.Db.Close()
 
@@ -96,8 +132,8 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 			}
 			w := httptest.NewRecorder()
 
-			req := httptest.NewRequest("DELETE", fmt.Sprintf("/transactions/%v", tc.TxID), nil)
-
+			req := httptest.NewRequest("POST", fmt.Sprintf("/transactions/%v", tc.TxID), bytes.NewBufferString(tc.ReqBody))
+			req.Header.Set("Content-Type", "application/json")
 			if tc.TxID == "" {
 				c, _ := gin.CreateTestContext(w)
 				c.Request = req
@@ -107,15 +143,15 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 				} else {
 					c.Set(string(constants.UserIDKey), tc.UserID)
 				}
-				env.Handler.DeleteTransaction(c)
+				env.Handler.UpdateTransaction(c)
 			} else {
-				env.Router.DELETE("/transactions/:id", func(c *gin.Context) {
+				env.Router.POST("/transactions/:id", func(c *gin.Context) {
 					if tc.Name == "unauthorized: user ID not UUID" {
 						c.Set(string(constants.UserIDKey), "userID")
 					} else {
 						c.Set(string(constants.UserIDKey), tc.UserID)
 					}
-					env.Handler.DeleteTransaction(c)
+					env.Handler.UpdateTransaction(c)
 				})
 				env.Router.ServeHTTP(w, req)
 			}
@@ -123,4 +159,5 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 			testhelpers.CheckTxHTTPResponse(t, w, tc, actualResponse)
 		})
 	}
+
 }
