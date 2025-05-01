@@ -60,13 +60,10 @@ func TestSetRefreshTokenCookie(t *testing.T) {
 			os.Setenv("ENV", tt.env)
 			os.Setenv("COOKIE_DOMAIN", tt.cookieDomainEnv)
 
-
 			recorder := httptest.NewRecorder()
 			ctx, _ := gin.CreateTestContext(recorder)
 
-
 			SetRefreshTokenCookie(ctx, tt.refreshToken)
-
 
 			result := recorder.Result()
 			cookies := result.Cookies()

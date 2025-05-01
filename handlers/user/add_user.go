@@ -7,7 +7,6 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/services/user"
 )
 
-// POST
 func (h *Handler) AddUser(ctx *gin.Context) {
 	var input user.SignUpInput
 

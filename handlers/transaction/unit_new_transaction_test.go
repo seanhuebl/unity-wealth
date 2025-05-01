@@ -73,7 +73,7 @@ func TestNewTx(t *testing.T) {
 			router := gin.New()
 			router.POST("/transactions", h.NewTransaction)
 			router.ServeHTTP(w, req)
-			
+
 			actualResponse := testhelpers.ProcessResponse(w, t)
 
 			testhelpers.CheckTxHTTPResponse(t, w, tc, actualResponse)

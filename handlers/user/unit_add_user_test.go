@@ -53,7 +53,7 @@ func TestAddUserHandler(t *testing.T) {
 		},
 		{
 			name:               "invalid req body",
-			reqBody:            `{"email": "valid@example.com", "password": "ValidPass1!"`, // malformed JSON
+			reqBody:            `{"email": "valid@example.com", "password": "ValidPass1!"`,
 			expectedError:      "invalid request body",
 			expectedStatusCode: http.StatusBadRequest,
 		},

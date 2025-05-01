@@ -47,7 +47,7 @@ func TestIntegrationNewTx(t *testing.T) {
 			BaseHTTPTestCase: testfixtures.InvalidReqBody,
 			ReqBody:          `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40`,
 		},
-		
+
 		{
 			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
 				Name:               "failed to create transaction: invalid date format",
