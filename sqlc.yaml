@@ -1,0 +1,20 @@
+version: "2"
+
+plugins:
+  - name: sqlc-gen-go
+    wasm:
+      url: file:///home/codespace/sqlc-gen-go_1.5.0.wasm
+      sha256: "4ca52949f4dc04b55188439f5de0ae20af2a71e3534b87907f2a7f466bda59ec"
+
+sql:
+  - engine: "sqlite"
+    schema:  "sql/schema"
+    queries: "sql/queries"
+    codegen:
+      - plugin: sqlc-gen-go
+        out: internal/database
+        options:
+          package: database
+          output_models_file_name: "../models/db.go"
+          output_models_package: models
+          models_package_import_path: internal/models

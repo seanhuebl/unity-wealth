@@ -8,6 +8,13 @@ import (
 	"database/sql"
 )
 
+type DetailedCategory struct {
+	ID                int64
+	Name              string
+	Description       string
+	PrimaryCategoryID int64
+}
+
 type DeviceInfoLog struct {
 	ID             string
 	UserID         string
@@ -21,6 +28,11 @@ type DeviceInfoLog struct {
 	LastUsedAt     sql.NullTime
 }
 
+type PrimaryCategory struct {
+	ID   int64
+	Name string
+}
+
 type RefreshToken struct {
 	ID           string
 	TokenHash    string
@@ -30,6 +42,17 @@ type RefreshToken struct {
 	RevokedAt    sql.NullTime
 	UserID       string
 	DeviceInfoID string
+}
+
+type Transaction struct {
+	ID                 string
+	UserID             string
+	TransactionDate    string
+	Merchant           string
+	AmountCents        int64
+	DetailedCategoryID int64
+	CreatedAt          sql.NullTime
+	UpdatedAt          sql.NullTime
 }
 
 type User struct {

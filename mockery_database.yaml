@@ -1,0 +1,6 @@
+all: true
+inpackage: false
+recursive: true
+output: ./internal/mocks/database
+dir: ./internal/database
+outpkg: dbmocks

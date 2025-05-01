@@ -1,0 +1,6 @@
+all: true
+inpackage: false
+recursive: true
+output: ./internal/mocks/auth
+dir: ./internal/services/auth
+outpkg: authmocks

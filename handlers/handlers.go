@@ -1,41 +1,27 @@
 package handlers
 
 import (
-	"context"
-	"database/sql"
-
-	"github.com/gin-gonic/gin"
-
-	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/handlers/auth"
+	"github.com/seanhuebl/unity-wealth/handlers/category"
+	"github.com/seanhuebl/unity-wealth/handlers/common"
+	"github.com/seanhuebl/unity-wealth/handlers/transaction"
+	"github.com/seanhuebl/unity-wealth/handlers/user"
 )
 
-type Quierier interface {
-	CreateUser(ctx context.Context, params database.CreateUserParams) error
-	GetUserByEmail(ctx context.Context, email string) (database.GetUserByEmailRow, error)
-	RevokeToken(ctx context.Context, arg database.RevokeTokenParams) error
-	GetDeviceInfoByUser(ctx context.Context, arg database.GetDeviceInfoByUserParams) (string, error)
-	CreateRefreshToken(ctx context.Context, arg database.CreateRefreshTokenParams) error
-	CreateDeviceInfo(ctx context.Context, arg database.CreateDeviceInfoParams) (string, error)
-	WithTx(tx *sql.Tx) *database.Queries
+type Handlers struct {
+	authHandler   *auth.Handler
+	catHandler    *category.Handler
+	commonHandler *common.Handler
+	txHandler     *transaction.Handler
+	userHandler   *user.Handler
 }
 
-func (cfg *ApiConfig) RegisterRoutes(router *gin.Engine) {
-
-	home := router.Group("/")
-	{
-		home.GET("/health", func(ctx *gin.Context) {
-			health(ctx)
-		})
-	}
-
-	api := router.Group("/api")
-	{
-		api.POST("/signup", func(ctx *gin.Context) {
-			cfg.AddUser(ctx)
-		})
-
-		api.POST("/login", func(ctx *gin.Context) {
-			cfg.Login(ctx)
-		})
+func NewHandlers(authHandler *auth.Handler, catHandler *category.Handler, commonHandler *common.Handler, txHandler *transaction.Handler, userHandler *user.Handler) *Handlers {
+	return &Handlers{
+		authHandler:   authHandler,
+		catHandler:    catHandler,
+		commonHandler: commonHandler,
+		txHandler:     txHandler,
+		userHandler:   userHandler,
 	}
 }
