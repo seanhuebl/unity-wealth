@@ -119,7 +119,7 @@ func TestGetTransactionsByUserID(t *testing.T) {
 							map[string]interface{}{
 								"id":                txID.String(),
 								"user_id":           userID.String(),
-								"date":              "2025-03-05",
+								"date":              "2025-03-19",
 								"merchant":          "costco",
 								"amount":            127.89,
 								"detailed_category": 40,
@@ -131,7 +131,7 @@ func TestGetTransactionsByUserID(t *testing.T) {
 					},
 				},
 			},
-			CursorDate:    "2025-03-05",
+			CursorDate:    "2025-03-19",
 			CursorID:      txID.String(),
 			PageSize:      1,
 			FirstPageTest: false,

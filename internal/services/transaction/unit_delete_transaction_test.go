@@ -36,14 +36,14 @@ func TestDeleteTransaction(t *testing.T) {
 		{
 			name:                    "no err but tx not found",
 			deleteErr:               sql.ErrNoRows,
-			expectedDeleteErrSubStr: "no transaction found",
+			expectedDeleteErrSubStr: "transaction not found",
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockTxQ := dbmocks.NewTransactionQuerier(t)
 
-			mockTxQ.On("DeleteTransactionByID", ctx, mock.AnythingOfType("database.DeleteTransactionByIDParams")).Return(tc.deleteErr)
+			mockTxQ.On("DeleteTransactionByID", ctx, mock.AnythingOfType("database.DeleteTransactionByIDParams")).Return(txnID.String(), tc.deleteErr)
 
 			svc := transaction.NewTransactionService(mockTxQ)
 
