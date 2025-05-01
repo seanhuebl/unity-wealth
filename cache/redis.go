@@ -9,7 +9,8 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/seanhuebl/unity-wealth/internal/config"
-	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/models"
+
 )
 
 var RedisClient = redis.NewClient(&redis.Options{
@@ -33,14 +34,14 @@ func WarmCategoriesCache(cfg *config.ApiConfig) error {
 		return err
 	}
 
-	if err = storeCategoriesAsHash(ctx, RedisClient, "primary_categories", primaryCategories, func(p database.PrimaryCategory) int64 {
+	if err = storeCategoriesAsHash(ctx, RedisClient, "primary_categories", primaryCategories, func(p models.PrimaryCategory) int64 {
 		return p.ID
 	}); err != nil {
 		log.Printf("error hashing primary_categories into the cache: %v", err)
 		return err
 	}
 
-	if err = storeCategoriesAsHash(ctx, RedisClient, "detailed_categories", detailedCategories, func(d database.DetailedCategory) int64 {
+	if err = storeCategoriesAsHash(ctx, RedisClient, "detailed_categories", detailedCategories, func(d models.DetailedCategory) int64 {
 		return d.ID
 	}); err != nil {
 		log.Printf("error hashing detailed_categories into the cache: %v", err)

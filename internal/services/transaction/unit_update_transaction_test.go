@@ -23,7 +23,7 @@ func TestUpdateTransaction(t *testing.T) {
 
 	tests := []struct {
 		name                  string
-		req                   models.NewTransactionRequest
+		req                   models.NewTxRequest
 		dateErr               error
 		expectedDateErrSubStr string
 		txErr                 error
@@ -31,7 +31,7 @@ func TestUpdateTransaction(t *testing.T) {
 	}{
 		{
 			name: "improper date format",
-			req: models.NewTransactionRequest{
+			req: models.NewTxRequest{
 				Date:             "2/24/25",
 				Merchant:         "costco",
 				Amount:           157.98,
@@ -44,7 +44,7 @@ func TestUpdateTransaction(t *testing.T) {
 		},
 		{
 			name: "update tx failure",
-			req: models.NewTransactionRequest{
+			req: models.NewTxRequest{
 				Date:             "2025-02-24",
 				Merchant:         "costco",
 				Amount:           157.98,
@@ -57,7 +57,7 @@ func TestUpdateTransaction(t *testing.T) {
 		},
 		{
 			name: "transaction not found",
-			req: models.NewTransactionRequest{
+			req: models.NewTxRequest{
 				Date:             "2025-02-24",
 				Merchant:         "costco",
 				Amount:           157.98,
@@ -102,7 +102,7 @@ func TestUpdateTransaction(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, tx)
 				mockTxQ.AssertExpectations(t)
-				expectedTx := &models.Transaction{
+				expectedTx := &models.Tx{
 					ID:               expectedRow.ID,
 					UserID:           userID.String(),
 					Date:             expectedRow.TransactionDate,

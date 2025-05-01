@@ -1,6 +1,10 @@
 package database
 
-import "context"
+import (
+	"context"
+
+	"github.com/seanhuebl/unity-wealth/internal/models"
+)
 
 type RealTransactionQuerier struct {
 	q SqlTransactionalQuerier
@@ -36,11 +40,11 @@ func (rt *RealTransactionQuerier) GetUserTransactionByID(ctx context.Context, ar
 	return rt.q.GetUserTransactionByID(ctx, arg)
 }
 
-func (rt *RealTransactionQuerier) GetPrimaryCategories(ctx context.Context) ([]PrimaryCategory, error) {
+func (rt *RealTransactionQuerier) GetPrimaryCategories(ctx context.Context) ([]models.PrimaryCategory, error) {
 	return rt.q.GetPrimaryCategories(ctx)
 }
 
-func (rt *RealTransactionQuerier) GetDetailedCategories(ctx context.Context) ([]DetailedCategory, error) {
+func (rt *RealTransactionQuerier) GetDetailedCategories(ctx context.Context) ([]models.DetailedCategory, error) {
 	return rt.q.GetDetailedCategories(ctx)
 }
 

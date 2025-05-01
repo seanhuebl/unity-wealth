@@ -53,7 +53,7 @@ func TestGetTransactionByID(t *testing.T) {
 				AmountCents:        19725,
 				DetailedCategoryID: 40,
 			}
-			expectedTxn := &models.Transaction{
+			expectedTxn := &models.Tx{
 				ID:               expectedRow.ID,
 				UserID:           expectedRow.UserID,
 				Date:             expectedRow.TransactionDate,

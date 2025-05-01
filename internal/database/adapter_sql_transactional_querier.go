@@ -3,6 +3,8 @@ package database
 import (
 	"context"
 	"database/sql"
+
+	"github.com/seanhuebl/unity-wealth/internal/models"
 )
 
 // RealTransactionalQuerier wraps a *Queries to implement SqlTransactionalQuerier.
@@ -43,7 +45,7 @@ func (r *RealTransactionalQuerier) RevokeToken(ctx context.Context, arg RevokeTo
 	return r.q.RevokeToken(ctx, arg)
 }
 
-func (r *RealTransactionalQuerier) GetRefreshByUserAndDevice(ctx context.Context, arg GetRefreshByUserAndDeviceParams) (RefreshToken, error) {
+func (r *RealTransactionalQuerier) GetRefreshByUserAndDevice(ctx context.Context, arg GetRefreshByUserAndDeviceParams) (models.RefreshToken, error) {
 	return r.q.GetRefreshByUserAndDevice(ctx, arg)
 }
 
@@ -72,11 +74,11 @@ func (r *RealTransactionalQuerier) GetUserTransactionByID(ctx context.Context, a
 	return r.q.GetUserTransactionByID(ctx, arg)
 }
 
-func (r *RealTransactionalQuerier) GetPrimaryCategories(ctx context.Context) ([]PrimaryCategory, error) {
+func (r *RealTransactionalQuerier) GetPrimaryCategories(ctx context.Context) ([]models.PrimaryCategory, error) {
 	return r.q.GetPrimaryCategories(ctx)
 }
 
-func (r *RealTransactionalQuerier) GetDetailedCategories(ctx context.Context) ([]DetailedCategory, error) {
+func (r *RealTransactionalQuerier) GetDetailedCategories(ctx context.Context) ([]models.DetailedCategory, error) {
 	return r.q.GetDetailedCategories(ctx)
 }
 

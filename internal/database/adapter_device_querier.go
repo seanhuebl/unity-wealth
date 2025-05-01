@@ -1,6 +1,8 @@
 package database
 
-import "context"
+import (
+	"context"
+)
 
 type RealDeviceQuerier struct {
 	q SqlTransactionalQuerier

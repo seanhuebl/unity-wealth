@@ -15,6 +15,3 @@ sql:
         out: internal/database
         options:
           package: database
-          output_models_file_name: "../models/db.go"
-          output_models_package: models
-          models_package_import_path: internal/models

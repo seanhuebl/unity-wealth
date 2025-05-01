@@ -55,7 +55,7 @@ func SeedTestCategories(t *testing.T, db *sql.DB) {
 	require.NoError(t, err)
 }
 
-func SeedTestTransaction(t *testing.T, txQ database.TransactionQuerier, userID, txID uuid.UUID, req *models.NewTransactionRequest) {
+func SeedTestTransaction(t *testing.T, txQ database.TransactionQuerier, userID, txID uuid.UUID, req *models.NewTxRequest) {
 	ctx := context.Background()
 	err := txQ.CreateTransaction(ctx, database.CreateTransactionParams{
 		ID:                 txID.String(),
@@ -116,14 +116,14 @@ func SetupTestEnv(t *testing.T) *testmodels.TestEnv {
 
 func IsTxFound(t *testing.T, tc testmodels.BaseHTTPTestCase, txID uuid.UUID, env *testmodels.TestEnv) {
 	if tc.Name == "not found" {
-		SeedTestTransaction(t, env.TxQ, tc.UserID, uuid.New(), &models.NewTransactionRequest{
+		SeedTestTransaction(t, env.TxQ, tc.UserID, uuid.New(), &models.NewTxRequest{
 			Date:             "2025-03-05",
 			Merchant:         "costco",
 			Amount:           125.98,
 			DetailedCategory: 40,
 		})
 	} else {
-		SeedTestTransaction(t, env.TxQ, tc.UserID, txID, &models.NewTransactionRequest{
+		SeedTestTransaction(t, env.TxQ, tc.UserID, txID, &models.NewTxRequest{
 			Date:             "2025-03-05",
 			Merchant:         "costco",
 			Amount:           125.98,

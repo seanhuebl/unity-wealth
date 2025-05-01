@@ -186,7 +186,7 @@ func TestIntegrationGetTransactionsByUserID(t *testing.T) {
 			} else if strings.Contains(tc.Name, "no transactions") && !tc.FirstPageTest {
 				testhelpers.SeedTestUser(t, env.UserQ, userID)
 				testhelpers.SeedTestCategories(t, env.Db)
-				testhelpers.SeedTestTransaction(t, env.TxQ, userID, pagTxID, &models.NewTransactionRequest{
+				testhelpers.SeedTestTransaction(t, env.TxQ, userID, pagTxID, &models.NewTxRequest{
 					Date:             "2025-03-05",
 					Merchant:         "costco",
 					Amount:           125.98,
@@ -198,7 +198,7 @@ func TestIntegrationGetTransactionsByUserID(t *testing.T) {
 					testhelpers.SeedTestCategories(t, env.Db)
 					testhelpers.IsTxFound(t, tc.BaseHTTPTestCase, txID, env)
 					if tc.MoreData || !tc.FirstPageTest {
-						testhelpers.SeedTestTransaction(t, env.TxQ, tc.UserID, pagTxID, &models.NewTransactionRequest{
+						testhelpers.SeedTestTransaction(t, env.TxQ, tc.UserID, pagTxID, &models.NewTxRequest{
 							Date:             "2025-03-06",
 							Merchant:         "costco",
 							Amount:           125.98,
@@ -206,7 +206,7 @@ func TestIntegrationGetTransactionsByUserID(t *testing.T) {
 						})
 					}
 					if tc.MoreData && !tc.FirstPageTest {
-						testhelpers.SeedTestTransaction(t, env.TxQ, tc.UserID, uuid.New(), &models.NewTransactionRequest{
+						testhelpers.SeedTestTransaction(t, env.TxQ, tc.UserID, uuid.New(), &models.NewTxRequest{
 							Date:             "2025-03-07",
 							Merchant:         "costco",
 							Amount:           125.98,

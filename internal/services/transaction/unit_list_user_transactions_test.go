@@ -132,7 +132,7 @@ func TestListUserTransactions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockTxQ := dbmocks.NewTransactionQuerier(t)
 			fetchSize := tc.pageSize + 1
-			expectedTxs := make([]models.Transaction, 0)
+			expectedTxs := make([]models.Tx, 0)
 
 			svc := transaction.NewTransactionService(mockTxQ)
 

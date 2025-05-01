@@ -8,6 +8,8 @@ package database
 import (
 	"context"
 	"database/sql"
+
+	"github.com/seanhuebl/unity-wealth/internal/models"
 )
 
 const createRefreshToken = `-- name: CreateRefreshToken :exec
@@ -60,9 +62,9 @@ type GetRefreshByUserAndDeviceParams struct {
 	DeviceInfoID string
 }
 
-func (q *Queries) GetRefreshByUserAndDevice(ctx context.Context, arg GetRefreshByUserAndDeviceParams) (RefreshToken, error) {
+func (q *Queries) GetRefreshByUserAndDevice(ctx context.Context, arg GetRefreshByUserAndDeviceParams) (models.RefreshToken, error) {
 	row := q.db.QueryRowContext(ctx, getRefreshByUserAndDevice, arg.UserID, arg.DeviceInfoID)
-	var i RefreshToken
+	var i models.RefreshToken
 	err := row.Scan(
 		&i.ID,
 		&i.TokenHash,

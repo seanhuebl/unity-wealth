@@ -2,6 +2,8 @@ package database
 
 import (
 	"context"
+
+	"github.com/seanhuebl/unity-wealth/internal/models"
 )
 
 type RealTokenQuerier struct {
@@ -22,6 +24,6 @@ func (rt *RealTokenQuerier) RevokeToken(ctx context.Context, arg RevokeTokenPara
 	return rt.q.RevokeToken(ctx, arg)
 }
 
-func (rt *RealTokenQuerier) GetRefreshByUserAndDevice(ctx context.Context, arg GetRefreshByUserAndDeviceParams) (RefreshToken, error) {
+func (rt *RealTokenQuerier) GetRefreshByUserAndDevice(ctx context.Context, arg GetRefreshByUserAndDeviceParams) (models.RefreshToken, error) {
 	return rt.q.GetRefreshByUserAndDevice(ctx, arg)
 }

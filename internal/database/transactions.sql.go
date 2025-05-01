@@ -8,6 +8,8 @@ package database
 import (
 	"context"
 	"database/sql"
+
+	"github.com/seanhuebl/unity-wealth/internal/models"
 )
 
 const createTransaction = `-- name: CreateTransaction :exec
@@ -67,15 +69,15 @@ SELECT id, name, description, primary_category_id
 FROM detailed_categories
 `
 
-func (q *Queries) GetDetailedCategories(ctx context.Context) ([]DetailedCategory, error) {
+func (q *Queries) GetDetailedCategories(ctx context.Context) ([]models.DetailedCategory, error) {
 	rows, err := q.db.QueryContext(ctx, getDetailedCategories)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []DetailedCategory
+	var items []models.DetailedCategory
 	for rows.Next() {
-		var i DetailedCategory
+		var i models.DetailedCategory
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -113,15 +115,15 @@ SELECT id, name
 FROM primary_categories
 `
 
-func (q *Queries) GetPrimaryCategories(ctx context.Context) ([]PrimaryCategory, error) {
+func (q *Queries) GetPrimaryCategories(ctx context.Context) ([]models.PrimaryCategory, error) {
 	rows, err := q.db.QueryContext(ctx, getPrimaryCategories)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PrimaryCategory
+	var items []models.PrimaryCategory
 	for rows.Next() {
-		var i PrimaryCategory
+		var i models.PrimaryCategory
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
 			return nil, err
 		}

@@ -3,6 +3,8 @@ package database
 import (
 	"context"
 	"database/sql"
+
+	"github.com/seanhuebl/unity-wealth/internal/models"
 )
 
 type UserQuerier interface {
@@ -18,7 +20,7 @@ type DeviceQuerier interface {
 type TokenQuerier interface {
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) error
 	RevokeToken(ctx context.Context, arg RevokeTokenParams) error
-	GetRefreshByUserAndDevice(ctx context.Context, arg GetRefreshByUserAndDeviceParams) (RefreshToken, error)
+	GetRefreshByUserAndDevice(ctx context.Context, arg GetRefreshByUserAndDeviceParams) (models.RefreshToken, error)
 }
 
 type TransactionQuerier interface {
@@ -28,8 +30,8 @@ type TransactionQuerier interface {
 	GetUserTransactionsFirstPage(ctx context.Context, arg GetUserTransactionsFirstPageParams) ([]GetUserTransactionsFirstPageRow, error)
 	GetUserTransactionsPaginated(ctx context.Context, arg GetUserTransactionsPaginatedParams) ([]GetUserTransactionsPaginatedRow, error)
 	GetUserTransactionByID(ctx context.Context, arg GetUserTransactionByIDParams) (GetUserTransactionByIDRow, error)
-	GetPrimaryCategories(ctx context.Context) ([]PrimaryCategory, error)
-	GetDetailedCategories(ctx context.Context) ([]DetailedCategory, error)
+	GetPrimaryCategories(ctx context.Context) ([]models.PrimaryCategory, error)
+	GetDetailedCategories(ctx context.Context) ([]models.DetailedCategory, error)
 	GetDetailedCategoryID(ctx context.Context, name string) (int64, error)
 }
 

@@ -19,7 +19,7 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 		return
 	}
 
-	var req models.NewTransactionRequest
+	var req models.NewTxRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -175,7 +175,7 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 		return
 	}
 
-	var req models.NewTransactionRequest
+	var req models.NewTxRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{

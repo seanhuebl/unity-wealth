@@ -21,7 +21,7 @@ func TestCreateTransaction(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		req              models.NewTransactionRequest
+		req              models.NewTxRequest
 		dateErr          error
 		expDateErrSubStr string
 		txErr            error
@@ -29,7 +29,7 @@ func TestCreateTransaction(t *testing.T) {
 	}{
 		{
 			name: "unsuccessful tx, invalid date",
-			req: models.NewTransactionRequest{
+			req: models.NewTxRequest{
 				Date:             "03/27/94",
 				Merchant:         "Costco",
 				Amount:           145.56,
@@ -42,7 +42,7 @@ func TestCreateTransaction(t *testing.T) {
 		},
 		{
 			name: "unsuccessful tx, create tx failure",
-			req: models.NewTransactionRequest{
+			req: models.NewTxRequest{
 				Date:             "2025-02-24",
 				Merchant:         "Costco",
 				Amount:           145.56,
@@ -80,7 +80,7 @@ func TestCreateTransaction(t *testing.T) {
 				require.NotNil(t, tx)
 
 				expectedTx := models.NewTransaction(txID.String(), userID.String(), tc.req.Date, tc.req.Merchant, tc.req.Amount, tc.req.DetailedCategory)
-				if diff := cmp.Diff(expectedTx, tx, cmpopts.IgnoreFields(models.Transaction{}, "ID")); diff != "" {
+				if diff := cmp.Diff(expectedTx, tx, cmpopts.IgnoreFields(models.Tx{}, "ID")); diff != "" {
 					t.Errorf("transaction mismatch (-want +got)\n%s", diff)
 				}
 				mockTxQ.AssertExpectations(t)

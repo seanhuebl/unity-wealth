@@ -8,6 +8,8 @@ import (
 	database "github.com/seanhuebl/unity-wealth/internal/database"
 	mock "github.com/stretchr/testify/mock"
 
+	models "github.com/seanhuebl/unity-wealth/internal/models"
+
 	sql "database/sql"
 )
 
@@ -157,23 +159,23 @@ func (_m *SqlTransactionalQuerier) DeleteTransactionByID(ctx context.Context, ar
 }
 
 // GetDetailedCategories provides a mock function with given fields: ctx
-func (_m *SqlTransactionalQuerier) GetDetailedCategories(ctx context.Context) ([]database.DetailedCategory, error) {
+func (_m *SqlTransactionalQuerier) GetDetailedCategories(ctx context.Context) ([]models.DetailedCategory, error) {
 	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetDetailedCategories")
 	}
 
-	var r0 []database.DetailedCategory
+	var r0 []models.DetailedCategory
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]database.DetailedCategory, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) ([]models.DetailedCategory, error)); ok {
 		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) []database.DetailedCategory); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) []models.DetailedCategory); ok {
 		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]database.DetailedCategory)
+			r0 = ret.Get(0).([]models.DetailedCategory)
 		}
 	}
 
@@ -243,23 +245,23 @@ func (_m *SqlTransactionalQuerier) GetDeviceInfoByUser(ctx context.Context, arg 
 }
 
 // GetPrimaryCategories provides a mock function with given fields: ctx
-func (_m *SqlTransactionalQuerier) GetPrimaryCategories(ctx context.Context) ([]database.PrimaryCategory, error) {
+func (_m *SqlTransactionalQuerier) GetPrimaryCategories(ctx context.Context) ([]models.PrimaryCategory, error) {
 	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetPrimaryCategories")
 	}
 
-	var r0 []database.PrimaryCategory
+	var r0 []models.PrimaryCategory
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]database.PrimaryCategory, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) ([]models.PrimaryCategory, error)); ok {
 		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) []database.PrimaryCategory); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) []models.PrimaryCategory); ok {
 		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]database.PrimaryCategory)
+			r0 = ret.Get(0).([]models.PrimaryCategory)
 		}
 	}
 
@@ -273,22 +275,22 @@ func (_m *SqlTransactionalQuerier) GetPrimaryCategories(ctx context.Context) ([]
 }
 
 // GetRefreshByUserAndDevice provides a mock function with given fields: ctx, arg
-func (_m *SqlTransactionalQuerier) GetRefreshByUserAndDevice(ctx context.Context, arg database.GetRefreshByUserAndDeviceParams) (database.RefreshToken, error) {
+func (_m *SqlTransactionalQuerier) GetRefreshByUserAndDevice(ctx context.Context, arg database.GetRefreshByUserAndDeviceParams) (models.RefreshToken, error) {
 	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetRefreshByUserAndDevice")
 	}
 
-	var r0 database.RefreshToken
+	var r0 models.RefreshToken
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, database.GetRefreshByUserAndDeviceParams) (database.RefreshToken, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, database.GetRefreshByUserAndDeviceParams) (models.RefreshToken, error)); ok {
 		return rf(ctx, arg)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, database.GetRefreshByUserAndDeviceParams) database.RefreshToken); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, database.GetRefreshByUserAndDeviceParams) models.RefreshToken); ok {
 		r0 = rf(ctx, arg)
 	} else {
-		r0 = ret.Get(0).(database.RefreshToken)
+		r0 = ret.Get(0).(models.RefreshToken)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, database.GetRefreshByUserAndDeviceParams) error); ok {
