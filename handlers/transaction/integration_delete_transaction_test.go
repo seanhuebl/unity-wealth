@@ -1,7 +1,6 @@
 package transaction_test
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -9,8 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/seanhuebl/unity-wealth/internal/constants"
-	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/testfixtures"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
 )
@@ -34,46 +32,26 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 		},
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
-				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
-					Name:               "invalid txID in req",
-					UserID:             uuid.New(),
-					ExpectedError:      "invalid id",
-					ExpectedStatusCode: http.StatusBadRequest,
-					ExpectedResponse: map[string]interface{}{
-						"error": "invalid id",
-					},
-				},
-				TxID: "",
+				BaseHTTPTestCase: testfixtures.InvalidTxID,
+				TxID:             "",
 			},
 		},
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
-				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
-					Name:               "unauthorized: user ID is uuid.NIL",
-					UserID:             uuid.Nil,
-					UserIDErr:          errors.New("user ID not found in context"),
-					ExpectedError:      "unauthorized",
-					ExpectedStatusCode: http.StatusUnauthorized,
-					ExpectedResponse: map[string]interface{}{
-						"error": "unauthorized",
-					},
-				},
-				TxID: uuid.NewString(),
+				BaseHTTPTestCase: testfixtures.NilUserID,
+				TxID:             uuid.NewString(),
 			},
 		},
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
-				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
-
-					Name:               "unauthorized: user ID not UUID",
-					UserID:             uuid.Nil,
-					UserIDErr:          errors.New("user ID is not UUID"),
-					ExpectedStatusCode: http.StatusUnauthorized,
-					ExpectedResponse: map[string]interface{}{
-						"error": "unauthorized",
-					},
-				},
-				TxID: uuid.NewString(),
+				BaseHTTPTestCase: testfixtures.InvalidUserID,
+				TxID:             uuid.NewString(),
+			},
+		},
+		{
+			GetTxTestCase: testmodels.GetTxTestCase{
+				BaseHTTPTestCase: testfixtures.NotFound,
+				TxID:             uuid.NewString(),
 			},
 		},
 	}
@@ -87,12 +65,7 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 			if tc.TxID != "" {
 				testhelpers.SeedTestUser(t, env.UserQ, tc.UserID)
 				testhelpers.SeedTestCategories(t, env.Db)
-				testhelpers.SeedTestTransaction(t, env.TxQ, tc.UserID, uuid.MustParse(tc.TxID), &models.NewTransactionRequest{
-					Date:             "2025-03-05",
-					Merchant:         "costco",
-					Amount:           125.98,
-					DetailedCategory: 40,
-				})
+				testhelpers.IsTxFound(t, tc.BaseHTTPTestCase, uuid.MustParse(tc.TxID), env)
 			}
 			w := httptest.NewRecorder()
 
@@ -102,19 +75,11 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 				c, _ := gin.CreateTestContext(w)
 				c.Request = req
 				c.Params = gin.Params{{Key: "id", Value: ""}}
-				if tc.Name == "unauthorized: user ID not UUID" {
-					c.Set(string(constants.UserIDKey), "userID")
-				} else {
-					c.Set(string(constants.UserIDKey), tc.UserID)
-				}
+				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
 				env.Handler.DeleteTransaction(c)
 			} else {
 				env.Router.DELETE("/transactions/:id", func(c *gin.Context) {
-					if tc.Name == "unauthorized: user ID not UUID" {
-						c.Set(string(constants.UserIDKey), "userID")
-					} else {
-						c.Set(string(constants.UserIDKey), tc.UserID)
-					}
+					testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
 					env.Handler.DeleteTransaction(c)
 				})
 				env.Router.ServeHTTP(w, req)

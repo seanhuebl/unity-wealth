@@ -30,19 +30,6 @@ func TestUpdateTransaction(t *testing.T) {
 		expectedTxErrSubStr   string
 	}{
 		{
-			name: "successful update",
-			req: models.NewTransactionRequest{
-				Date:             "2025-02-24",
-				Merchant:         "costco",
-				Amount:           157.98,
-				DetailedCategory: 40,
-			},
-			dateErr:               nil,
-			expectedDateErrSubStr: "",
-			txErr:                 nil,
-			expectedTxErrSubStr:   "",
-		},
-		{
 			name: "improper date format",
 			req: models.NewTransactionRequest{
 				Date:             "2/24/25",

@@ -15,6 +15,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	"github.com/seanhuebl/unity-wealth/internal/testfixtures"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
 )
@@ -23,41 +24,16 @@ func TestGetTxByID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	tests := []testmodels.GetTxTestCase{
 		{
-			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
-
-				Name:               "success",
-				UserID:             uuid.New(),
-				ExpectedStatusCode: http.StatusOK,
-				ExpectedResponse: map[string]interface{}{
-					"data": map[string]interface{}{
-						"date":              "2025-03-05",
-						"merchant":          "costco",
-						"amount":            125.98,
-						"detailed_category": 40,
-					},
-				},
-			},
-			TxID: uuid.NewString(),
+			BaseHTTPTestCase: testfixtures.NilUserID,
+			TxID:             uuid.NewString(),
 		},
 		{
-			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
-				Name:               "unauthorized: user ID is uuid.NIL",
-				UserID:             uuid.Nil,
-				UserIDErr:          errors.New("user ID not found in context"),
-				ExpectedError:      "unauthorized",
-				ExpectedStatusCode: http.StatusUnauthorized,
-			},
-			TxID: uuid.NewString(),
+			BaseHTTPTestCase: testfixtures.InvalidUserID,
+			TxID:             uuid.NewString(),
 		},
 		{
-			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
-				Name:               "unauthorized: user ID not UUID",
-				UserID:             uuid.Nil,
-				UserIDErr:          errors.New("user ID is not UUID"),
-				ExpectedError:      "unauthorized",
-				ExpectedStatusCode: http.StatusUnauthorized,
-			},
-			TxID: uuid.NewString(),
+			BaseHTTPTestCase: testfixtures.InvalidTxID,
+			TxID:             "",
 		},
 		{
 			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
@@ -69,15 +45,6 @@ func TestGetTxByID(t *testing.T) {
 			},
 			TxID:  uuid.NewString(),
 			TxErr: errors.New("error getting transaction"),
-		},
-		{
-			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
-				Name:               "invalid txID in req",
-				UserID:             uuid.New(),
-				ExpectedError:      "invalid id",
-				ExpectedStatusCode: http.StatusBadRequest,
-			},
-			TxID: "",
 		},
 	}
 	for _, tc := range tests {

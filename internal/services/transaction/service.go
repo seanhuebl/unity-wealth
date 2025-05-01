@@ -74,12 +74,13 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, txnID, userI
 }
 
 func (s *TransactionService) DeleteTransaction(ctx context.Context, txnID, userID string) error {
-	if err := s.txQueries.DeleteTransactionByID(ctx, database.DeleteTransactionByIDParams{
+	_, err := s.txQueries.DeleteTransactionByID(ctx, database.DeleteTransactionByIDParams{
 		ID:     txnID,
 		UserID: userID,
-	}); err != nil {
+	})
+	if err != nil {
 		if err == sql.ErrNoRows {
-			return fmt.Errorf("no transaction found: %w", err)
+			return fmt.Errorf("transaction not found: %w", err)
 		}
 		return fmt.Errorf("error deleting transaction: %w", err)
 	}
@@ -121,6 +122,9 @@ func (s *TransactionService) ListUserTransactions(
 	if cursorDate == nil || cursorID == nil {
 		firstPageRows, err := s.txQueries.GetUserTransactionsFirstPage(ctx, database.GetUserTransactionsFirstPageParams{UserID: userID.String(), Limit: fetchSize})
 		if err != nil {
+			if err == sql.ErrNoRows {
+				return nil, "", "", false, fmt.Errorf("no transactions found: %w", err)
+			}
 			return nil, "", "", false, fmt.Errorf("error loading first page of transactions: %w", err)
 		}
 		for _, txn := range firstPageRows {
@@ -135,6 +139,9 @@ func (s *TransactionService) ListUserTransactions(
 		})
 
 		if err != nil {
+			if err == sql.ErrNoRows {
+				return nil, "", "", false, fmt.Errorf("no transactions found: %w", err)
+			}
 			return nil, "", "", false, fmt.Errorf("error loading next page: %w", err)
 		}
 		for _, txn := range nextRows {

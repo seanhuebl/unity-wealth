@@ -31,10 +31,11 @@ FROM primary_categories;
 -- name: GetDetailedCategories :many
 SELECT *
 FROM detailed_categories;
--- name: DeleteTransactionByID :exec
+-- name: DeleteTransactionByID :one
 DELETE FROM transactions
 WHERE id = ?1
-    AND user_id = ?2;
+    AND user_id = ?2
+RETURNING id;
 -- name: GetUserTransactionsFirstPage :many
 SELECT id,
     user_id,

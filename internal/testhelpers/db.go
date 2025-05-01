@@ -113,3 +113,21 @@ func SetupTestEnv(t *testing.T) *testmodels.TestEnv {
 		Handler: h,
 	}
 }
+
+func IsTxFound(t *testing.T, tc testmodels.BaseHTTPTestCase, txID uuid.UUID, env *testmodels.TestEnv) {
+	if tc.Name == "not found" {
+		SeedTestTransaction(t, env.TxQ, tc.UserID, uuid.New(), &models.NewTransactionRequest{
+			Date:             "2025-03-05",
+			Merchant:         "costco",
+			Amount:           125.98,
+			DetailedCategory: 40,
+		})
+	} else {
+		SeedTestTransaction(t, env.TxQ, tc.UserID, txID, &models.NewTransactionRequest{
+			Date:             "2025-03-05",
+			Merchant:         "costco",
+			Amount:           125.98,
+			DetailedCategory: 40,
+		})
+	}
+}

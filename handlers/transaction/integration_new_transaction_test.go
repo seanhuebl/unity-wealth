@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/seanhuebl/unity-wealth/internal/constants"
+	"github.com/seanhuebl/unity-wealth/internal/testfixtures"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
@@ -35,40 +36,21 @@ func TestIntegrationNewTx(t *testing.T) {
 			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
 		},
 		{
-			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
-				Name:               "unauthorized userID: ID is not UUID ",
-				ExpectedStatusCode: http.StatusUnauthorized,
-				ExpectedResponse: map[string]interface{}{
-					"error": "unauthorized",
-				},
-			},
-			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
+			BaseHTTPTestCase: testfixtures.InvalidUserID,
+			ReqBody:          `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
 		},
 		{
-			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
-				Name:               "unauthorized userID: context with invalid userID",
-				UserID:             uuid.Nil,
-				ExpectedStatusCode: http.StatusUnauthorized,
-				ExpectedResponse: map[string]interface{}{
-					"error": "unauthorized",
-				},
-			},
-			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
+			BaseHTTPTestCase: testfixtures.NilUserID,
+			ReqBody:          `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
 		},
 		{
-			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
-				Name:               "invalid request body",
-				UserID:             uuid.New(),
-				ExpectedStatusCode: http.StatusBadRequest,
-				ExpectedResponse: map[string]interface{}{
-					"error": "invalid request body",
-				},
-			},
-			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40`,
+			BaseHTTPTestCase: testfixtures.InvalidReqBody,
+			ReqBody:          `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40`,
 		},
+		
 		{
 			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
-				Name:               "failed to create transaction",
+				Name:               "failed to create transaction: invalid date format",
 				UserID:             uuid.New(),
 				ExpectedStatusCode: http.StatusInternalServerError,
 				ExpectedResponse: map[string]interface{}{
@@ -90,7 +72,7 @@ func TestIntegrationNewTx(t *testing.T) {
 			req := httptest.NewRequest("POST", "/transactions", bytes.NewBufferString(tc.ReqBody))
 			req.Header.Set("Content-Type", "application/json")
 
-			if strings.Contains(tc.Name, "ID is not UUID") {
+			if strings.Contains(tc.Name, "user ID not UUID") {
 				req = req.WithContext(context.WithValue(req.Context(), constants.UserIDKey, "not-a-uuid"))
 			} else {
 				req = req.WithContext(context.WithValue(req.Context(), constants.UserIDKey, tc.UserID))
@@ -98,7 +80,6 @@ func TestIntegrationNewTx(t *testing.T) {
 
 			env.Router.POST("/transactions", env.Handler.NewTransaction)
 			env.Router.ServeHTTP(w, req)
-
 			actualResponse := testhelpers.ProcessResponse(w, t)
 			testhelpers.CheckTxHTTPResponse(t, w, tc, actualResponse)
 		})

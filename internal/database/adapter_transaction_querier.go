@@ -20,7 +20,7 @@ func (rt *RealTransactionQuerier) UpdateTransactionByID(ctx context.Context, arg
 	return rt.q.UpdateTransactionByID(ctx, arg)
 }
 
-func (rt *RealTransactionQuerier) DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) error {
+func (rt *RealTransactionQuerier) DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (string, error) {
 	return rt.q.DeleteTransactionByID(ctx, arg)
 }
 

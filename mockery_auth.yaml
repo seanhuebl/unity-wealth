@@ -1,4 +1,3 @@
-case: underscore
 all: true
 inpackage: false
 recursive: true

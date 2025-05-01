@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/seanhuebl/unity-wealth/internal/constants"
@@ -105,6 +106,12 @@ func (h *Handler) GetTransactionsByUserID(ctx *gin.Context) {
 	transactions, nextCursorDate, nextCursorID, hasMoreData, err :=
 		h.txSvc.ListUserTransactions(ctx.Request.Context(), userID, cursorDatePtr, cursorIDPtr, pageSize)
 	if err != nil {
+		if strings.Contains(err.Error(), "no transactions found") {
+			ctx.JSON(http.StatusOK, gin.H{
+				"error": "transactions not found",
+			})
+			return
+		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "unable to get transactions",
 		})
@@ -140,6 +147,12 @@ func (h *Handler) GetTransactionByID(ctx *gin.Context) {
 	}
 	txn, err := h.txSvc.GetTransactionByID(ctx.Request.Context(), userID.String(), id)
 	if err != nil {
+		if strings.Contains(err.Error(), "transaction not found") {
+			ctx.JSON(http.StatusNotFound, gin.H{
+				"error": "transaction not found",
+			})
+			return
+		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "unable to get transaction",
 		})
@@ -181,6 +194,12 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 
 	txn, err := h.txSvc.UpdateTransaction(ctx.Request.Context(), id, userID.String(), req)
 	if err != nil {
+		if strings.Contains(err.Error(), "transaction not found") {
+			ctx.JSON(http.StatusNotFound, gin.H{
+				"error": "transaction not found",
+			})
+			return
+		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to update transaction",
 		})
@@ -213,6 +232,12 @@ func (h *Handler) DeleteTransaction(ctx *gin.Context) {
 
 	err = h.txSvc.DeleteTransaction(ctx.Request.Context(), id, userID.String())
 	if err != nil {
+		if strings.Contains(err.Error(), "transaction not found") {
+			ctx.JSON(http.StatusNotFound, gin.H{
+				"error": "transaction not found",
+			})
+			return
+		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "error deleting transaction",
 		})

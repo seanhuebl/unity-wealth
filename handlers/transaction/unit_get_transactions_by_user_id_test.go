@@ -14,6 +14,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	"github.com/seanhuebl/unity-wealth/internal/testfixtures"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
 	"github.com/stretchr/testify/mock"
@@ -118,7 +119,7 @@ func TestGetTransactionsByUserID(t *testing.T) {
 							map[string]interface{}{
 								"id":                txID.String(),
 								"user_id":           userID.String(),
-								"date":              "2025-03-19",
+								"date":              "2025-03-05",
 								"merchant":          "costco",
 								"amount":            127.89,
 								"detailed_category": 40,
@@ -130,29 +131,17 @@ func TestGetTransactionsByUserID(t *testing.T) {
 					},
 				},
 			},
-			CursorDate:    "2025-03-19",
+			CursorDate:    "2025-03-05",
 			CursorID:      txID.String(),
 			PageSize:      1,
 			FirstPageTest: false,
 			MoreData:      false,
 		},
 		{
-			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
-				Name:               "unauthorized: user ID is uuid.NIL",
-				UserID:             uuid.Nil,
-				UserIDErr:          errors.New("user ID not found in context"),
-				ExpectedError:      "unauthorized",
-				ExpectedStatusCode: http.StatusUnauthorized,
-			},
+			BaseHTTPTestCase: testfixtures.NilUserID,
 		},
 		{
-			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
-				Name:               "unauthorized: user ID not UUID",
-				UserID:             uuid.Nil,
-				UserIDErr:          errors.New("user ID is not UUID"),
-				ExpectedError:      "unauthorized",
-				ExpectedStatusCode: http.StatusUnauthorized,
-			},
+			BaseHTTPTestCase: testfixtures.InvalidUserID,
 		},
 		{
 			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
@@ -262,11 +251,7 @@ func TestGetTransactionsByUserID(t *testing.T) {
 				c.Set(string(constants.CursorDateKey), tc.CursorDate)
 				c.Set(string(constants.CursorIDKey), tc.CursorID)
 				c.Set(string(constants.PageSizeKey), tc.PageSize)
-				if tc.Name == "unauthorized: user ID not UUID" {
-					c.Set(string(constants.UserIDKey), "userID")
-				} else {
-					c.Set(string(constants.UserIDKey), tc.UserID)
-				}
+				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
 				h.GetTransactionsByUserID(c)
 			})
 			router.ServeHTTP(w, req)

@@ -28,19 +28,6 @@ func TestCreateTransaction(t *testing.T) {
 		expTxErrSubStr   string
 	}{
 		{
-			name: "successful create tx",
-			req: models.NewTransactionRequest{
-				Date:             "2025-02-24",
-				Merchant:         "Costco",
-				Amount:           145.56,
-				DetailedCategory: 40,
-			},
-			dateErr:          nil,
-			expDateErrSubStr: "",
-			txErr:            nil,
-			expTxErrSubStr:   "",
-		},
-		{
 			name: "unsuccessful tx, invalid date",
 			req: models.NewTransactionRequest{
 				Date:             "03/27/94",

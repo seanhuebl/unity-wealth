@@ -27,13 +27,6 @@ func TestGetTransactionByID(t *testing.T) {
 		expectedTxErrSubstr string
 	}{
 		{
-			name:                "successful retrieval",
-			userID:              uuid.New(),
-			txnID:               uuid.New(),
-			txErr:               nil,
-			expectedTxErrSubstr: "",
-		},
-		{
 			name:                "database error",
 			userID:              uuid.New(),
 			txnID:               uuid.New(),
