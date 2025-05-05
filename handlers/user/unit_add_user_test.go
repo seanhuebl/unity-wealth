@@ -123,7 +123,7 @@ func TestAddUserHandler(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			router := gin.New()
-			router.POST("/signup", h.AddUser)
+			router.POST("/signup", h.SignUp)
 			router.ServeHTTP(w, req)
 
 			var actualResponse map[string]interface{}

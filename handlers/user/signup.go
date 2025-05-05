@@ -7,7 +7,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/services/user"
 )
 
-func (h *Handler) AddUser(ctx *gin.Context) {
+func (h *Handler) SignUp(ctx *gin.Context) {
 	var input user.SignUpInput
 
 	if err := ctx.ShouldBindJSON(&input); err != nil {

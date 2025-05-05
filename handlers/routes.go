@@ -10,7 +10,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.ApiConfig, h *Handlers, m *m
 
 	home := router.Group("/")
 	{
-		home.POST("/signup", h.userHandler.AddUser)
+		home.POST("/signup", h.userHandler.SignUp)
 
 		home.POST("/login", h.authHandler.Login)
 
