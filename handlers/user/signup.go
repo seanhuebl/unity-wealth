@@ -1,6 +1,8 @@
 package user
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -17,9 +19,20 @@ func (h *Handler) SignUp(ctx *gin.Context) {
 		return
 	}
 	if err := h.userService.SignUp(ctx, input); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		switch {
+		case errors.Is(err, fmt.Errorf("invalid email")):
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": "invalid email",
+			})
+		case errors.Is(err, fmt.Errorf("invalid password: %w", err)):
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": "invalid password",
+			})
+		default:
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": "internal server error",
+			})
+		}
 		return
 	}
 

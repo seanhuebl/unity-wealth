@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -17,6 +16,7 @@ import (
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/seanhuebl/unity-wealth/internal/services/user"
+	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -95,13 +95,13 @@ func TestAddUserHandler(t *testing.T) {
 			mockUserQ := dbmocks.NewUserQuerier(t)
 			mockPwdHasher := authmocks.NewPasswordHasher(t)
 			if json.Valid([]byte(tc.reqBody)) {
-				if auth.IsValidEmail(getEmailFromBody(tc.reqBody)) {
+				if auth.IsValidEmail(testhelpers.GetEmailFromBody(tc.reqBody)) {
 					if tc.validPasswordError == nil {
-						mockPwdHasher.On("HashPassword", getPasswordFromBody(tc.reqBody)).Return(tc.hashPasswordOutput, tc.hashPasswordError)
+						mockPwdHasher.On("HashPassword", testhelpers.GetPasswordFromBody(tc.reqBody)).Return(tc.hashPasswordOutput, tc.hashPasswordError)
 						if tc.hashPasswordError == nil {
 							mockUserQ.On("CreateUser", mock.Anything, mock.MatchedBy(func(params database.CreateUserParams) bool {
 								expected := database.CreateUserParams{
-									Email:          getEmailFromBody(tc.reqBody),
+									Email:          testhelpers.GetEmailFromBody(tc.reqBody),
 									HashedPassword: tc.hashPasswordOutput,
 								}
 
@@ -141,24 +141,4 @@ func TestAddUserHandler(t *testing.T) {
 			mockPwdHasher.AssertExpectations(t)
 		})
 	}
-}
-
-// Helpers
-
-func getEmailFromBody(reqBody string) string {
-	re := regexp.MustCompile(`"email"\s*:\s*"([^"]+)"`)
-	matches := re.FindStringSubmatch(reqBody)
-	if len(matches) > 1 {
-		return matches[1]
-	}
-	return ""
-}
-
-func getPasswordFromBody(reqBody string) string {
-	re := regexp.MustCompile(`"password"\s*:\s*"([^"]+)"`)
-	matches := re.FindStringSubmatch(reqBody)
-	if len(matches) > 1 {
-		return matches[1]
-	}
-	return ""
 }
