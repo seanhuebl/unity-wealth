@@ -23,10 +23,10 @@ func NewUserService(userQueries database.UserQuerier, pwdHasher auth.PasswordHas
 
 func (u *UserService) SignUp(ctx context.Context, input SignUpInput) error {
 	if !auth.IsValidEmail(input.Email) {
-		return fmt.Errorf("invalid email")
+		return auth.ErrInvalidEmail
 	}
-	if err := validatePassword(input.Password); err != nil {
-		return fmt.Errorf("invalid password: %w", err)
+	if err := auth.ValidatePassword(input.Password); err != nil {
+		return fmt.Errorf("%w, %v", auth.ErrInvalidPassword, err)
 	}
 	hashedPW, err := u.pwdHasher.HashPassword(input.Password)
 	if err != nil {
@@ -41,25 +41,6 @@ func (u *UserService) SignUp(ctx context.Context, input SignUpInput) error {
 		HashedPassword: hashedPW,
 	}); err != nil {
 		return fmt.Errorf("unable to create user: %w", err)
-	}
-	return nil
-}
-
-func validatePassword(password string) error {
-	if len(password) < 8 {
-		return fmt.Errorf("password must be at least 8 characters long")
-	}
-	if !uppercaseRegex.MatchString(password) {
-		return fmt.Errorf("password must contain at least one uppercase letter")
-	}
-	if !lowercaseRegex.MatchString(password) {
-		return fmt.Errorf("password must contain at least one lowercase letter")
-	}
-	if !digitRegex.MatchString(password) {
-		return fmt.Errorf("password must contain at least one digit")
-	}
-	if !specialRegex.MatchString(password) {
-		return fmt.Errorf("password must contain at least one special character")
 	}
 	return nil
 }

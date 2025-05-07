@@ -1,4 +1,4 @@
-package user
+package user_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	authmocks "github.com/seanhuebl/unity-wealth/internal/mocks/auth"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
+	"github.com/seanhuebl/unity-wealth/internal/services/user"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +19,7 @@ import (
 func TestSignup(t *testing.T) {
 	tests := []struct {
 		name                  string
-		input                 SignUpInput
+		input                 user.SignUpInput
 		validatePasswordError error
 		hashPasswordOutput    string
 		hashPasswordError     error
@@ -27,7 +28,7 @@ func TestSignup(t *testing.T) {
 	}{
 		{
 			name: "success",
-			input: SignUpInput{
+			input: user.SignUpInput{
 				Email:    "valid@example.com",
 				Password: "Validpass1!",
 			},
@@ -39,24 +40,24 @@ func TestSignup(t *testing.T) {
 		},
 		{
 			name: "invalid email",
-			input: SignUpInput{
+			input: user.SignUpInput{
 				Email:    "invalid",
 				Password: "Validpass1!",
 			},
-			expectedError: "invalid email",
+			expectedError: auth.ErrInvalidEmail.Error(),
 		},
 		{
 			name: "invalid password",
-			input: SignUpInput{
+			input: user.SignUpInput{
 				Email:    "valid@example.com",
 				Password: "invalid",
 			},
 			validatePasswordError: errors.New("password must contain one uppercase letter"),
-			expectedError:         "invalid password",
+			expectedError:         auth.ErrInvalidPassword.Error(),
 		},
 		{
 			name: "hashing failure",
-			input: SignUpInput{
+			input: user.SignUpInput{
 				Email:    "valid@example.com",
 				Password: "Validpass1!",
 			},
@@ -66,7 +67,7 @@ func TestSignup(t *testing.T) {
 		},
 		{
 			name: "create user failure",
-			input: SignUpInput{
+			input: user.SignUpInput{
 				Email:    "valid@example.com",
 				Password: "Validpass1!",
 			},
@@ -83,26 +84,23 @@ func TestSignup(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockUserQ := dbmocks.NewUserQuerier(t)
 			mockPwdHasher := authmocks.NewPasswordHasher(t)
-			userSvc := NewUserService(mockUserQ, mockPwdHasher)
+			userSvc := user.NewUserService(mockUserQ, mockPwdHasher)
 			if auth.IsValidEmail(tc.input.Email) {
-				err := validatePassword(tc.input.Password)
+				err := auth.ValidatePassword(tc.input.Password)
 
 				if err == nil {
 					mockPwdHasher.On("HashPassword", tc.input.Password).Return(tc.hashPasswordOutput, tc.hashPasswordError)
 					if tc.hashPasswordError == nil {
 						mockUserQ.On("CreateUser", mock.Anything, mock.MatchedBy(func(params database.CreateUserParams) bool {
-							// Create an expected value ignoring the generated ID.
 							expected := database.CreateUserParams{
 								Email:          tc.input.Email,
 								HashedPassword: tc.hashPasswordOutput,
 							}
-							// Use cmp.Diff and ignore the ID field.
 							diff := cmp.Diff(expected, params, cmpopts.IgnoreFields(database.CreateUserParams{}, "ID"))
 							if diff != "" {
 								t.Logf("CreateUserParams mismatch (-want +got):\n%s", diff)
 								return false
 							}
-							// Additionally, ensure that ID is not empty.
 							return params.ID != ""
 						})).Return(tc.createUserError)
 					}
@@ -112,10 +110,16 @@ func TestSignup(t *testing.T) {
 			err := userSvc.SignUp(context.Background(), tc.input)
 
 			if tc.expectedError == "" {
-				require.NoError(t, err, "expected no error, but got one")
+				if tc.expectedError == auth.ErrInvalidEmail.Error() {
+					require.ErrorIs(t, err, auth.ErrInvalidEmail)
+				} else if tc.expectedError == auth.ErrInvalidPassword.Error() {
+					require.ErrorIs(t, err, auth.ErrInvalidPassword)
+				} else {
+					require.NoError(t, err, "expected no error, but got one")
+				}
 			} else {
 				require.Error(t, err, "expected error, but got nil")
-				require.Contains(t, err.Error(), tc.expectedError)
+				require.ErrorContains(t, err, tc.expectedError)
 			}
 
 			mockUserQ.AssertExpectations(t)

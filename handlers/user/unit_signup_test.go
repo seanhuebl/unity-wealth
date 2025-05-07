@@ -1,4 +1,4 @@
-package user
+package user_test
 
 import (
 	"bytes"
@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	httpuser "github.com/seanhuebl/unity-wealth/handlers/user"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	authmocks "github.com/seanhuebl/unity-wealth/internal/mocks/auth"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
@@ -54,7 +55,7 @@ func TestAddUserHandler(t *testing.T) {
 		{
 			name:               "invalid req body",
 			reqBody:            `{"email": "valid@example.com", "password": "ValidPass1!"`,
-			expectedError:      "invalid request body",
+			expectedError:      "invalid request",
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
@@ -117,7 +118,7 @@ func TestAddUserHandler(t *testing.T) {
 				}
 			}
 			userSvc := user.NewUserService(mockUserQ, mockPwdHasher)
-			h := NewHandler(userSvc)
+			h := httpuser.NewHandler(userSvc)
 			req := httptest.NewRequest(http.MethodPost, "/signup", bytes.NewBufferString(tc.reqBody))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
@@ -130,7 +131,8 @@ func TestAddUserHandler(t *testing.T) {
 			err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
 			require.NoError(t, err)
 			if tc.expectedError != "" {
-				require.Contains(t, actualResponse["error"].(string), tc.expectedError)
+				data := actualResponse["data"].(map[string]interface{})
+				require.Contains(t, data["error"].(string), tc.expectedError)
 			} else {
 				expected := tc.expectedResponse
 				if diff := cmp.Diff(expected, actualResponse); diff != "" {
