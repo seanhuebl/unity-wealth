@@ -80,7 +80,7 @@ func TestIntSignup(t *testing.T) {
 		userSvc := user.NewUserService(env.UserQ, auth.NewRealPwdHasher())
 		tc := testmodels.SignUpTest{
 			Name:               "create user failure",
-			ReqBody: `{"email": "dupe@example.com", "password": "Validpass1!"}`,
+			ReqBody:            `{"email": "dupe@example.com", "password": "Validpass1!"}`,
 			ExpectedStatusCode: http.StatusInternalServerError,
 			ExpectedResponse: map[string]interface{}{
 				"data": map[string]interface{}{
