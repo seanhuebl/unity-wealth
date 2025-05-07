@@ -59,7 +59,11 @@ func TestUpdateTransaction(t *testing.T) {
 					UserID:             uuid.New(),
 					ExpectedError:      "failed to update transaction",
 					ExpectedStatusCode: http.StatusInternalServerError,
-					ExpectedResponse:   map[string]interface{}{"error": "failed to update transaction"},
+					ExpectedResponse: map[string]interface{}{
+						"data": map[string]interface{}{
+							"error": "failed to update transaction",
+						},
+					},
 				},
 				TxID: uuid.NewString(),
 			},

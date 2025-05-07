@@ -150,7 +150,9 @@ func TestGetTransactionsByUserID(t *testing.T) {
 				ExpectedError:      "unable to get transactions",
 				ExpectedStatusCode: http.StatusInternalServerError,
 				ExpectedResponse: map[string]interface{}{
-					"error": "unable to get transactions",
+					"data": map[string]interface{}{
+						"error": "unable to get transactions",
+					},
 				},
 			},
 			PageSize:        1,
@@ -164,7 +166,9 @@ func TestGetTransactionsByUserID(t *testing.T) {
 				ExpectedError:      "unable to get transactions",
 				ExpectedStatusCode: http.StatusInternalServerError,
 				ExpectedResponse: map[string]interface{}{
-					"error": "unable to get transactions",
+					"data": map[string]interface{}{
+						"error": "unable to get transactions",
+					},
 				},
 			},
 			CursorDate:        "2025-03-19",
@@ -180,7 +184,9 @@ func TestGetTransactionsByUserID(t *testing.T) {
 				ExpectedError:      "invalid page_size; must be > 0",
 				ExpectedStatusCode: http.StatusBadRequest,
 				ExpectedResponse: map[string]interface{}{
-					"error": "invalid page_size; must be > 0",
+					"data": map[string]interface{}{
+						"error": "invalid page_size; must be > 0",
+					},
 				},
 			},
 			PageSize: -1,

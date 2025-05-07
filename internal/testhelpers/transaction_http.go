@@ -37,7 +37,8 @@ func ConvertResponseFloatToInt(actualResponse map[string]interface{}) map[string
 func CheckTxHTTPResponse[T testinterfaces.BaseAccess](t *testing.T, w *httptest.ResponseRecorder, tc T, actualResponse map[string]interface{}) {
 	tcBase := tc.BaseAccess()
 	if tcBase.ExpectedError != "" {
-		require.Contains(t, actualResponse["error"].(string), tcBase.ExpectedError)
+		data := actualResponse["data"].(map[string]interface{})
+		require.Contains(t, data["error"].(string), tcBase.ExpectedError)
 	} else {
 		if diff := cmp.Diff(tcBase.ExpectedResponse, actualResponse); diff != "" {
 			t.Errorf("response mismatch (-want, +got)\n%s", diff)

@@ -14,7 +14,9 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 	userID, err := helpers.GetUserID(ctx.Request.Context())
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"error": "unauthorized",
+			"data": gin.H{
+				"error": "unauthorized",
+			},
 		})
 		return
 	}
@@ -23,7 +25,9 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid request body",
+			"data": gin.H{
+				"error": "invalid request body",
+			},
 		})
 		return
 	}
@@ -31,7 +35,9 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 	txn, err := h.txSvc.CreateTransaction(ctx.Request.Context(), userID.String(), req)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": "failed to create transaction",
+			"data": gin.H{
+				"error": "failed to create transaction",
+			},
 		})
 		return
 	}
@@ -48,7 +54,9 @@ func (h *Handler) GetTransactionsByUserID(ctx *gin.Context) {
 	userID, err := helpers.GetUserID(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"error": "unauthorized",
+			"data": gin.H{
+				"error": "unauthorized",
+			},
 		})
 		return
 	}
@@ -56,39 +64,55 @@ func (h *Handler) GetTransactionsByUserID(ctx *gin.Context) {
 	cursorDateVal, exists := ctx.Get(string(constants.CursorDateKey))
 	if !exists {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "cursor date key not set in context",
+			"data": gin.H{
+				"error": "cursor date key not set in context",
+			},
 		})
 		return
 	}
 	cursorDateStr, ok := cursorDateVal.(string)
 	if !ok {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid cursor date",
+			"data": gin.H{
+				"error": "invalid cursor date",
+			},
 		})
 		return
 	}
 	cursorIDVal, exists := ctx.Get(string(constants.CursorIDKey))
 	if !exists {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "cursor ID key not set in context",
+			"data": gin.H{
+				"error": "cursor ID key not set in context",
+			},
 		})
 		return
 	}
 	cursorIDStr, ok := cursorIDVal.(string)
 	if !ok {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid cursor ID",
+			"data": gin.H{
+				"error": "invalid cursor ID",
+			},
 		})
 		return
 	}
 	pageSizeVal, exists := ctx.Get(string(constants.PageSizeKey))
 	if !exists {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "page_size not provided"})
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"data": gin.H{
+				"error": "page_size not provided",
+			},
+		})
 		return
 	}
 	pageSizeInt, ok := pageSizeVal.(int)
 	if !ok || pageSizeInt <= 0 {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid page_size; must be > 0"})
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"data": gin.H{
+				"error": "invalid page_size; must be > 0",
+			},
+		})
 		return
 	}
 	pageSize := int64(pageSizeInt)
@@ -108,19 +132,22 @@ func (h *Handler) GetTransactionsByUserID(ctx *gin.Context) {
 	if err != nil {
 		if strings.Contains(err.Error(), "no transactions found") {
 			ctx.JSON(http.StatusOK, gin.H{
-				"error": "transactions not found",
+				"data": gin.H{
+					"error": "transactions not found",
+				},
 			})
 			return
 		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": "unable to get transactions",
+			"data": gin.H{
+				"error": "unable to get transactions",
+			},
 		})
 		return
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
-
 			"transactions":     transactions,
 			"next_cursor_date": nextCursorDate,
 			"next_cursor_id":   nextCursorID,
@@ -133,7 +160,9 @@ func (h *Handler) GetTransactionByID(ctx *gin.Context) {
 	userID, err := helpers.GetUserID(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"error": "unauthorized",
+			"data": gin.H{
+				"error": "unauthorized",
+			},
 		})
 		return
 	}
@@ -141,7 +170,9 @@ func (h *Handler) GetTransactionByID(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid id",
+			"data": gin.H{
+				"error": "invalid id",
+			},
 		})
 		return
 	}
@@ -149,12 +180,16 @@ func (h *Handler) GetTransactionByID(ctx *gin.Context) {
 	if err != nil {
 		if strings.Contains(err.Error(), "transaction not found") {
 			ctx.JSON(http.StatusNotFound, gin.H{
-				"error": "transaction not found",
+				"data": gin.H{
+					"error": "transaction not found",
+				},
 			})
 			return
 		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": "unable to get transaction",
+			"data": gin.H{
+				"error": "unable to get transaction",
+			},
 		})
 		return
 	}
@@ -170,7 +205,9 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 	userID, err := helpers.GetUserID(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"error": "unauthorized",
+			"data": gin.H{
+				"error": "unauthorized",
+			},
 		})
 		return
 	}
@@ -179,7 +216,9 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid request body",
+			"data": gin.H{
+				"error": "invalid request body",
+			},
 		})
 		return
 	}
@@ -187,7 +226,9 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid id",
+			"data": gin.H{
+				"error": "invalid id",
+			},
 		})
 		return
 	}
@@ -196,12 +237,16 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 	if err != nil {
 		if strings.Contains(err.Error(), "transaction not found") {
 			ctx.JSON(http.StatusNotFound, gin.H{
-				"error": "transaction not found",
+				"data": gin.H{
+					"error": "transaction not found",
+				},
 			})
 			return
 		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": "failed to update transaction",
+			"data": gin.H{
+				"error": "failed to update transaction",
+			},
 		})
 		return
 	}
@@ -217,7 +262,9 @@ func (h *Handler) DeleteTransaction(ctx *gin.Context) {
 	userID, err := helpers.GetUserID(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"error": "unauthorized",
+			"data": gin.H{
+				"error": "unauthorized",
+			},
 		})
 		return
 	}
@@ -225,7 +272,9 @@ func (h *Handler) DeleteTransaction(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid id",
+			"data": gin.H{
+				"error": "invalid id",
+			},
 		})
 		return
 	}
@@ -234,19 +283,22 @@ func (h *Handler) DeleteTransaction(ctx *gin.Context) {
 	if err != nil {
 		if strings.Contains(err.Error(), "transaction not found") {
 			ctx.JSON(http.StatusNotFound, gin.H{
-				"error": "transaction not found",
+				"data": gin.H{
+					"error": "transaction not found",
+				},
 			})
 			return
 		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": "error deleting transaction",
+			"data": gin.H{
+				"error": "error deleting transaction",
+			},
 		})
 		return
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
-
 			"transaction_deleted": "success",
 		},
 	})

@@ -54,7 +54,9 @@ func TestIntegrationNewTx(t *testing.T) {
 				UserID:             uuid.New(),
 				ExpectedStatusCode: http.StatusInternalServerError,
 				ExpectedResponse: map[string]interface{}{
-					"error": "failed to create transaction",
+					"data": map[string]interface{}{
+						"error": "failed to create transaction",
+					},
 				},
 			},
 			ReqBody: `{"date": "01/01/99", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,

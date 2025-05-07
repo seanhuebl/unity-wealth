@@ -31,7 +31,8 @@ func GetPasswordFromBody(reqBody string) string {
 func CheckUserHTTPResponse(t *testing.T, w *httptest.ResponseRecorder, tc testmodels.SignUpTest, actualResponse map[string]interface{}) {
 
 	if tc.WantErrSubstr != "" {
-		require.Contains(t, actualResponse["error"].(string), tc.WantErrSubstr)
+		data := actualResponse["data"].(map[string]interface{})
+		require.Contains(t, data["error"].(string), tc.WantErrSubstr)
 	} else {
 		if diff := cmp.Diff(tc.ExpectedResponse, actualResponse); diff != "" {
 			t.Errorf("response mismatch (-want, +got)\n%s", diff)

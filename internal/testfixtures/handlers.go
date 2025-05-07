@@ -16,7 +16,9 @@ var (
 		ExpectedError:      "unauthorized",
 		ExpectedStatusCode: http.StatusUnauthorized,
 		ExpectedResponse: map[string]interface{}{
-			"error": "unauthorized",
+			"data": map[string]interface{}{
+				"error": "unauthorized",
+			},
 		},
 	}
 
@@ -26,7 +28,9 @@ var (
 		UserIDErr:          errors.New("user ID is not UUID"),
 		ExpectedStatusCode: http.StatusUnauthorized,
 		ExpectedResponse: map[string]interface{}{
-			"error": "unauthorized",
+			"data": map[string]interface{}{
+				"error": "unauthorized",
+			},
 		},
 	}
 
@@ -36,7 +40,9 @@ var (
 		ExpectedError:      "invalid id",
 		ExpectedStatusCode: http.StatusBadRequest,
 		ExpectedResponse: map[string]interface{}{
-			"error": "invalid id",
+			"data": map[string]interface{}{
+				"error": "invalid id",
+			},
 		},
 	}
 
@@ -45,7 +51,9 @@ var (
 		UserID:             uuid.New(),
 		ExpectedStatusCode: http.StatusBadRequest,
 		ExpectedResponse: map[string]interface{}{
-			"error": "invalid request body",
+			"data": map[string]interface{}{
+				"error": "invalid request body",
+			},
 		},
 	}
 	NotFound = testmodels.BaseHTTPTestCase{
@@ -53,7 +61,9 @@ var (
 		UserID:             uuid.New(),
 		ExpectedStatusCode: http.StatusNotFound,
 		ExpectedResponse: map[string]interface{}{
-			"error": "transaction not found",
+			"data": map[string]interface{}{
+				"error": "transaction not found",
+			},
 		},
 	}
 )
