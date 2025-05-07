@@ -76,7 +76,7 @@ func TestAddUserHandler(t *testing.T) {
 			reqBody:            `{"email": "valid@example.com", "password": "Validpass1!"}`,
 			validPasswordError: nil,
 			hashPasswordError:  errors.New("hash error"),
-			expectedError:      "failed to hash password",
+			expectedError:      "internal server error",
 			expectedStatusCode: http.StatusInternalServerError,
 		},
 		{
@@ -86,7 +86,7 @@ func TestAddUserHandler(t *testing.T) {
 			hashPasswordOutput: "hashedpassword",
 			hashPasswordError:  nil,
 			createUserError:    errors.New("db error"),
-			expectedError:      "unable to create user",
+			expectedError:      "internal server error",
 			expectedStatusCode: http.StatusInternalServerError,
 		},
 	}
