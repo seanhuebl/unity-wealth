@@ -1,4 +1,4 @@
-package user
+package user_test
 
 import (
 	"bytes"
@@ -6,17 +6,18 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	httpuser "github.com/seanhuebl/unity-wealth/handlers/user"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	authmocks "github.com/seanhuebl/unity-wealth/internal/mocks/auth"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/seanhuebl/unity-wealth/internal/services/user"
+	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -54,7 +55,7 @@ func TestAddUserHandler(t *testing.T) {
 		{
 			name:               "invalid req body",
 			reqBody:            `{"email": "valid@example.com", "password": "ValidPass1!"`,
-			expectedError:      "invalid request body",
+			expectedError:      "invalid request",
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
@@ -75,7 +76,7 @@ func TestAddUserHandler(t *testing.T) {
 			reqBody:            `{"email": "valid@example.com", "password": "Validpass1!"}`,
 			validPasswordError: nil,
 			hashPasswordError:  errors.New("hash error"),
-			expectedError:      "failed to hash password",
+			expectedError:      "internal server error",
 			expectedStatusCode: http.StatusInternalServerError,
 		},
 		{
@@ -85,7 +86,7 @@ func TestAddUserHandler(t *testing.T) {
 			hashPasswordOutput: "hashedpassword",
 			hashPasswordError:  nil,
 			createUserError:    errors.New("db error"),
-			expectedError:      "unable to create user",
+			expectedError:      "internal server error",
 			expectedStatusCode: http.StatusInternalServerError,
 		},
 	}
@@ -95,13 +96,13 @@ func TestAddUserHandler(t *testing.T) {
 			mockUserQ := dbmocks.NewUserQuerier(t)
 			mockPwdHasher := authmocks.NewPasswordHasher(t)
 			if json.Valid([]byte(tc.reqBody)) {
-				if auth.IsValidEmail(getEmailFromBody(tc.reqBody)) {
+				if auth.IsValidEmail(testhelpers.GetEmailFromBody(tc.reqBody)) {
 					if tc.validPasswordError == nil {
-						mockPwdHasher.On("HashPassword", getPasswordFromBody(tc.reqBody)).Return(tc.hashPasswordOutput, tc.hashPasswordError)
+						mockPwdHasher.On("HashPassword", testhelpers.GetPasswordFromBody(tc.reqBody)).Return(tc.hashPasswordOutput, tc.hashPasswordError)
 						if tc.hashPasswordError == nil {
 							mockUserQ.On("CreateUser", mock.Anything, mock.MatchedBy(func(params database.CreateUserParams) bool {
 								expected := database.CreateUserParams{
-									Email:          getEmailFromBody(tc.reqBody),
+									Email:          testhelpers.GetEmailFromBody(tc.reqBody),
 									HashedPassword: tc.hashPasswordOutput,
 								}
 
@@ -117,7 +118,7 @@ func TestAddUserHandler(t *testing.T) {
 				}
 			}
 			userSvc := user.NewUserService(mockUserQ, mockPwdHasher)
-			h := NewHandler(userSvc)
+			h := httpuser.NewHandler(userSvc)
 			req := httptest.NewRequest(http.MethodPost, "/signup", bytes.NewBufferString(tc.reqBody))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
@@ -130,7 +131,8 @@ func TestAddUserHandler(t *testing.T) {
 			err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
 			require.NoError(t, err)
 			if tc.expectedError != "" {
-				require.Contains(t, actualResponse["error"].(string), tc.expectedError)
+				data := actualResponse["data"].(map[string]interface{})
+				require.Contains(t, data["error"].(string), tc.expectedError)
 			} else {
 				expected := tc.expectedResponse
 				if diff := cmp.Diff(expected, actualResponse); diff != "" {
@@ -141,24 +143,4 @@ func TestAddUserHandler(t *testing.T) {
 			mockPwdHasher.AssertExpectations(t)
 		})
 	}
-}
-
-// Helpers
-
-func getEmailFromBody(reqBody string) string {
-	re := regexp.MustCompile(`"email"\s*:\s*"([^"]+)"`)
-	matches := re.FindStringSubmatch(reqBody)
-	if len(matches) > 1 {
-		return matches[1]
-	}
-	return ""
-}
-
-func getPasswordFromBody(reqBody string) string {
-	re := regexp.MustCompile(`"password"\s*:\s*"([^"]+)"`)
-	matches := re.FindStringSubmatch(reqBody)
-	if len(matches) > 1 {
-		return matches[1]
-	}
-	return ""
 }
