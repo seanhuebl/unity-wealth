@@ -7,13 +7,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	httpauth "github.com/seanhuebl/unity-wealth/handlers/auth"
 	txhandler "github.com/seanhuebl/unity-wealth/handlers/transaction"
+	httpuser "github.com/seanhuebl/unity-wealth/handlers/user"
 	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/interfaces"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	"github.com/seanhuebl/unity-wealth/internal/services/user"
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
 	"github.com/stretchr/testify/require"
 )
@@ -26,6 +30,10 @@ func CreateTestingSchema(t *testing.T, db *sql.DB) {
 	_, err = db.Exec(constants.CreateDetCatTable)
 	require.NoError(t, err)
 	_, err = db.Exec(constants.CreateTxTable)
+	require.NoError(t, err)
+	_, err = db.Exec(constants.CreateDeviceInfoTable)
+	require.NoError(t, err)
+	_, err = db.Exec(constants.CreateRefrTokenTable)
 	require.NoError(t, err)
 }
 
@@ -101,16 +109,39 @@ func SetupTestEnv(t *testing.T) *testmodels.TestEnv {
 	transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
 	txQ := database.NewRealTransactionQuerier(transactionalQ)
 	userQ := database.NewRealUserQuerier(transactionalQ)
-	svc := transaction.NewTransactionService(txQ)
+	tokenQ := database.NewRealTokenQuerier(transactionalQ)
+	deviceQ := database.NewRealDevicequerier(transactionalQ)
+	sqlTxQ := database.NewRealSqlTxQuerier(transactionalQ)
+	pwdHasher := auth.NewRealPwdHasher()
+	tokenGen := auth.NewRealTokenGenerator("your-secret-key", "your-issuer")
+	tokenExtractor := auth.NewRealTokenExtractor()
 
-	h := txhandler.NewHandler(svc)
+	authSvc := auth.NewAuthService(sqlTxQ, userQ, tokenGen, tokenExtractor, pwdHasher)
+	txSvc := transaction.NewTransactionService(txQ)
+	userSvc := user.NewUserService(userQ, pwdHasher)
+
+	txH := txhandler.NewHandler(txSvc)
+	authH := httpauth.NewHandler(authSvc)
+	userH := httpuser.NewHandler(userSvc)
+
 	r := gin.New()
 	return &testmodels.TestEnv{
 		Router:  r,
 		Db:      db,
 		UserQ:   userQ,
 		TxQ:     txQ,
-		Handler: h,
+		TokenQ:  tokenQ,
+		DeviceQ: deviceQ,
+		Services: &testmodels.Services{
+			AuthService: authSvc,
+			TxService:   txSvc,
+			UserService: userSvc,
+		},
+		Handlers: &testmodels.Handlers{
+			AuthHandler: authH,
+			TxHandler:   txH,
+			UserHandler: userH,
+		},
 	}
 }
 

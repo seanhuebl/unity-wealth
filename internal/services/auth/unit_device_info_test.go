@@ -1,11 +1,12 @@
-package auth
+package auth_test
 
 import (
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/stretchr/testify/require"
 )
 
@@ -13,13 +14,13 @@ func TestParseUserAgent(t *testing.T) {
 	tests := []struct {
 		name      string
 		userAgent string
-		expected  DeviceInfo
+		expected  models.DeviceInfo
 	}{
 		{
 			name: "Desktop Chrome on Windows",
 			// A common Chrome UA on Windows 10.
 			userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36",
-			expected: DeviceInfo{
+			expected: models.DeviceInfo{
 				DeviceType:     "Desktop",
 				Browser:        "Chrome",
 				BrowserVersion: "90.0.4430.212",
@@ -31,7 +32,7 @@ func TestParseUserAgent(t *testing.T) {
 			name: "Mobile Safari on iPhone",
 			// A typical UA for an iPhone.
 			userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1",
-			expected: DeviceInfo{
+			expected: models.DeviceInfo{
 				DeviceType:     "Mobile",
 				Browser:        "Safari",
 				BrowserVersion: "14.0",
@@ -42,7 +43,7 @@ func TestParseUserAgent(t *testing.T) {
 		{
 			name:      "empty user agent",
 			userAgent: "",
-			expected: DeviceInfo{
+			expected: models.DeviceInfo{
 				DeviceType:     "Desktop",
 				Browser:        "",
 				BrowserVersion: "",
@@ -55,9 +56,9 @@ func TestParseUserAgent(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			result := parseUserAgent(tc.userAgent)
+			result := auth.ParseUserAgent(tc.userAgent)
 			if diff := cmp.Diff(tc.expected, result); diff != "" {
-				t.Errorf("parseUserAgent(%q) mismatch (-want +got):\n%s", tc.userAgent, diff)
+				t.Errorf("ParseUserAgent(%q) mismatch (-want +got):\n%s", tc.userAgent, diff)
 			}
 		})
 	}
@@ -67,12 +68,12 @@ func TestParseDeviceInfoFromHeader(t *testing.T) {
 	tests := []struct {
 		name     string
 		header   string
-		expected DeviceInfo
+		expected models.DeviceInfo
 	}{
 		{
 			name:   "all fields provided",
 			header: "os=Android; os_version=11; device_type=Mobile; browser=Chrome; browser_version=100.0",
-			expected: DeviceInfo{
+			expected: models.DeviceInfo{
 				Os:             "Android",
 				OsVersion:      "11",
 				DeviceType:     "Mobile",
@@ -83,7 +84,7 @@ func TestParseDeviceInfoFromHeader(t *testing.T) {
 		{
 			name:   "extra whitespace and mixed case keys",
 			header: " OS = android ; Os_Version = 10 ; device_type = Tablet ; Browser = Firefox ; Browser_Version = 85.0 ",
-			expected: DeviceInfo{
+			expected: models.DeviceInfo{
 				Os:             "android",
 				OsVersion:      "10",
 				DeviceType:     "Tablet",
@@ -94,7 +95,7 @@ func TestParseDeviceInfoFromHeader(t *testing.T) {
 		{
 			name:   "missing some keys",
 			header: "os=IOS; device_type=Mobile",
-			expected: DeviceInfo{
+			expected: models.DeviceInfo{
 				Os:         "IOS",
 				DeviceType: "Mobile",
 			},
@@ -102,12 +103,12 @@ func TestParseDeviceInfoFromHeader(t *testing.T) {
 		{
 			name:     "empty header",
 			header:   "",
-			expected: DeviceInfo{},
+			expected: models.DeviceInfo{},
 		},
 		{
 			name:   "irrelevant key is ignored",
 			header: "os=Linux; extra=value; browser=Opera",
-			expected: DeviceInfo{
+			expected: models.DeviceInfo{
 				Os:      "Linux",
 				Browser: "Opera",
 			},
@@ -115,7 +116,7 @@ func TestParseDeviceInfoFromHeader(t *testing.T) {
 		{
 			name:   "improper format is skipped",
 			header: "os=Windows; badformat; browser=Edge",
-			expected: DeviceInfo{
+			expected: models.DeviceInfo{
 				Os:      "Windows",
 				Browser: "Edge",
 			},
@@ -124,68 +125,9 @@ func TestParseDeviceInfoFromHeader(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			result := parseDeviceInfoFromHeader(tc.header)
+			result := auth.ParseDeviceInfoFromHeader(tc.header)
 			if diff := cmp.Diff(tc.expected, result); diff != "" {
-				t.Errorf("parseDeviceInfoFromHeader(%q) mismatch (-want +got)\n%s", tc.header, diff)
-			}
-		})
-	}
-}
-
-func TestIsValidVersion(t *testing.T) {
-	tests := []struct {
-		name     string
-		version  string
-		expected bool
-	}{
-		{
-			name:     "single digit version",
-			version:  "1",
-			expected: true,
-		},
-		{
-			name:     "multi-digit version",
-			version:  "10",
-			expected: true,
-		},
-		{
-			name:     "valid dotted version",
-			version:  "1.2",
-			expected: true,
-		},
-		{
-			name:     "valid triple dotted version",
-			version:  "1.2.3",
-			expected: true,
-		},
-		{
-			name:     "invalid version with letters",
-			version:  "1.a",
-			expected: false,
-		},
-		{
-			name:     "invalid version with extra dot",
-			version:  "1..2",
-			expected: false,
-		},
-		{
-			name:     "empty version",
-			version:  "",
-			expected: false,
-		},
-		{
-			name:     "version with trailing dot",
-			version:  "1.",
-			expected: false,
-		},
-	}
-
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			result := isValidVersion(tc.version)
-			if diff := cmp.Diff(tc.expected, result); diff != "" {
-				t.Errorf("isValidVersion(%q) mismatch (-want +got):\n%s", tc.version, diff)
+				t.Errorf("ParseDeviceInfoFromHeader(%q) mismatch (-want +got)\n%s", tc.header, diff)
 			}
 		})
 	}
@@ -194,12 +136,12 @@ func TestIsValidVersion(t *testing.T) {
 func TestIsValidDeviceInfo(t *testing.T) {
 	tests := []struct {
 		name     string
-		info     DeviceInfo
+		info     models.DeviceInfo
 		expected bool
 	}{
 		{
 			name: "valid desktop device with versions",
-			info: DeviceInfo{
+			info: models.DeviceInfo{
 				DeviceType:     "Desktop",
 				Browser:        "Chrome",
 				BrowserVersion: "90.0.4430.212",
@@ -210,7 +152,7 @@ func TestIsValidDeviceInfo(t *testing.T) {
 		},
 		{
 			name: "valid mobile device with empty versions",
-			info: DeviceInfo{
+			info: models.DeviceInfo{
 				DeviceType: "Mobile",
 				Browser:    "Safari",
 				Os:         "iOS",
@@ -219,7 +161,7 @@ func TestIsValidDeviceInfo(t *testing.T) {
 		},
 		{
 			name: "invalid device type",
-			info: DeviceInfo{
+			info: models.DeviceInfo{
 				DeviceType: "Tablet",
 				Browser:    "Chrome",
 				Os:         "Android",
@@ -228,7 +170,7 @@ func TestIsValidDeviceInfo(t *testing.T) {
 		},
 		{
 			name: "missing browser",
-			info: DeviceInfo{
+			info: models.DeviceInfo{
 				DeviceType: "Desktop",
 				Browser:    "",
 				Os:         "Linux",
@@ -237,7 +179,7 @@ func TestIsValidDeviceInfo(t *testing.T) {
 		},
 		{
 			name: "missing OS",
-			info: DeviceInfo{
+			info: models.DeviceInfo{
 				DeviceType: "Mobile",
 				Browser:    "Firefox",
 				Os:         "",
@@ -246,7 +188,7 @@ func TestIsValidDeviceInfo(t *testing.T) {
 		},
 		{
 			name: "invalid browser version",
-			info: DeviceInfo{
+			info: models.DeviceInfo{
 				DeviceType:     "Desktop",
 				Browser:        "Chrome",
 				BrowserVersion: "90.0a",
@@ -257,7 +199,7 @@ func TestIsValidDeviceInfo(t *testing.T) {
 		},
 		{
 			name: "invalid OS version",
-			info: DeviceInfo{
+			info: models.DeviceInfo{
 				DeviceType:     "Mobile",
 				Browser:        "Safari",
 				BrowserVersion: "14.0",
@@ -268,7 +210,7 @@ func TestIsValidDeviceInfo(t *testing.T) {
 		},
 		{
 			name: "valid device with mixed case type",
-			info: DeviceInfo{
+			info: models.DeviceInfo{
 				DeviceType:     "DeSkToP",
 				Browser:        "Edge",
 				BrowserVersion: "91.0",
@@ -282,54 +224,9 @@ func TestIsValidDeviceInfo(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc // capture range variable
 		t.Run(tc.name, func(t *testing.T) {
-			result := isValidDeviceInfo(tc.info)
+			result := auth.IsValidDeviceInfo(tc.info)
 			if diff := cmp.Diff(tc.expected, result); diff != "" {
-				t.Errorf("isValidDeviceInfo() mismatch (-want +got):\n%s", diff)
-			}
-		})
-	}
-}
-
-func TestSanitizeInput(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "trim spaces",
-			input:    "   hello world   ",
-			expected: "hello world",
-		},
-		{
-			name:     "input less than 100 characters",
-			input:    "short input",
-			expected: "short input",
-		},
-		{
-			name: "input exactly 100 characters",
-			// Create a string of 100 'a's.
-			input:    strings.Repeat("a", 100),
-			expected: strings.Repeat("a", 100),
-		},
-		{
-			name:     "input longer than 100 characters",
-			input:    strings.Repeat("b", 150),
-			expected: strings.Repeat("b", 100),
-		},
-		{
-			name:     "input with only spaces",
-			input:    "    ",
-			expected: "",
-		},
-	}
-
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			result := sanitizeInput(tc.input)
-			if diff := cmp.Diff(tc.expected, result); diff != "" {
-				t.Errorf("sanitizeInput(%q) mismatch (-want +got):\n%s", tc.input, diff)
+				t.Errorf("IsValidDeviceInfo() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -339,7 +236,7 @@ func TestGetDeviceInfoFromRequest(t *testing.T) {
 	tests := []struct {
 		name              string
 		headers           map[string]string
-		expected          DeviceInfo
+		expected          models.DeviceInfo
 		expectedErrSubstr string
 	}{
 		{
@@ -347,7 +244,7 @@ func TestGetDeviceInfoFromRequest(t *testing.T) {
 			headers: map[string]string{
 				"X-Device-Info": "os=Android; os_version=11; device_type=Mobile; browser=Chrome; browser_version=100.0",
 			},
-			expected: DeviceInfo{
+			expected: models.DeviceInfo{
 				Os:             "Android",
 				OsVersion:      "11",
 				DeviceType:     "Mobile",
@@ -366,7 +263,7 @@ func TestGetDeviceInfoFromRequest(t *testing.T) {
 			},
 			// Expected values depend on how parseUserAgent interprets this UA.
 			// Adjust these values based on the actual behavior of mssola/user_agent.
-			expected: DeviceInfo{
+			expected: models.DeviceInfo{
 				DeviceType:     "Mobile",
 				Browser:        "Safari",
 				BrowserVersion: "14.0",
@@ -381,7 +278,7 @@ func TestGetDeviceInfoFromRequest(t *testing.T) {
 				"X-Device-Info": "",
 				"User-Agent":    "",
 			},
-			expected:          DeviceInfo{},
+			expected:          models.DeviceInfo{},
 			expectedErrSubstr: "invalid or unknown device information",
 		},
 		{
@@ -390,7 +287,7 @@ func TestGetDeviceInfoFromRequest(t *testing.T) {
 				"X-Device-Info": "os=Android", // incomplete information
 				"User-Agent":    "invalid user agent",
 			},
-			expected:          DeviceInfo{},
+			expected:          models.DeviceInfo{},
 			expectedErrSubstr: "invalid or unknown device information",
 		},
 	}
@@ -405,14 +302,14 @@ func TestGetDeviceInfoFromRequest(t *testing.T) {
 				req.Header.Set(key, value)
 			}
 			// Call the function under test.
-			deviceInfo, err := getDeviceInfoFromRequest(req)
+			deviceInfo, err := auth.GetDeviceInfoFromRequest(req)
 			if tc.expectedErrSubstr != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.expectedErrSubstr)
 			} else {
 				require.NoError(t, err)
 				if diff := cmp.Diff(tc.expected, deviceInfo); diff != "" {
-					t.Errorf("getDeviceInfoFromRequest() mismatch (-want +got):\n%s", diff)
+					t.Errorf("GetDeviceInfoFromRequest() mismatch (-want +got):\n%s", diff)
 				}
 			}
 		})

@@ -1,9 +1,10 @@
-package auth
+package auth_test
 
 import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 )
 
 func TestValidatePassword(t *testing.T) {
@@ -52,16 +53,16 @@ func TestValidatePassword(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := ValidatePassword(tt.password)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := models.ValidatePassword(tc.password)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ValidatePassword() error = %v, wantErr %v", err, tt.wantErr)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("ValidatePassword() error = %v, wantErr %v", err, tc.wantErr)
 			}
 
 			if err != nil {
-				if diff := cmp.Diff(tt.wantErrMsg, err.Error()); diff != "" {
+				if diff := cmp.Diff(tc.wantErrMsg, err.Error()); diff != "" {
 					t.Errorf("Error message mismatch (-want +got):\n%s", diff)
 				}
 			}

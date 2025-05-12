@@ -1,4 +1,4 @@
-package auth
+package auth_test
 
 import (
 	"context"
@@ -12,24 +12,28 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/auth"
+	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLoginIntegration(t *testing.T) {
 	tests := []struct {
 		name                 string
-		input                LoginInput
-		xDeviceInfo          DeviceInfo
+		input                models.LoginInput
+		xDeviceInfo          models.DeviceInfo
 		hasErr               bool
 		expectedErrSubstring string
+		ctxErr               bool
 	}{
 		{
 			name: "sucessful login, device found",
-			input: LoginInput{
+			input: models.LoginInput{
 				Email:    "user@example.com",
 				Password: "Validpass1!",
 			},
-			xDeviceInfo: DeviceInfo{
+			xDeviceInfo: models.DeviceInfo{
 				DeviceType:     "Mobile",
 				Browser:        "Chrome",
 				BrowserVersion: "100.0",
@@ -40,11 +44,11 @@ func TestLoginIntegration(t *testing.T) {
 		},
 		{
 			name: "successful login, device not found",
-			input: LoginInput{
+			input: models.LoginInput{
 				Email:    "user@example.com",
 				Password: "Validpass1!",
 			},
-			xDeviceInfo: DeviceInfo{
+			xDeviceInfo: models.DeviceInfo{
 				DeviceType:     "Desktop",
 				Browser:        "Chrome",
 				BrowserVersion: "100.0",
@@ -52,6 +56,39 @@ func TestLoginIntegration(t *testing.T) {
 				OsVersion:      "11",
 			},
 			hasErr: false,
+		},
+		{
+			name: "failed login, invalid password",
+			input: models.LoginInput{
+				Email:    "user@example.com",
+				Password: "Invalidpass1!",
+			},
+			xDeviceInfo: models.DeviceInfo{
+				DeviceType:     "Mobile",
+				Browser:        "Chrome",
+				BrowserVersion: "100.0",
+				Os:             "Android",
+				OsVersion:      "11",
+			},
+			hasErr:               true,
+			expectedErrSubstring: "invalid email / password",
+		},
+		{
+			name: "failed login, request not in context",
+			input: models.LoginInput{
+				Email:    "user@example.com",
+				Password: "Validpass1!",
+			},
+			xDeviceInfo: models.DeviceInfo{
+				DeviceType:     "Mobile",
+				Browser:        "Chrome",
+				BrowserVersion: "100.0",
+				Os:             "Android",
+				OsVersion:      "11",
+			},
+			hasErr:               true,
+			expectedErrSubstring: "request not found in context",
+			ctxErr:               true,
 		},
 	}
 	for _, tc := range tests {
@@ -63,14 +100,14 @@ func TestLoginIntegration(t *testing.T) {
 			_, err = db.Exec("PRAGMA foreign_keys = ON")
 			require.NoError(t, err)
 
-			createSchema(t, db)
+			testhelpers.CreateTestingSchema(t, db)
 			transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
 			tokenQ := database.NewRealTokenQuerier(transactionalQ)
 			sqlTxQ := database.NewRealSqlTxQuerier(transactionalQ)
 			userQ := database.NewRealUserQuerier(transactionalQ)
-			tokeGen := NewRealTokenGenerator("tokensecret", TokenType("unity-wealth"))
-			pwdHasher := NewRealPwdHasher()
-			userID := seedTestUser(t, pwdHasher, userQ)
+			tokenGen := auth.NewRealTokenGenerator("tokensecret", models.TokenType("unity-wealth"))
+			pwdHasher := auth.NewRealPwdHasher()
+			userID := seedTestUserForAuth(t, pwdHasher, userQ)
 
 			req := httptest.NewRequest("GET", "/", nil)
 			req.Header.Set("X-Device-Info", fmt.Sprintf("os=%s; os_version=%s; device_type=%s; browser=%s; browser_version=%s",
@@ -80,10 +117,21 @@ func TestLoginIntegration(t *testing.T) {
 				tc.xDeviceInfo.Browser,
 				tc.xDeviceInfo.BrowserVersion,
 			))
-			ctx := context.WithValue(req.Context(), constants.RequestKey, req)
+			var ctx context.Context
 
-			svc := NewAuthService(sqlTxQ, userQ, tokeGen, nil, pwdHasher)
+			if tc.ctxErr {
+				ctx = req.Context()
+			} else {
+				ctx = context.WithValue(req.Context(), constants.RequestKey, req)
+			}
+
+			svc := auth.NewAuthService(sqlTxQ, userQ, tokenGen, nil, pwdHasher)
 			response, err := svc.Login(ctx, tc.input)
+			if tc.hasErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.expectedErrSubstring)
+				return
+			}
 			require.NoError(t, err)
 			if diff := cmp.Diff(userID, response.UserID); diff != "" {
 				t.Errorf("response mismatch (-want +got)\n%s", diff)
@@ -106,9 +154,9 @@ func TestLoginIntegration(t *testing.T) {
 
 			require.NoError(t, err)
 			require.NotNil(t, getRefreshTokenEntry)
-			err = svc.pwdHasher.CheckPasswordHash(response.RefreshToken, getRefreshTokenEntry.TokenHash)
+			err = svc.PwdHasher.CheckPasswordHash(response.RefreshToken, getRefreshTokenEntry.TokenHash)
 			require.NoError(t, err)
-			_, err = svc.tokenGen.ValidateJWT(response.JWT)
+			_, err = svc.TokenGen.ValidateJWT(response.JWT)
 			require.NoError(t, err)
 
 		})
@@ -116,17 +164,7 @@ func TestLoginIntegration(t *testing.T) {
 }
 
 // Helpers
-func createSchema(t *testing.T, db *sql.DB) {
-	_, err := db.Exec(constants.CreateUsersTable)
-	require.NoError(t, err)
-	_, err = db.Exec(constants.CreateRefrTokenTable)
-	require.NoError(t, err)
-
-	_, err = db.Exec(constants.CreateDeviceInfoTable)
-	require.NoError(t, err)
-}
-
-func seedTestUser(t *testing.T, hasher PasswordHasher, userQ database.UserQuerier) uuid.UUID {
+func seedTestUserForAuth(t *testing.T, hasher auth.PasswordHasher, userQ database.UserQuerier) uuid.UUID {
 	password := "Validpass1!"
 	email := "user@example.com"
 	userID := uuid.New()

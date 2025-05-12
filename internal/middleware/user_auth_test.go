@@ -10,12 +10,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 )
 
 func TestUserAuthMiddleware_TableDriven(t *testing.T) {
 
-	tokenGen := auth.NewRealTokenGenerator("dummysecret", auth.TokenType("dummytype"))
+	tokenGen := auth.NewRealTokenGenerator("dummysecret", models.TokenType("dummytype"))
 	tokenExtractor := auth.NewRealTokenExtractor()
 
 	testUserID := uuid.New()

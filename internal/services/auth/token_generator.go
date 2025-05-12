@@ -8,14 +8,15 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 )
 
 type RealTokenGenerator struct {
 	tokenSecret     string
-	tokenTypeAccess TokenType
+	tokenTypeAccess models.TokenType
 }
 
-func NewRealTokenGenerator(tokenSecret string, tokenTypeAccess TokenType) *RealTokenGenerator {
+func NewRealTokenGenerator(tokenSecret string, tokenTypeAccess models.TokenType) *RealTokenGenerator {
 	return &RealTokenGenerator{
 		tokenSecret:     tokenSecret,
 		tokenTypeAccess: tokenTypeAccess,
@@ -80,7 +81,7 @@ func (rtg *RealTokenGenerator) ValidateJWT(tokenString string) (*jwt.RegisteredC
 
 func (rtg *RealTokenGenerator) MakeRefreshToken() (string, error) {
 	token := make([]byte, 32)
-	_, err := RandReader(token)
+	_, err := models.RandReader(token)
 	if err != nil {
 		return "", err
 	}

@@ -15,7 +15,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	authmocks "github.com/seanhuebl/unity-wealth/internal/mocks/auth"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
-	"github.com/seanhuebl/unity-wealth/internal/services/auth"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/seanhuebl/unity-wealth/internal/services/user"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/stretchr/testify/mock"
@@ -96,7 +96,7 @@ func TestAddUserHandler(t *testing.T) {
 			mockUserQ := dbmocks.NewUserQuerier(t)
 			mockPwdHasher := authmocks.NewPasswordHasher(t)
 			if json.Valid([]byte(tc.reqBody)) {
-				if auth.IsValidEmail(testhelpers.GetEmailFromBody(tc.reqBody)) {
+				if models.IsValidEmail(testhelpers.GetEmailFromBody(tc.reqBody)) {
 					if tc.validPasswordError == nil {
 						mockPwdHasher.On("HashPassword", testhelpers.GetPasswordFromBody(tc.reqBody)).Return(tc.hashPasswordOutput, tc.hashPasswordError)
 						if tc.hashPasswordError == nil {

@@ -1,4 +1,4 @@
-package auth
+package auth_test
 
 import (
 	"crypto/rand"
@@ -11,6 +11,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
+	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 )
 
 func TestMakeJWT(t *testing.T) {
@@ -52,7 +54,7 @@ func TestMakeJWT(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tokenGen := NewRealTokenGenerator(tc.tokenSecret, "testaccess")
+			tokenGen := auth.NewRealTokenGenerator(tc.tokenSecret, "testaccess")
 			token, err := tokenGen.MakeJWT(tc.userID, tc.expiresIn)
 
 			if (err != nil) != tc.wantErr {
@@ -88,7 +90,7 @@ func TestMakeJWT(t *testing.T) {
 
 func TestValidateJWT(t *testing.T) {
 	userID := uuid.New()
-	tokenGen := NewRealTokenGenerator("testsecret", "testaccess")
+	tokenGen := auth.NewRealTokenGenerator("testsecret", "testaccess")
 	tests := []struct {
 		name        string
 		tokenString string
@@ -99,7 +101,7 @@ func TestValidateJWT(t *testing.T) {
 		{
 			name: "Valid token",
 			tokenString: func() string {
-				tokenGen := NewRealTokenGenerator("testsecret", "testaccess")
+				tokenGen := auth.NewRealTokenGenerator("testsecret", "testaccess")
 				token, _ := tokenGen.MakeJWT(userID, time.Hour)
 				return token
 			}(),
@@ -110,7 +112,7 @@ func TestValidateJWT(t *testing.T) {
 		{
 			name: "Invalid token secret",
 			tokenString: func() string {
-				tokenGen := NewRealTokenGenerator("wrongsecret", "testaccess")
+				tokenGen := auth.NewRealTokenGenerator("wrongsecret", "testaccess")
 				token, _ := tokenGen.MakeJWT(uuid.New(), time.Hour)
 				return token
 			}(),
@@ -152,7 +154,7 @@ func TestValidateJWT(t *testing.T) {
 }
 
 func TestGetBearerToken(t *testing.T) {
-	tokenExtractor := NewRealTokenExtractor()
+	tokenExtractor := auth.NewRealTokenExtractor()
 	tests := map[string]struct {
 		input         http.Header
 		expectedValue string
@@ -160,7 +162,7 @@ func TestGetBearerToken(t *testing.T) {
 		"simple":                 {input: http.Header{"Authorization": []string{"Bearer 1234"}}, expectedValue: "1234"},
 		"wrong auth header":      {input: http.Header{"Authorization": []string{"ApiKey 1234"}}, expectedValue: "malformed authorization header"},
 		"incomplete auth header": {input: http.Header{"Authorization": []string{"Bearer "}}, expectedValue: "malformed authorization header"},
-		"no auth header":         {input: http.Header{"Authorization": []string{""}}, expectedValue: fmt.Sprint(ErrNoAuthHeaderIncluded)},
+		"no auth header":         {input: http.Header{"Authorization": []string{""}}, expectedValue: fmt.Sprint(auth.ErrNoAuthHeaderIncluded)},
 	}
 
 	for test, tc := range tests {
@@ -180,7 +182,7 @@ func TestGetBearerToken(t *testing.T) {
 }
 
 func TestMakeRefreshToken(t *testing.T) {
-	tokenGen := NewRealTokenGenerator("testsecret", "testaccess")
+	tokenGen := auth.NewRealTokenGenerator("testsecret", "testaccess")
 	tests := []struct {
 		name     string
 		mockRand func([]byte) (int, error)
@@ -205,9 +207,9 @@ func TestMakeRefreshToken(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Override randReader temporarily for this test
-			origRandReader := RandReader
-			RandReader = tc.mockRand
-			defer func() { RandReader = origRandReader }()
+			origRandReader := models.RandReader
+			models.RandReader = tc.mockRand
+			defer func() { models.RandReader = origRandReader }()
 
 			token, err := tokenGen.MakeRefreshToken()
 

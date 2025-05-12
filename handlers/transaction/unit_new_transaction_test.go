@@ -76,7 +76,7 @@ func TestNewTx(t *testing.T) {
 
 			actualResponse := testhelpers.ProcessResponse(w, t)
 
-			testhelpers.CheckTxHTTPResponse(t, w, tc, actualResponse)
+			testhelpers.CheckHTTPResponse(t, w, tc.ExpectedError, tc.ExpectedStatusCode, tc.ExpectedResponse, actualResponse)
 			mockTxQ.AssertExpectations(t)
 		})
 	}

@@ -225,11 +225,11 @@ func TestIntegrationGetTransactionsByUserID(t *testing.T) {
 				c.Set(string(constants.CursorIDKey), tc.CursorID)
 				c.Set(string(constants.PageSizeKey), tc.PageSize)
 				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
-				env.Handler.GetTransactionsByUserID(c)
+				env.Handlers.TxHandler.GetTransactionsByUserID(c)
 			})
 			env.Router.ServeHTTP(w, req)
 			actualResponse := testhelpers.ProcessResponse(w, t)
-			testhelpers.CheckTxHTTPResponse(t, w, tc, actualResponse)
+			testhelpers.CheckHTTPResponse(t, w, tc.ExpectedError, tc.ExpectedStatusCode, tc.ExpectedResponse, actualResponse)
 		})
 	}
 }

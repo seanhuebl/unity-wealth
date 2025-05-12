@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 )
 
@@ -22,10 +23,10 @@ func NewUserService(userQueries database.UserQuerier, pwdHasher auth.PasswordHas
 }
 
 func (u *UserService) SignUp(ctx context.Context, input SignUpInput) error {
-	if !auth.IsValidEmail(input.Email) {
+	if !models.IsValidEmail(input.Email) {
 		return auth.ErrInvalidEmail
 	}
-	if err := auth.ValidatePassword(input.Password); err != nil {
+	if err := models.ValidatePassword(input.Password); err != nil {
 		return fmt.Errorf("%w, %v", auth.ErrInvalidPassword, err)
 	}
 	hashedPW, err := u.pwdHasher.HashPassword(input.Password)

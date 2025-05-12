@@ -72,14 +72,12 @@ func TestIntSignup(t *testing.T) {
 			env.Router.POST("/signup", h.SignUp)
 			env.Router.ServeHTTP(w, req)
 			actualResponse := testhelpers.ProcessResponse(w, t)
-			testhelpers.CheckUserHTTPResponse(t, w, tc, actualResponse)
+			testhelpers.CheckHTTPResponse(t, w, tc.WantErrSubstr, tc.ExpectedStatusCode, tc.ExpectedResponse, actualResponse)
 		})
 	}
 	t.Run("create user failure", func(t *testing.T) {
 		env := testhelpers.SetupTestEnv(t)
-		userSvc := user.NewUserService(env.UserQ, auth.NewRealPwdHasher())
 		tc := testmodels.SignUpTest{
-			Name:               "create user failure",
 			ReqBody:            `{"email": "dupe@example.com", "password": "Validpass1!"}`,
 			ExpectedStatusCode: http.StatusInternalServerError,
 			ExpectedResponse: map[string]interface{}{
@@ -92,12 +90,12 @@ func TestIntSignup(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 
 		input := user.SignUpInput{Email: "dupe@example.com", Password: "Validpass1!"}
-		require.NoError(t, userSvc.SignUp(context.Background(), input))
+		require.NoError(t, env.Services.UserService.SignUp(context.Background(), input))
 		w := httptest.NewRecorder()
-		h := httpuser.NewHandler(userSvc)
-		env.Router.POST("/signup", h.SignUp)
+
+		env.Router.POST("/signup", env.Handlers.UserHandler.SignUp)
 		env.Router.ServeHTTP(w, req)
 		actualResponse := testhelpers.ProcessResponse(w, t)
-		testhelpers.CheckUserHTTPResponse(t, w, tc, actualResponse)
+		testhelpers.CheckHTTPResponse(t, w, tc.WantErrSubstr, tc.ExpectedStatusCode, tc.ExpectedResponse, actualResponse)
 	})
 }

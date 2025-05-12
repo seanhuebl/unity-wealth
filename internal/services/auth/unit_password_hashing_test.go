@@ -1,10 +1,11 @@
-package auth
+package auth_test
 
 import (
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -20,7 +21,7 @@ func CustomHashPassword(password string, cost int) (string, error) {
 	return string(hash), nil
 }
 
-var pwdHasher = NewRealPwdHasher()
+var pwdHasher = auth.NewRealPwdHasher()
 
 func TestHashPassword(t *testing.T) {
 	tests := []struct {
@@ -52,23 +53,23 @@ func TestHashPassword(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			hash, err := CustomHashPassword(tt.password, tt.cost)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			hash, err := CustomHashPassword(tc.password, tc.cost)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("HashPassword() error = %v, wantErr %v", err, tt.wantErr)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("HashPassword() error = %v, wantErr %v", err, tc.wantErr)
 				return
 			}
 
-			if tt.wantErr {
+			if tc.wantErr {
 				// Compare error types using cmp
-				if diff := cmp.Diff(tt.errType.Error(), err.Error()); diff != "" {
+				if diff := cmp.Diff(tc.errType.Error(), err.Error()); diff != "" {
 					t.Errorf("HashPassword() unexpected error (-want +got):\n%s", diff)
 				}
 			} else {
 				// Ensure valid hashes are verifiable
-				if err := pwdHasher.CheckPasswordHash(tt.password, hash); err != nil {
+				if err := pwdHasher.CheckPasswordHash(tc.password, hash); err != nil {
 					t.Errorf("HashPassword() generated a hash that could not be verified: %v", err)
 				}
 			}
@@ -120,18 +121,18 @@ func TestCheckPasswordHash(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := pwdHasher.CheckPasswordHash(tt.password, tt.hash)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := pwdHasher.CheckPasswordHash(tc.password, tc.hash)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("CheckPasswordHash() error = %v, wantErr %v", err, tt.wantErr)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("CheckPasswordHash() error = %v, wantErr %v", err, tc.wantErr)
 				return
 			}
 
-			if tt.wantErr && err != nil {
+			if tc.wantErr && err != nil {
 				// Compare the actual error message with the expected message
-				if diff := cmp.Diff(tt.errMsg, err.Error()); diff != "" {
+				if diff := cmp.Diff(tc.errMsg, err.Error()); diff != "" {
 					t.Errorf("CheckPasswordHash() unexpected error (-want +got):\n%s", diff)
 				}
 			}

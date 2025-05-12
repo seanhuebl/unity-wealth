@@ -1,4 +1,4 @@
-package auth
+package auth_test
 
 import (
 	"context"
@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
+	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -20,7 +22,7 @@ func TestHandleDeviceInfo(t *testing.T) {
 	validDeviceIDStr := uuid.NewString()
 	newDeviceIDStr := uuid.NewString()
 
-	inputDeviceInfo := DeviceInfo{
+	inputDeviceInfo := models.DeviceInfo{
 		DeviceType:     "Mobile",
 		Browser:        "Chrome",
 		BrowserVersion: "100.0",
@@ -151,7 +153,7 @@ func TestHandleDeviceInfo(t *testing.T) {
 				tc.setupMocks(mockDeviceQ, mockTokenQ)
 			}
 
-			deviceID, err := NewAuthService(nil, nil, nil, nil, nil).handleDeviceInfo(ctx, mockDeviceQ, mockTokenQ, userID, inputDeviceInfo)
+			deviceID, err := auth.NewAuthService(nil, nil, nil, nil, nil).HandleDeviceInfo(ctx, mockDeviceQ, mockTokenQ, userID, inputDeviceInfo)
 
 			if tc.expectedErrorSubstring != "" {
 				require.Error(t, err)

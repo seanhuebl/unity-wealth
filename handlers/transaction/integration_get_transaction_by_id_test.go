@@ -69,16 +69,16 @@ func TestIntegrationGetTransactionByID(t *testing.T) {
 				c.Request = req
 				c.Params = gin.Params{{Key: "id", Value: ""}}
 				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
-				env.Handler.GetTransactionByID(c)
+				env.Handlers.TxHandler.GetTransactionByID(c)
 			} else {
 				env.Router.GET("/transactions/:id", func(c *gin.Context) {
 					testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
-					env.Handler.GetTransactionByID(c)
+					env.Handlers.TxHandler.GetTransactionByID(c)
 				})
 				env.Router.ServeHTTP(w, req)
 			}
 			actualResponse := testhelpers.ProcessResponse(w, t)
-			testhelpers.CheckTxHTTPResponse(t, w, tc, actualResponse)
+			testhelpers.CheckHTTPResponse(t, w, tc.ExpectedError, tc.ExpectedStatusCode, tc.ExpectedResponse, actualResponse)
 		})
 	}
 }
