@@ -12,6 +12,7 @@ import (
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -60,9 +61,9 @@ func TestListUserTransactions(t *testing.T) {
 		{
 			name:                         "paginated, more data, success",
 			userID:                       uuid.New(),
-			cursorDate:                   strPtr("2025-02-01"),
+			cursorDate:                   testhelpers.StrPtr("2025-02-01"),
 			expectedCursorDate:           "2025-02-10",
-			cursorID:                     strPtr(uuid.NewString()),
+			cursorID:                     testhelpers.StrPtr(uuid.NewString()),
 			expectedHasMoreData:          true,
 			pageSize:                     10,
 			txSliceLength:                15,
@@ -72,9 +73,9 @@ func TestListUserTransactions(t *testing.T) {
 		{
 			name:                         "paginated, no extra data, success",
 			userID:                       uuid.New(),
-			cursorDate:                   strPtr("2025-02-01"),
+			cursorDate:                   testhelpers.StrPtr("2025-02-01"),
 			expectedCursorDate:           "",
-			cursorID:                     strPtr(uuid.NewString()),
+			cursorID:                     testhelpers.StrPtr(uuid.NewString()),
 			expectedHasMoreData:          false,
 			pageSize:                     10,
 			txSliceLength:                7,
@@ -104,9 +105,9 @@ func TestListUserTransactions(t *testing.T) {
 		{
 			name:                         "paginated, db error",
 			userID:                       uuid.New(),
-			cursorDate:                   strPtr("2025-02-01"),
+			cursorDate:                   testhelpers.StrPtr("2025-02-01"),
 			expectedCursorDate:           "",
-			cursorID:                     strPtr(uuid.NewString()),
+			cursorID:                     testhelpers.StrPtr(uuid.NewString()),
 			pageSize:                     1,
 			getTxPaginatedErr:            errors.New("db error"),
 			expectedTxPaginatedErrSubStr: "error loading next page",
@@ -114,9 +115,9 @@ func TestListUserTransactions(t *testing.T) {
 		{
 			name:                         "paginated, no transactions found",
 			userID:                       uuid.New(),
-			cursorDate:                   strPtr("2025-02-01"),
+			cursorDate:                   testhelpers.StrPtr("2025-02-01"),
 			expectedCursorDate:           "",
-			cursorID:                     strPtr(uuid.NewString()),
+			cursorID:                     testhelpers.StrPtr(uuid.NewString()),
 			pageSize:                     1,
 			getTxPaginatedErr:            nil,
 			expectedTxPaginatedErrSubStr: "",
@@ -158,7 +159,7 @@ func TestListUserTransactions(t *testing.T) {
 						firstPageRows = firstPageRows[:tc.pageSize]
 					}
 					for _, row := range firstPageRows {
-						expectedTxs = append(expectedTxs, svc.ConvertFirstPageRow(row))
+						expectedTxs = append(expectedTxs, transaction.ConvertFirstPageRow(row))
 					}
 					if hasMoreData == true {
 						require.NotEmpty(t, nextCursorID)
@@ -192,7 +193,7 @@ func TestListUserTransactions(t *testing.T) {
 						nextRows = nextRows[:tc.pageSize]
 					}
 					for _, row := range nextRows {
-						expectedTxs = append(expectedTxs, svc.ConvertPaginatedRow(row))
+						expectedTxs = append(expectedTxs, transaction.ConvertPaginatedRow(row))
 					}
 					if hasMoreData == true {
 						require.NotEmpty(t, nextCursorID)
@@ -242,8 +243,4 @@ func generatePaginatedRows(userID uuid.UUID, txSliceLength int) []database.GetUs
 		})
 	}
 	return rows
-}
-
-func strPtr(s string) *string {
-	return &s
 }

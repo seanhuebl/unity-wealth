@@ -136,7 +136,7 @@ func TestLoginIntegration(t *testing.T) {
 			if diff := cmp.Diff(userID, response.UserID); diff != "" {
 				t.Errorf("response mismatch (-want +got)\n%s", diff)
 			}
-			require.NotEmpty(t, response.JWT)
+			require.NotEmpty(t, response.JWTToken)
 			require.NotEmpty(t, response.RefreshToken)
 			deviceID, err := transactionalQ.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
 				UserID:         userID.String(),
@@ -156,7 +156,7 @@ func TestLoginIntegration(t *testing.T) {
 			require.NotNil(t, getRefreshTokenEntry)
 			err = svc.PwdHasher.CheckPasswordHash(response.RefreshToken, getRefreshTokenEntry.TokenHash)
 			require.NoError(t, err)
-			_, err = svc.TokenGen.ValidateJWT(response.JWT)
+			_, err = svc.TokenGen.ValidateJWT(response.JWTToken)
 			require.NoError(t, err)
 
 		})

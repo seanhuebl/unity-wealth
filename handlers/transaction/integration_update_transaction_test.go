@@ -94,7 +94,7 @@ func TestIntegrationUpdateTx(t *testing.T) {
 			defer env.Db.Close()
 
 			if tc.TxID != "" {
-				testhelpers.SeedTestUser(t, env.UserQ, tc.UserID)
+				testhelpers.SeedTestUser(t, env.UserQ, tc.UserID, false)
 				testhelpers.SeedTestCategories(t, env.Db)
 				testhelpers.IsTxFound(t, tc.BaseHTTPTestCase, uuid.MustParse(tc.TxID), env)
 			}

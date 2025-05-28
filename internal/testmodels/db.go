@@ -5,12 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/seanhuebl/unity-wealth/handlers/auth"
-	authSvc "github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/seanhuebl/unity-wealth/handlers/transaction"
-	txSvc "github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/seanhuebl/unity-wealth/handlers/user"
-	userSvc "github.com/seanhuebl/unity-wealth/internal/services/user"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	authSvc "github.com/seanhuebl/unity-wealth/internal/services/auth"
+	txSvc "github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	userSvc "github.com/seanhuebl/unity-wealth/internal/services/user"
 )
 
 type TestEnv struct {

@@ -111,8 +111,8 @@ func (a *AuthService) Login(ctx context.Context, input models.LoginInput) (model
 	// 10. Return a structured login response.
 	return models.LoginResponse{
 		UserID:       userID,
-		JWT:          jwtToken,
 		RefreshToken: refreshToken,
+		JWTToken:     jwtToken,
 	}, nil
 }
 

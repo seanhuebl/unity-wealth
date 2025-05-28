@@ -6,21 +6,32 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
 )
 
 func CheckHTTPResponse(t *testing.T, w *httptest.ResponseRecorder, expErr string, expStatus int, expResp, actualResponse map[string]interface{}) {
-	if expErr != "" {
-		data := actualResponse["data"].(map[string]interface{})
-		require.Contains(t, data["error"].(string), expErr)
-	} else {
-		if diff := cmp.Diff(expResp, actualResponse); diff != "" {
-			t.Errorf("response mismatch (-want, +got)\n%s", diff)
-		}
-	}
+
 	if diff := cmp.Diff(expStatus, w.Code); diff != "" {
 		t.Errorf("status code mismatch (-want, +got)\n%s", diff)
 	}
+
+	data := actualResponse["data"].(map[string]interface{})
+
+	if expErr != "" {
+		require.Contains(t, data["error"].(string), expErr)
+	}
+
+	ignoreTokens := cmpopts.IgnoreMapEntries(
+		func(key, _ interface{}) bool {
+			k, ok := key.(string)
+			return ok && k == "token"
+		},
+	)
+	if diff := cmp.Diff(expResp, actualResponse, ignoreTokens); diff != "" {
+		t.Errorf("response mismatch (-want, +got)\n%s", diff)
+	}
+
 }
 
 func ProcessResponse(w *httptest.ResponseRecorder, t *testing.T) map[string]interface{} {

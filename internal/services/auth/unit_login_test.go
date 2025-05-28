@@ -45,8 +45,8 @@ func TestLogin(t *testing.T) {
 			},
 			expectedResponse: models.LoginResponse{
 				UserID:       validUserID,
-				JWT:          "JWT",
 				RefreshToken: "refresh",
+				JWTToken:     "JWT",
 			},
 			loginError:             nil,
 			expectedErrorSubstring: "",

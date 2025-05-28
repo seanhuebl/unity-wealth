@@ -181,10 +181,10 @@ func TestIntegrationGetTransactionsByUserID(t *testing.T) {
 			env := testhelpers.SetupTestEnv(t)
 			defer env.Db.Close()
 			if strings.Contains(tc.Name, "no transactions") && tc.FirstPageTest {
-				testhelpers.SeedTestUser(t, env.UserQ, userID)
+				testhelpers.SeedTestUser(t, env.UserQ, userID, false)
 
 			} else if strings.Contains(tc.Name, "no transactions") && !tc.FirstPageTest {
-				testhelpers.SeedTestUser(t, env.UserQ, userID)
+				testhelpers.SeedTestUser(t, env.UserQ, userID, false)
 				testhelpers.SeedTestCategories(t, env.Db)
 				testhelpers.SeedTestTransaction(t, env.TxQ, userID, pagTxID, &models.NewTxRequest{
 					Date:             "2025-03-05",
@@ -194,7 +194,7 @@ func TestIntegrationGetTransactionsByUserID(t *testing.T) {
 				})
 			} else {
 				if !strings.Contains(tc.Name, "unauthorized") {
-					testhelpers.SeedTestUser(t, env.UserQ, tc.UserID)
+					testhelpers.SeedTestUser(t, env.UserQ, tc.UserID, false)
 					testhelpers.SeedTestCategories(t, env.Db)
 					testhelpers.IsTxFound(t, tc.BaseHTTPTestCase, txID, env)
 					if tc.MoreData || !tc.FirstPageTest {

@@ -23,3 +23,10 @@ func ConvertResponseFloatToInt(actualResponse map[string]interface{}) map[string
 	actualResponse["data"] = data
 	return actualResponse
 }
+
+func StrPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}

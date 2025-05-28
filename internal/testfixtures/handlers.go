@@ -46,6 +46,18 @@ var (
 		},
 	}
 
+	EmptyTxID = testmodels.BaseHTTPTestCase{
+		Name:               "empty txID in req",
+		UserID:             uuid.New(),
+		ExpectedError:      "not found",
+		ExpectedStatusCode: http.StatusNotFound,
+		ExpectedResponse: map[string]interface{}{
+			"data": map[string]interface{}{
+				"error": "not found",
+			},
+		},
+	}
+
 	InvalidReqBody = testmodels.BaseHTTPTestCase{
 		Name:               "invalid request body",
 		UserID:             uuid.New(),
@@ -56,13 +68,14 @@ var (
 			},
 		},
 	}
+
 	NotFound = testmodels.BaseHTTPTestCase{
 		Name:               "not found",
 		UserID:             uuid.New(),
 		ExpectedStatusCode: http.StatusNotFound,
 		ExpectedResponse: map[string]interface{}{
 			"data": map[string]interface{}{
-				"error": "transaction not found",
+				"error": "not found",
 			},
 		},
 	}

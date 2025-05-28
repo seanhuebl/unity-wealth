@@ -1,0 +1,6 @@
+all: true
+inpackage: false
+recursive: true
+output: ./internal/mocks/handlers
+dir: ./handlers
+outpkg: handlermocks

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -22,7 +23,7 @@ func (h *Handler) Login(ctx *gin.Context) {
 
 	loginResp, err := h.authSvc.Login(ctx.Request.Context(), input)
 	if err != nil {
-		// Return a generic error message for the client.
+		fmt.Println("Login error:", err)
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"data": gin.H{
 				"error": "login failed",
@@ -34,7 +35,12 @@ func (h *Handler) Login(ctx *gin.Context) {
 	// Set the refresh token cookie (HTTP-specific).
 	SetRefreshTokenCookie(ctx, loginResp.RefreshToken)
 
-	ctx.JSON(http.StatusOK, gin.H{"data": gin.H{"token": loginResp.JWT}})
+	ctx.JSON(http.StatusOK, gin.H{
+		"data": models.LoginResponseData{
+			Message: "login successful",
+			Token:   loginResp.JWTToken,
+		},
+	})
 }
 
 // Helpers

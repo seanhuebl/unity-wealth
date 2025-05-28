@@ -33,3 +33,12 @@ func NewTransaction(id, userID, date, merchant string, amount float64, detailedC
 		DetailedCategory: detailedCategory,
 	}
 }
+
+func ConvertToResponse(txn *Tx) *TxResponse {
+	return &TxResponse{
+		Date:             txn.Date,
+		Merchant:         txn.Merchant,
+		Amount:           txn.Amount,
+		DetailedCategory: txn.DetailedCategory,
+	}
+}

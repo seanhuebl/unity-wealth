@@ -68,7 +68,7 @@ func TestIntegrationNewTx(t *testing.T) {
 			env := testhelpers.SetupTestEnv(t)
 			defer env.Db.Close()
 
-			testhelpers.SeedTestUser(t, env.UserQ, tc.UserID)
+			testhelpers.SeedTestUser(t, env.UserQ, tc.UserID, false)
 			testhelpers.SeedTestCategories(t, env.Db)
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest("POST", "/transactions", bytes.NewBufferString(tc.ReqBody))

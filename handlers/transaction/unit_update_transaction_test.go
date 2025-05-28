@@ -2,7 +2,6 @@ package transaction_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,10 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	htx "github.com/seanhuebl/unity-wealth/handlers/transaction"
-	"github.com/seanhuebl/unity-wealth/internal/database"
-	"github.com/seanhuebl/unity-wealth/internal/helpers"
-	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
-	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	handlermocks "github.com/seanhuebl/unity-wealth/internal/mocks/handlers"
 	"github.com/seanhuebl/unity-wealth/internal/testfixtures"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
@@ -41,7 +37,7 @@ func TestUpdateTransaction(t *testing.T) {
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testfixtures.InvalidTxID,
-				TxID:             "",
+				TxID:             "INVALID",
 			},
 			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
 		},
@@ -52,6 +48,32 @@ func TestUpdateTransaction(t *testing.T) {
 			},
 			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40`,
 		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			mockSvc := handlermocks.NewTransactionService(t)
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", fmt.Sprintf("/transactions/%v", tc.TxID), bytes.NewBufferString(tc.ReqBody))
+			req.Header.Set("Content-Type", "application/json")
+			h := htx.NewHandler(mockSvc)
+
+			router := gin.New()
+			router.Use(func(c *gin.Context) {
+				c.Params = gin.Params{{Key: "id", Value: tc.TxID}}
+				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
+				c.Next()
+			})
+			router.NoRoute(func(c *gin.Context) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"data": gin.H{"error": "not found"},
+				})
+			})
+			router.POST("/transactions/:id", h.UpdateTransaction)
+			router.ServeHTTP(w, req)
+		})
+	}
+	txErrTests := []testmodels.UpdateTxTestCase{
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
@@ -71,47 +93,30 @@ func TestUpdateTransaction(t *testing.T) {
 			UpdateTxErr: errors.New("update err"),
 		},
 	}
-	for _, tc := range tests {
+	for _, tc := range txErrTests {
 		t.Run(tc.Name, func(t *testing.T) {
-			mockTxQ := dbmocks.NewTransactionQuerier(t)
+			mockSvc := handlermocks.NewTransactionService(t)
 			w := httptest.NewRecorder()
-			svc := transaction.NewTransactionService(mockTxQ)
 			req := httptest.NewRequest("POST", fmt.Sprintf("/transactions/%v", tc.TxID), bytes.NewBufferString(tc.ReqBody))
 			req.Header.Set("Content-Type", "application/json")
 
-			dummyRow := database.UpdateTransactionByIDRow{
-				ID:                 tc.TxID,
-				TransactionDate:    "2025-03-05",
-				Merchant:           "costco",
-				AmountCents:        helpers.ConvertToCents(125.98),
-				DetailedCategoryID: 40,
-			}
-
-			if json.Valid([]byte(tc.ReqBody)) && tc.UserIDErr == nil && tc.TxID != "" {
-				mockTxQ.On("UpdateTransactionByID", req.Context(), mock.AnythingOfType("database.UpdateTransactionByIDParams")).
-					Return(dummyRow, tc.UpdateTxErr)
-			}
-			h := htx.NewHandler(svc)
+			mockSvc.On("UpdateTransaction", mock.Anything, tc.TxID, tc.UserID.String(), mock.AnythingOfType("models.NewTxRequest")).Return(nil, tc.UpdateTxErr)
+			h := htx.NewHandler(mockSvc)
 
 			router := gin.New()
-			if tc.TxID == "" {
-				c, _ := gin.CreateTestContext(w)
-				c.Request = req
-				c.Params = gin.Params{{Key: "id", Value: ""}}
+			router.Use(func(c *gin.Context) {
+				c.Params = gin.Params{{Key: "id", Value: tc.TxID}}
 				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
-				h.UpdateTransaction(c)
-			} else {
-				router.POST("/transactions/:id", func(c *gin.Context) {
-					testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
-					h.UpdateTransaction(c)
-				})
-				router.ServeHTTP(w, req)
-			}
+				c.Next()
+			})
+
+			router.POST("/transactions/:id", h.UpdateTransaction)
+			router.ServeHTTP(w, req)
 
 			actualResponse := testhelpers.ProcessResponse(w, t)
 			testhelpers.CheckHTTPResponse(t, w, tc.ExpectedError, tc.ExpectedStatusCode, tc.ExpectedResponse, actualResponse)
 
-			mockTxQ.AssertExpectations(t)
+			mockSvc.AssertExpectations(t)
 		})
 	}
 }

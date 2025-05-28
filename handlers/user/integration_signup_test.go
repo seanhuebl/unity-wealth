@@ -8,8 +8,6 @@ import (
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
-	httpuser "github.com/seanhuebl/unity-wealth/handlers/user"
-	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/seanhuebl/unity-wealth/internal/services/user"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
@@ -64,12 +62,11 @@ func TestIntSignup(t *testing.T) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			env := testhelpers.SetupTestEnv(t)
-			userSvc := user.NewUserService(env.UserQ, auth.NewRealPwdHasher())
+			defer env.Db.Close()
 			req := httptest.NewRequest("POST", "/signup", bytes.NewBufferString(tc.ReqBody))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
-			h := httpuser.NewHandler(userSvc)
-			env.Router.POST("/signup", h.SignUp)
+			env.Router.POST("/signup", env.Handlers.UserHandler.SignUp)
 			env.Router.ServeHTTP(w, req)
 			actualResponse := testhelpers.ProcessResponse(w, t)
 			testhelpers.CheckHTTPResponse(t, w, tc.WantErrSubstr, tc.ExpectedStatusCode, tc.ExpectedResponse, actualResponse)

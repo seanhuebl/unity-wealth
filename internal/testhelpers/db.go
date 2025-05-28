@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	_ "github.com/mattn/go-sqlite3"
 	httpauth "github.com/seanhuebl/unity-wealth/handlers/auth"
 	txhandler "github.com/seanhuebl/unity-wealth/handlers/transaction"
 	httpuser "github.com/seanhuebl/unity-wealth/handlers/user"
@@ -37,8 +38,13 @@ func CreateTestingSchema(t *testing.T, db *sql.DB) {
 	require.NoError(t, err)
 }
 
-func SeedTestUser(t *testing.T, userQ database.UserQuerier, userID uuid.UUID) {
-	hashedPassword := "hashedpwd"
+func SeedTestUser(t *testing.T, userQ database.UserQuerier, userID uuid.UUID, requiresHash bool) {
+	var hashedPassword string
+	if requiresHash {
+		hashedPassword, _ = auth.NewRealPwdHasher().HashPassword("Validpass1!")
+	} else {
+		hashedPassword = "hashedpwd"
+	}
 	email := "user@example.com"
 
 	err := userQ.CreateUser(context.Background(), database.CreateUserParams{
@@ -92,7 +98,7 @@ func SeedMultipleTestTransactions[T interfaces.TxPageRow](t *testing.T, txQ data
 }
 
 func SeedCreateTxTestData(t *testing.T, db *sql.DB, userQ database.UserQuerier, userID uuid.UUID) {
-	SeedTestUser(t, userQ, userID)
+	SeedTestUser(t, userQ, userID, false)
 	SeedTestCategories(t, db)
 }
 
@@ -161,4 +167,17 @@ func IsTxFound(t *testing.T, tc testmodels.BaseHTTPTestCase, txID uuid.UUID, env
 			DetailedCategory: 40,
 		})
 	}
+}
+
+func SeedTestDeviceInfo(t *testing.T, deviceQ database.DeviceQuerier, userID uuid.UUID) {
+	_, err := deviceQ.CreateDeviceInfo(context.Background(), database.CreateDeviceInfoParams{
+		ID:             uuid.New().String(),
+		UserID:         userID.String(),
+		DeviceType:     "Mobile",
+		Browser:        "Chrome",
+		BrowserVersion: "100.0",
+		Os:             "Android",
+		OsVersion:      "11",
+	})
+	require.NoError(t, err)
 }
