@@ -1,0 +1,40 @@
+{
+  "name": "go backend container",
+  "image": "mcr.microsoft.com/devcontainers/go:1",
+  "extensions": [
+    // Go support
+    "golang.go",
+
+    // Docker support
+    "ms-azuretools.vscode-docker",
+
+    // PostgreSQL UI explorer
+    "ms-azuretools.vscode-postgresql",
+
+    // GitHub/Codespaces tooling
+    "github.codespaces",
+    "github.vscode-github-actions",
+
+    // AI assistants
+    "github.copilot",
+    "github.copilot-chat",
+
+    // HTTP & CSV helpers
+    "humao.rest-client",
+    "mechatroner.rainbow-csv",
+
+    // SQLTools core + drivers
+    "mtxr.sqltools",
+    "mtxr.sqltools-driver-sqlite",
+    "mtxr.sqltools-driver-pg",  // PostgreSQL
+
+    // Markdown linting & theme
+    "davidanson.vscode-markdownlint",
+    "daltonmenezes.aura-theme"
+  ],
+  "postCreateCommand": [
+    "go mod download",
+    "go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest",
+    "go install github.com/turso/cli/cmd/turso@latest"
+  ]
+}
