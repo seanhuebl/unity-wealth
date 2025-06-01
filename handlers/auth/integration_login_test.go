@@ -56,8 +56,8 @@ func TestIntegrationLogin(t *testing.T) {
 			expErrSubstr:       "login failed",
 			expectedStatusCode: http.StatusUnauthorized,
 			expectedResponse: map[string]interface{}{
-				"error": map[string]interface{}{
-					"message": "login failed",
+				"data": map[string]interface{}{
+					"error": "login failed",
 				},
 			},
 		},
@@ -68,8 +68,8 @@ func TestIntegrationLogin(t *testing.T) {
 			expErrSubstr:       "invalid request body",
 			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse: map[string]interface{}{
-				"error": map[string]interface{}{
-					"message": "invalid request body",
+				"data": map[string]interface{}{
+					"error": "invalid request body",
 				},
 			},
 		},
