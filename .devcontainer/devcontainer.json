@@ -1,40 +1,72 @@
 {
   "name": "go backend container",
   "image": "mcr.microsoft.com/devcontainers/go:1",
-  "extensions": [
-    // Go support
-    "golang.go",
-
-    // Docker support
-    "ms-azuretools.vscode-docker",
-
-    // PostgreSQL UI explorer
-    "ms-azuretools.vscode-postgresql",
-
-    // GitHub/Codespaces tooling
-    "github.codespaces",
-    "github.vscode-github-actions",
-
-    // AI assistants
-    "github.copilot",
-    "github.copilot-chat",
-
-    // HTTP & CSV helpers
-    "humao.rest-client",
-    "mechatroner.rainbow-csv",
-
-    // SQLTools core + drivers
-    "mtxr.sqltools",
-    "mtxr.sqltools-driver-sqlite",
-    "mtxr.sqltools-driver-pg",  // PostgreSQL
-
-    // Markdown linting & theme
-    "davidanson.vscode-markdownlint",
-    "daltonmenezes.aura-theme"
-  ],
   "postCreateCommand": [
     "go mod download",
     "go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest",
-    "go install github.com/turso/cli/cmd/turso@latest"
-  ]
+    "go install github.com/turso/cli/cmd/turso@latest",
+    "go install github.com/SeanHuebl/sqlc-qol/v2@v2.0.0", // SQLC-QOL v2.0.0
+    "go install github.com/vektra/mockery/v2@latest", // mockery
+    "go install golang.org/x/tools/cmd/goimports@latest", // goimports
+    "go install github.com/pressly/goose/v3/cmd/goose@latest" // goose
+  ],
+  // After the container starts, copy a workspace .bashrc (if present) into the home directory
+  "postStartCommand": "cp /workspaces/${localWorkspaceFolderBasename}/.bashrc /home/vscode/.bashrc || true",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "ms-azuretools.vscode-docker",
+        "ms-azuretools.vscode-postgresql",
+        "github.codespaces",
+        "github.vscode-github-actions",
+        "github.copilot",
+        "github.copilot-chat",
+        "humao.rest-client",
+        "mechatroner.rainbow-csv",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-sqlite",
+        "mtxr.sqltools-driver-pg",
+        "davidanson.vscode-markdownlint",
+        "daltonmenezes.aura-theme"
+      ],
+      "settings": {
+        "workbench.colorTheme": "Aura Dark"
+      },
+      "snippets": {
+        "go-snippets.code-snippets": {
+          "FnGin": {
+            "prefix": "fngin",
+            "body": [
+              "func(c *gin.Context){",
+              "$1",
+              "}$0"
+            ],
+            "description": "gin anonymous with c instead of ctx"
+          },
+          "Table-Driven Test": {
+            "prefix": "tdt",
+            "body": [
+              "func Test$1(t *testing.T) {",
+              "  tests := []struct {",
+              "    name string",
+              "    $2",
+              "  }{",
+              "     {",
+              "        $3",
+              "     },",
+              "  }",
+              "  for _, tc := range tests {",
+              "    t.Run(tc.name, func(t *testing.T) {",
+              "      $0",
+              "    })",
+              "  }",
+              "}"
+            ],
+            "description": "Go table-driven test "
+          }
+        }
+      }
+    }
+  }
 }
