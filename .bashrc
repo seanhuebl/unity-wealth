@@ -1,113 +1,144 @@
 # ~/.bashrc: executed by bash(1) for non-login shells.
-# see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
-# for examples
 
-# If not running interactively, don't do anything
+### ─── If not running interactively, don’t do anything ───────────────────────
 case $- in
-    *i*) ;;
-      *) return;;
+  *i*) ;;
+    *) return;;
 esac
 
-# don't put duplicate lines or lines starting with space in the history.
-# See bash(1) for more options
-HISTCONTROL=ignoreboth
-
-# append to the history file, don't overwrite it
+### ─── History Settings ─────────────────────────────────────────────────────
+HISTCONTROL=ignoreboth:erasedups
+HISTIGNORE="ls:cd:cd -:pwd:exit:date:* --help"
+PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
 shopt -s histappend
-
-# for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
+HISTTIMEFORMAT="%F %T "    # optional: prepend timestamps
 HISTSIZE=1000
 HISTFILESIZE=2000
+shopt -s checkwinsize      # update LINES/COLUMNS after each command
 
-# check the window size after each command and, if necessary,
-# update the values of LINES and COLUMNS.
-shopt -s checkwinsize
+### ─── Prompt (colors + Git status) ─────────────────────────────────────────
+# Functions to get current Git branch & status
+git_branch() {
+  if git rev-parse --is-inside-work-tree &>/dev/null; then
+    git rev-parse --abbrev-ref HEAD 2>/dev/null
+  fi
+}
 
-# If set, the pattern "**" used in a pathname expansion context will
-# match all files and zero or more directories and subdirectories.
-#shopt -s globstar
+git_status() {
+  local status="$(git status --porcelain 2>/dev/null)"
+  local out=""
+  [[ -n $(grep '^[MADRC]' <<<"$status") ]] && out="$out+"
+  [[ -n $(grep '^.[MD]' <<<"$status") ]] && out="$out!"
+  [[ -n $(grep '^\?\?' <<<"$status") ]] && out="$out?"
+  [[ -n $(git stash list) ]] && out="${out}S"
+  [[ -n $(git log --branches --not --remotes 2>/dev/null) ]] && out="${out}P"
+  [[ -n $out ]] && echo "$out"
+}
 
-# make less more friendly for non-text input files, see lesspipe(1)
-[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+git_color() {
+  local s=$([[ $1 =~ \+ ]] && echo yes)
+  local d=$([[ $1 =~ [!\?] ]] && echo yes)
+  local p=$([[ $1 =~ P ]] && echo yes)
 
-# set variable identifying the chroot you work in (used in the prompt below)
-if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
-    debian_chroot=$(cat /etc/debian_chroot)
-fi
+  if [[ -n $s && -n $d ]]; then
+    echo -e '\033[38;2;255;255;0m'   # yellow
+  elif [[ -n $s ]]; then
+    echo -e '\033[38;2;0;255;0m'     # green
+  elif [[ -n $d ]]; then
+    echo -e '\033[38;2;255;0;0m'     # red
+  elif [[ -n $p ]]; then
+    echo -e '\033[38;2;0;0;255m'     # blue
+  else
+    echo -e '\033[38;2;255;255;255m' # white
+  fi
+}
 
-# set a fancy prompt (non-color, unless we know we "want" color)
-case "$TERM" in
-    xterm-color|*-256color) color_prompt=yes;;
-esac
+git_prompt() {
+  local b=$(git_branch)
+  if [[ -n $b ]]; then
+    local st=$(git_status)
+    local col=$(git_color "$st")
+    echo -e "\[${col}\]($b$st)\[\033[0m\]"
+  fi
+}
 
-# uncomment for a colored prompt, if the terminal has the capability; turned
-# off by default to not distract the user: the focus in a terminal window
-# should be on the output of commands, not on the prompt
-#force_color_prompt=yes
+git config commit.gpgsign false
 
-if [ -n "$force_color_prompt" ]; then
-    if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
-	# We have color support; assume it's compliant with Ecma-48
-	# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
-	# a case would tend to support setf rather than setaf.)
-	color_prompt=yes
-    else
-	color_prompt=
-    fi
-fi
+# Choose your own RGB values here:
+GIT_USER_COLOR='\033[38;2;0;200;0m'   # a milder green
+GIT_HOST_COLOR='\033[38;2;0;255;255m' # cyan
+RESET_COLOR='\033[0m'
 
-if [ "$color_prompt" = yes ]; then
-    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
-else
-    PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
-fi
-unset color_prompt force_color_prompt
+PS1="\[${GIT_USER_COLOR}\]\${GITHUB_USER}\[${RESET_COLOR}\]@\
+\[${GIT_HOST_COLOR}\]\h\[${RESET_COLOR}\]: \w $(git_prompt) \[${RESET_COLOR}\]$ "
 
-# If this is an xterm set the title to user@host:dir
-case "$TERM" in
-xterm*|rxvt*)
-    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
-    ;;
-*)
-    ;;
-esac
+export PROMPT_DIRTRIM=4
 
-# enable color support of ls and also add handy aliases
-if [ -x /usr/bin/dircolors ]; then
-    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
-    alias ls='ls --color=auto'
-    #alias dir='dir --color=auto'
-    #alias vdir='vdir --color=auto'
-
-    alias grep='grep --color=auto'
-    alias fgrep='fgrep --color=auto'
-    alias egrep='egrep --color=auto'
-fi
-
-# colored GCC warnings and errors
-#export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
-
-# some more ls aliases
+### ─── Aliases & Safety ────────────────────────────────────────────────────
 alias ll='ls -alF'
 alias la='ls -A'
 alias l='ls -CF'
 
-# Add an "alert" alias for long running commands.  Use like so:
-#   sleep 10; alert
-alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+# safer file operations
+alias rm='rm -i'
+alias mv='mv -i'
+alias cp='cp -i'
 
-# Alias definitions.
-# You may want to put all your additions into a separate file like
-# ~/.bash_aliases, instead of adding them here directly.
-# See /usr/share/doc/bash-doc/examples in the bash-doc package.
-
-if [ -f ~/.bash_aliases ]; then
-    . ~/.bash_aliases
+# colorized grep/diff if available
+if [ -x /usr/bin/dircolors ]; then
+  eval "$(dircolors -b)"
+  alias ls='ls --color=auto'
+  alias diff='diff --color=auto'
+  alias grep='grep --color=auto'
+  alias fgrep='fgrep --color=auto'
+  alias egrep='egrep --color=auto'
 fi
 
-# enable programmable completion features (you don't need to enable
-# this, if it's already enabled in /etc/bash.bashrc and /etc/profile
-# sources /etc/bash.bashrc).
+# Git shortcuts
+alias gs='git status'
+alias ga='git add'
+alias gcmsg='git commit -m'
+alias gp='git push'
+alias gl='git pull --rebase'
+alias gd='git diff'
+alias gco='git checkout'
+alias gcb='git checkout -b'
+alias glog='git log --oneline'
+
+# quick notification for long‑running jobs (if notify‑send is installed)
+if command -v notify-send &>/dev/null; then
+  alias alert='notify-send --urgency=low -i \
+    "$([ $? = 0 ] && echo terminal || echo error)" \
+    "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+fi
+
+### ─── vi-mode (optional) ───────────────────────────────────────────────────
+# Uncomment to use vi‑style keybindings at the prompt:
+# set -o vi
+
+### ─── Environment (.env) ──────────────────────────────────────────────────
+if [ -f "$HOME/.env" ]; then
+  set -a
+  . "$HOME/.env"
+  set +a
+fi
+
+### ─── Paths for Go, Turso, GCloud, etc. ───────────────────────────────────
+export PATH=$PATH:/usr/local/go/bin
+export PATH="$PATH:$HOME/.turso"
+
+export DISPLAY=:1
+export GPG_TTY=$(tty)
+
+# Google Cloud SDK
+if [ -f "/usr/lib/google-cloud-sdk/path.bash.inc" ]; then
+  . /usr/lib/google-cloud-sdk/path.bash.inc
+fi
+if [ -f "/usr/lib/google-cloud-sdk/completion.bash.inc" ]; then
+  . /usr/lib/google-cloud-sdk/completion.bash.inc
+fi
+
+# Bash completion (loads all “/usr/share/bash-completion/completions/*” etc.)
 if ! shopt -oq posix; then
   if [ -f /usr/share/bash-completion/bash_completion ]; then
     . /usr/share/bash-completion/bash_completion
@@ -115,102 +146,14 @@ if ! shopt -oq posix; then
     . /etc/bash_completion
   fi
 fi
-# Adds the current branch to the bash prompt when the working directory is
-# part of a Git repository. Includes color-coding and indicators to quickly
-# indicate the status of working directory.
-#
-# To use: Copy into ~/.bashrc and tweak if desired.
-#
-# Based upon the following gists:
-# <https://gist.github.com/henrik/31631>
-# <https://gist.github.com/srguiwiz/de87bf6355717f0eede5>
-# Modified by me, using ideas from comments on those gists.
-#
-# License: MIT, unless the authors of those two gists object :)
 
-git_branch() {
-    # -- Finds and outputs the current branch name by parsing the list of
-    #    all branches
-    # -- Current branch is identified by an asterisk at the beginning
-    # -- If not in a Git repository, error message goes to /dev/null and
-    #    no output is produced
-    git branch --no-color 2>/dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/'
+### ─── Handy functions ──────────────────────────────────────────────────────
+# Auto‑listing on cd:
+cd() {
+  if [ "$1" = ".." ]; then
+    prev="$PWD"
+    builtin cd .. && ls "$prev"
+  else
+    builtin cd "$@" && ls
+  fi
 }
-
-git_status() {
-    # Outputs a series of indicators based on the status of the
-    # working directory:
-    # + changes are staged and ready to commit
-    # ! unstaged changes are present
-    # ? untracked files are present
-    # S changes have been stashed
-    # P local commits need to be pushed to the remote
-    local status="$(git status --porcelain 2>/dev/null)"
-    local output=''
-    [[ -n $(egrep '^[MADRC]' <<<"$status") ]] && output="$output+"
-    [[ -n $(egrep '^.[MD]' <<<"$status") ]] && output="$output!"
-    [[ -n $(egrep '^\?\?' <<<"$status") ]] && output="$output?"
-    [[ -n $(git stash list) ]] && output="${output}S"
-    [[ -n $(git log --branches --not --remotes) ]] && output="${output}P"
-    [[ -n $output ]] && output="$output"  # separate from branch name
-    echo $output
-}
-
-git_color() {
-    # Receives output of git_status as argument; produces appropriate color
-    # code based on status of working directory:
-    # - White if everything is clean
-    # - Green if all changes are staged
-    # - Red if there are uncommitted changes with nothing staged
-    # - Yellow if there are both staged and unstaged changes
-    # - Blue if there are unpushed commits
-    local staged=$([[ $1 =~ \+ ]] && echo yes)
-    local dirty=$([[ $1 =~ [!\?] ]] && echo yes)
-    local needs_push=$([[ $1 =~ P ]] && echo yes)
-    if [[ -n $staged ]] && [[ -n $dirty ]]; then
-        echo -e '\033[1;33m'  # bold yellow
-    elif [[ -n $staged ]]; then
-        echo -e '\033[1;32m'  # bold green
-    elif [[ -n $dirty ]]; then
-        echo -e '\033[1;31m'  # bold red
-    elif [[ -n $needs_push ]]; then
-        echo -e '\033[1;34m' # bold blue
-    else
-        echo -e '\033[1;37m'  # bold white
-    fi
-}
-
-git_prompt() {
-    # First, get the branch name...
-    local branch=$(git_branch)
-    # Empty output? Then we're not in a Git repository, so bypass the rest
-    # of the function, producing no output
-    if [[ -n $branch ]]; then
-        local state=$(git_status)
-        local color=$(git_color $state)
-        # Now output the actual code to insert the branch and status
-        echo -e "\x01$color\x02($branch$state)\x01\033[00m\x02"  # last bit resets color
-    fi
-}
-
-git config commit.gpgsign false
-
-# Sample prompt declaration. Tweak as you see fit, or just stick
-# "$(git_prompt)" into your favorite prompt.
-PS1='\[\e[0;35m\]${GITHUB_USER}\[\e[0m\]@\[\e[0;36m\]\u\[\e[0m\]: \w $(git_prompt)\[\033[00m\] \$ '
-
-export PROMPT_DIRTRIM=4
-
-export GITHUB_TOKEN=
-export DISPLAY=:1
-export GPG_TTY=$(tty)
-
-export PATH=$PATH:/usr/local/go/bin
-export DOCKER_TOKEN=
-# Turso
-export PATH="$PATH:/home/codespace/.turso"
-# The next line updates PATH for the Google Cloud SDK.
-if [ -f '/workspaces/google-cloud-sdk/path.bash.inc' ]; then . '/workspaces/google-cloud-sdk/path.bash.inc'; fi
-
-# The next line enables shell command completion for gcloud.
-if [ -f '/workspaces/google-cloud-sdk/completion.bash.inc' ]; then . '/workspaces/google-cloud-sdk/completion.bash.inc'; fi
