@@ -54,12 +54,15 @@ git_color() {
 }
 
 git_prompt() {
-  local b=$(git_branch)
-  if [[ -n $b ]]; then
-    local st=$(git_status)
-    local col=$(git_color "$st")
-    echo -e "\[${col}\]($b$st)\[\033[0m\]"
-  fi
+  local b
+  b=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || return
+
+  local st col
+  st=$(git_status)
+  col=$(git_color "$st")
+
+  # We will wrap them in \[ \] later when constructing PS1.
+  echo -e "${col}(${b}${st})\033[0m"
 }
 
 git config commit.gpgsign false
@@ -69,8 +72,8 @@ GIT_USER_COLOR='\033[38;2;0;200;0m'   # a milder green
 GIT_HOST_COLOR='\033[38;2;0;255;255m' # cyan
 RESET_COLOR='\033[0m'
 
-PS1="\[${GIT_USER_COLOR}\]\${GITHUB_USER}\[${RESET_COLOR}\]@\
-\[${GIT_HOST_COLOR}\]\h\[${RESET_COLOR}\]: \w $(git_prompt) \[${RESET_COLOR}\]$ "
+PS1="\[$GIT_USER_COLOR\]\${GITHUB_USER}\[$RESET_COLOR\]@\
+\[$GIT_HOST_COLOR\]\h\[$RESET_COLOR\]: \w \[$(git_prompt)\] $ "
 
 export PROMPT_DIRTRIM=4
 
