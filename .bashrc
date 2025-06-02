@@ -18,63 +18,73 @@ shopt -s checkwinsize      # update LINES/COLUMNS after each command
 
 ### ─── Prompt (colors + Git status) ─────────────────────────────────────────
 # Functions to get current Git branch & status
-git_branch() {
-  if git rev-parse --is-inside-work-tree &>/dev/null; then
-    git rev-parse --abbrev-ref HEAD 2>/dev/null
-  fi
-}
-
 git_status() {
-  local status="$(git status --porcelain 2>/dev/null)"
-  local out=""
-  [[ -n $(grep '^[MADRC]' <<<"$status") ]] && out="$out+"
-  [[ -n $(grep '^.[MD]' <<<"$status") ]] && out="$out!"
-  [[ -n $(grep '^\?\?' <<<"$status") ]] && out="$out?"
-  [[ -n $(git stash list) ]] && out="${out}S"
+  local status out
+  status="$(git status --porcelain 2>/dev/null)" || return
+  out=""
+  [[ -n $(grep '^[MADRC]' <<<"$status") ]] && out="${out}+"
+  [[ -n $(grep '^.[MD]'   <<<"$status") ]] && out="${out}!"
+  [[ -n $(grep '^\?\?'   <<<"$status") ]] && out="${out}?"
+  [[ -n $(git stash list)        ]] && out="${out}S"
   [[ -n $(git log --branches --not --remotes 2>/dev/null) ]] && out="${out}P"
   [[ -n $out ]] && echo "$out"
 }
 
+# 2) The “raw” git_color (same logic)
 git_color() {
-  local s=$([[ $1 =~ \+ ]] && echo yes)
-  local d=$([[ $1 =~ [!\?] ]] && echo yes)
-  local p=$([[ $1 =~ P ]] && echo yes)
+  local s d p
+  [[ $1 =~ \+ ]]  && s=yes
+  [[ $1 =~ [!\?] ]] && d=yes
+  [[ $1 =~ P ]]  && p=yes
 
   if [[ -n $s && -n $d ]]; then
-    echo -e '\033[38;2;255;255;0m'   # yellow
+    # staged AND dirty/unstaged → yellow
+    echo -e "\033[38;2;255;255;0m"
   elif [[ -n $s ]]; then
-    echo -e '\033[38;2;0;255;0m'     # green
+    # only staged → green
+    echo -e "\033[38;2;0;255;0m"
   elif [[ -n $d ]]; then
-    echo -e '\033[38;2;255;0;0m'     # red
+    # only dirty → red
+    echo -e "\033[38;2;255;0;0m"
   elif [[ -n $p ]]; then
-    echo -e '\033[38;2;0;0;255m'     # blue
+    # only “commits not pushed” → blue
+    echo -e "\033[38;2;0;0;255m"
   else
-    echo -e '\033[38;2;255;255;255m' # white
+    # clean → white
+    echo -e "\033[38;2;255;255;255m"
   fi
 }
 
+# 3) Update git_prompt to emit _only_ raw ANSI codes (no literal \[ \])
 git_prompt() {
-  local b
-  b=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || return
+  # If we’re not in a Git repo, bail
+  if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+    return
+  fi
 
-  local st col
+  # Get current branch
+  local branch
+  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || return
+
+  # Build status and pick a color
+  local st
   st=$(git_status)
+  local col
   col=$(git_color "$st")
 
-  # We will wrap them in \[ \] later when constructing PS1.
-  echo -e "${col}(${b}${st})\033[0m"
+  # Emit raw ANSI escape + “(branch$status)” + reset
+  # (the reset is \033[0m, not wrapped in \[ \]).
+  echo -e "${col}(${branch}${st})\033[0m"
 }
 
-git config commit.gpgsign false
-
-# Choose your own RGB values here:
-GIT_USER_COLOR='\033[38;2;0;200;0m'   # a milder green
-GIT_HOST_COLOR='\033[38;2;0;255;255m' # cyan
+# 4) Pick your own “user@host” colors
+GIT_USER_COLOR='\033[38;2;0;200;0m'    # a mild green
+GIT_HOST_COLOR='\033[38;2;0;255;255m'  # cyan
 RESET_COLOR='\033[0m'
 
+# 5) Finally, wrap everything in \[ \] when building PS1
 PS1="\[$GIT_USER_COLOR\]\${GITHUB_USER}\[$RESET_COLOR\]@\
 \[$GIT_HOST_COLOR\]\h\[$RESET_COLOR\]: \w \[$(git_prompt)\] $ "
-
 export PROMPT_DIRTRIM=4
 
 ### ─── Aliases & Safety ────────────────────────────────────────────────────
