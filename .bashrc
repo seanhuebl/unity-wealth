@@ -194,3 +194,4 @@ cd() {
     builtin cd "$@" && ls
   fi
 }
+
