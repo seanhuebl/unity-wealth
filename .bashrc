@@ -17,97 +17,71 @@ HISTFILESIZE=2000
 shopt -s checkwinsize      # update LINES/COLUMNS after each command
 
 ### ─── Prompt (colors + Git status) ─────────────────────────────────────────
-# ── 1) Check “porcelain” and build symbols ──────────────────────────────────
 git_status() {
   local porcelain out
-
-  # Grab “porcelain” status (two‑column codes + filenames).
-  porcelain=$(git status --porcelain 2>/dev/null) || return
-
+  porcelain="$(git status --porcelain 2>/dev/null)" || return
   out=""
+  [[ -n $(grep '^[MADRC]' <<<"$porcelain") ]] && out="${out}+"
+  [[ -n $(grep '^.[MD]'   <<<"$porcelain") ]] && out="${out}!"
+  [[ -n $(grep '^\?\?'   <<<"$porcelain") ]] && out="${out}?"
+  [[ -n $(git stash list)            ]] && out="${out}S"
+  [[ -n $(git log --branches --not --remotes 2>/dev/null) ]] && out="${out}P"
 
-  # 1a) any staged changes?  (first column in [M A D R C])
-  if grep -q '^[MADRC]' <<<"$porcelain"; then
-    out="${out}+"
-  fi
-
-  # 1b) any unstaged modifications or deletions? (second column M or D)
-  if grep -q '^.[MD]' <<<"$porcelain"; then
-    out="${out}!"
-  fi
-
-  # 1c) any untracked files? (lines starting with "??")
-  if grep -q '^\?\?' <<<"$porcelain"; then
-    out="${out}?"
-  fi
-
-  # 1d) any stashed changes?
-  if [[ -n $(git stash list) ]]; then
-    out="${out}S"
-  fi
-
-  # 1e) any local commits not yet pushed?  (branches not on any remote)
-  #    We’ll use `git rev-list --branches --not --remotes` exactly as before.
-  if [[ -n $(git log --branches --not --remotes 2>/dev/null) ]]; then
-    out="${out}P"
+  if [[ $out == *P* ]]; then
+    out="${out//\?/}"
   fi
 
   [[ -n $out ]] && echo "$out"
 }
 
-# ── 2) Choose color by the status string ───────────────────────────────────
 git_color() {
   local s d p
-  [[ $1 =~ \+ ]]   && s=yes   # staged
-  [[ $1 =~ [!\?] ]] && d=yes   # dirty (unstaged or untracked)
-  [[ $1 =~ P ]]    && p=yes   # push pending
+  [[ $1 =~ \+      ]] && s=yes      # staged
+  [[ $1 =~ [!\?]   ]] && d=yes      # dirty (unstaged or untracked)
+  [[ $1 =~ P       ]] && p=yes      # push pending
 
   if [[ -n $s && -n $d ]]; then
-    # both staged (+) and dirty (!/? ) → yellow
+    # both staged (+) AND dirty/unstaged (! or ?) → yellow
     echo -e "\033[38;2;255;255;0m"
   elif [[ -n $s ]]; then
     # only staged (+) → green
     echo -e "\033[38;2;0;255;0m"
+  elif [[ -n $p ]]; then
+    # only “push pending” → magenta
+    echo -e "\033[38;2;255;0;255m"
   elif [[ -n $d ]]; then
     # only dirty (! or ?) → red
     echo -e "\033[38;2;255;0;0m"
-  elif [[ -n $p ]]; then
-    # only “push pending” → blue
-    echo -e "\033[38;2;0;0;255m"
   else
     # clean → white
     echo -e "\033[38;2;255;255;255m"
   fi
 }
 
-# ── 3) Print “(branch<status>)” with raw ANSI escapes (no literal \[ or \]) ─
 git_branch() {
   git rev-parse --abbrev-ref HEAD 2>/dev/null
 }
 
 git_prompt() {
-  # Only if we’re inside a Git repo
-  if git rev-parse --is-inside-work-tree &>/dev/null; then
-    local branch st col
-
-    branch=$(git_branch) || return
-    st=$(git_status)
-    col=$(git_color "$st")
-
-    # Emit raw ESC + "(branch<status>)" + reset (“\033[0m”).
-    # Do NOT wrap these in \[ \]—we’ll do that in PS1 itself.
-    echo -e "${col}(${branch}${st})\033[0m"
+  if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+    return
   fi
+
+  local b st col
+  b=$(git_branch)  || return
+  st=$(git_status)
+  col=$(git_color "$st")
+
+  # Only raw ANSI escapes + "(branch<status>)" + reset (\033[0m)
+  echo -e "${col}(${b}${st})\033[0m"
 }
 
-# ── 4) Your colors for “user@host” ─────────────────────────────────────────
 GIT_USER_COLOR='\033[38;2;0;200;0m'   # a mild green for username
 GIT_HOST_COLOR='\033[38;2;0;255;255m' # cyan for hostname
 RESET_COLOR='\033[0m'
 
-# ── 5) Finally, wrap the entire $(git_prompt) invocation in \[ \] in PS1 ────
 PS1="\[$GIT_USER_COLOR\]\${GITHUB_USER}\[$RESET_COLOR\]@\
-\[$GIT_HOST_COLOR\]\h\[$RESET_COLOR\]: \w \[$(git_prompt)\] \$ "
+\[$GIT_HOST_COLOR\]\h\[$RESET_COLOR\]: \w \[\$(git_prompt)\] \$ "
 
 export PROMPT_DIRTRIM=4
 
@@ -194,5 +168,3 @@ cd() {
     builtin cd "$@" && ls
   fi
 }
-
-#
