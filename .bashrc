@@ -121,7 +121,7 @@ fi
 # Git shortcuts
 alias gs='git status'
 alias ga='git add'
-alias gcmsg='git commit -m'
+alias gcmsg='git commit -S -m'
 alias gp='git push'
 alias gl='git pull --rebase'
 alias gd='git diff'
@@ -141,18 +141,18 @@ fi
 # set -o vi
 
 ### ─── Environment (.env) ──────────────────────────────────────────────────
-if [ -f "$HOME/.env" ]; then
+if [ -f ".env" ]; then
   set -a
-  . "$HOME/.env"
+  . ".env"
   set +a
 fi
+
 
 ### ─── Paths for Go, Turso, GCloud, etc. ───────────────────────────────────
 export PATH=$PATH:/usr/local/go/bin
 export PATH="$PATH:$HOME/.turso"
 
 export DISPLAY=:1
-export GPG_TTY=$(tty)
 
 # Google Cloud SDK
 if [ -f "/usr/lib/google-cloud-sdk/path.bash.inc" ]; then
@@ -173,11 +173,6 @@ fi
 
 ### ─── Handy functions ──────────────────────────────────────────────────────
 # Auto‑listing on cd:
-cd() {
-  if [ "$1" = ".." ]; then
-    prev="$PWD"
-    builtin cd .. && ls "$prev"
-  else
-    builtin cd "$@" && ls
-  fi
+cd() {    
+      builtin cd "$@" && ls -a
 }

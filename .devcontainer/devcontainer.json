@@ -2,10 +2,18 @@
   "name": "go backend container",
   "build": {
     "dockerfile": "Dockerfile",
-    "context": ".."
+    "context": "..",
+    "args": {
+      "GPG_PRIVATE_KEY_ASC": "${localEnv:GPG_PRIVATE_KEY_ASC}"
+    }
   },
+  "mounts": [
+    "source=${env:HOME}/.gnupg/my-gpg-key.asc,target=/home/vscode/my-gpg-key.asc,type=bind"
+  ],
   "postCreateCommand": [
-    "go mod download"
+    "sh -c 'go mod download'",
+    "sh -c 'chmod +x ./.devcontainer/setup-gpg.sh'",
+    "sh -c './.devcontainer/setup-gpg.sh'"
   ],
   "customizations": {
     "vscode": {

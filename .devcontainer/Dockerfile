@@ -1,62 +1,70 @@
 # .devcontainer/Dockerfile
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 1: Start from Microsoft’s Go devcontainer base
-# ─────────────────────────────────────────────────────────────────────────────
 FROM mcr.microsoft.com/devcontainers/go:1 AS base
 
-# Switch to root to install system packages
-USER root
+# Capture the build‑arg (will be non‑empty in Codespaces, empty locally)
+ARG GPG_PRIVATE_KEY_ASC
 
-# Install prerequisites, Google Cloud SDK, and Docker CE in one go,
-# then clean up apt lists to keep the image lean.
+USER root
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    gnupg \
-    lsb-release \
-    apt-transport-https \
-    libpq-dev \
-    bash-completion \
-    postgresql-client && \
+      ca-certificates \
+      curl \
+      gnupg \
+      lsb-release \
+      apt-transport-https \
+      libpq-dev \
+      bash-completion \
+      postgresql-client && \
     \
     # --- Add Google Cloud SDK apt repository ---
     mkdir -p /usr/share/keyrings && \
     curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
-    | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && \
+      | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && \
     echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] \
-    https://packages.cloud.google.com/apt cloud-sdk main" \
-    > /etc/apt/sources.list.d/google-cloud-sdk.list && \
+      https://packages.cloud.google.com/apt cloud-sdk main" \
+      > /etc/apt/sources.list.d/google-cloud-sdk.list && \
     \
     # --- Add Docker CE apt repository ---
     curl -fsSL https://download.docker.com/linux/debian/gpg \
-    | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && \
+      | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && \
     echo "deb [arch=$(dpkg --print-architecture) \
-    signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] \
-    https://download.docker.com/linux/debian $(lsb_release -cs) stable" \
-    > /etc/apt/sources.list.d/docker.list && \
+      signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] \
+      https://download.docker.com/linux/debian $(lsb_release -cs) stable" \
+      > /etc/apt/sources.list.d/docker.list && \
     \
     # Refresh package lists and install SDKs & Docker
     apt-get update && \
     apt-get install -y \
-    google-cloud-sdk \
-    docker-ce \
-    docker-ce-cli \
-    containerd.io && \
+      google-cloud-sdk \
+      docker-ce \
+      docker-ce-cli \
+      containerd.io && \
     \
     # Clean up apt caches
     rm -rf /var/lib/apt/lists/*
 
-# Add "vscode" user to the "docker" group so no sudo is required for `docker ...`
+# If GPG_PRIVATE_KEY_ASC was provided (Codespaces), import it now.
+# If it’s empty (local build), skip.
+RUN if [ -n "${GPG_PRIVATE_KEY_ASC}" ]; then \
+      mkdir -p /home/vscode/.gnupg && \
+      chown vscode:vscode /home/vscode/.gnupg && \
+      chmod 700 /home/vscode/.gnupg && \
+      \
+      echo "${GPG_PRIVATE_KEY_ASC}" > /tmp/my-gpg-key.asc && \
+      \
+      su vscode -c "gpg --batch --import /tmp/my-gpg-key.asc" && \
+      \
+      rm /tmp/my-gpg-key.asc && \
+      chown -R vscode:vscode /home/vscode/.gnupg ; \
+    fi
+
+# Ensure vscode can run Docker without sudo
 RUN groupadd -f docker && usermod -aG docker vscode
 
-# Copy a repo‑root .bashrc into /home/vscode/.bashrc at build time
-# (Assumes you have a .bashrc at the very top‑level of your repo.)
+# Copy custom .bashrc
 COPY .bashrc /home/vscode/.bashrc
 RUN chown vscode:vscode /home/vscode/.bashrc
 
-# Switch back to vscode for Go tool installs and working directory setup
 USER vscode
 WORKDIR /workspaces/${LOCAL_WORKSPACE_FOLDER_BASENAME}
 
