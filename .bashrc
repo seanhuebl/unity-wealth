@@ -21,9 +21,9 @@ git_status() {
   local porcelain out
   porcelain="$(git status --porcelain 2>/dev/null)" || return
   out=""
-  [[ -n $(grep '^[MADRC]' <<<"$porcelain") ]] && out="${out}+"
-  [[ -n $(grep '^.[MD]'   <<<"$porcelain") ]] && out="${out}!"
-  [[ -n $(grep '^\?\?'   <<<"$porcelain") ]] && out="${out}?"
+  [[ -n $(egrep '^[MADRC]' <<<"$porcelain") ]] && out="${out}+"
+  [[ -n $(egrep '^.[MD]'   <<<"$porcelain") ]] && out="${out}!"
+  [[ -n $(egrep '^\?\?'   <<<"$porcelain") ]] && out="${out}?"
   [[ -n $(git stash list)            ]] && out="${out}S"
   [[ -n $(git log --branches --not --remotes 2>/dev/null) ]] && out="${out}P"
 
@@ -34,46 +34,59 @@ git_status() {
   [[ -n $out ]] && echo "$out"
 }
 
+# 1) Pick a 24‑bit ANSI color based on the status flags string (e.g. "+", "+!", "S", or "").
+#    Returns a bare "\033[38;2;R;G;Bm" sequence.
+# ──────────────────────────────────────────────────────────────────────────
 git_color() {
-  local s d p
-  [[ $1 =~ \+      ]] && s=yes      # staged
-  [[ $1 =~ [!\?]   ]] && d=yes      # dirty (unstaged or untracked)
-  [[ $1 =~ P       ]] && p=yes      # push pending
+  local st="$1" has_staged has_dirty has_push
 
-  if [[ -n $s && -n $d ]]; then
-    # both staged (+) AND dirty/unstaged (! or ?) → yellow
-    echo -e "\033[38;2;255;255;0m"
-  elif [[ -n $s ]]; then
-    # only staged (+) → green
-    echo -e "\033[38;2;0;255;0m"
-  elif [[ -n $p ]]; then
-    # only “push pending” → magenta
-    echo -e "\033[38;2;255;0;255m"
-  elif [[ -n $d ]]; then
-    # only dirty (! or ?) → red
-    echo -e "\033[38;2;255;0;0m"
+  [[ $st =~ \+     ]] && has_staged=yes    # “+” means staged
+  [[ $st =~ [!\?]  ]] && has_dirty=yes     # “!” or “?” means dirty/untracked
+  [[ $st =~ P      ]] && has_push=yes      # “P” means push pending
+
+  if [[ -n $has_staged && -n $has_dirty ]]; then
+    echo "\033[38;2;255;255;0m"   # yellow
+  elif [[ -n $has_staged ]]; then
+    echo "\033[38;2;0;255;0m"     # green
+  elif [[ -n $has_dirty ]]; then
+    echo "\033[38;2;255;0;0m"     # red
+  elif [[ -n $has_push ]]; then
+    echo "\033[38;2;255;0;255m"   # magenta
   else
-    # clean → white
-    echo -e "\033[38;2;255;255;255m"
+    echo "\033[38;2;255;255;255m" # white
   fi
 }
 
+# ──────────────────────────────────────────────────────────────────────────
+# 2) Grab the current branch name; empty if not in a repo
+# ──────────────────────────────────────────────────────────────────────────
 git_branch() {
   git rev-parse --abbrev-ref HEAD 2>/dev/null
 }
 
+# ──────────────────────────────────────────────────────────────────────────
+# 3) Build “(branch<status>)” in one shot, with ALL raw \033[…] escapes wrapped
+#    in \[ \] so Bash treats them as zero‐width.  No extra “()” ever.
+#
+#    Even when clean (status=""), we still show “(branch)” in white.
+# ──────────────────────────────────────────────────────────────────────────
 git_prompt() {
   if ! git rev-parse --is-inside-work-tree &>/dev/null; then
     return
   fi
 
   local b st col
-  b=$(git_branch)  || return
+  b=$(git_branch) || return
   st=$(git_status)
-  col=$(git_color "$st")
 
-  # Only raw ANSI escapes + "(branch<status>)" + reset (\033[0m)
-  echo -e "${col}(${b}${st})\033[0m"
+  if [[ -z $st ]]; then
+    col="\033[38;2;255;255;255m"  # white when clean
+  else
+    col=$(git_color "$st")
+  fi
+
+  # Emit: \[<col>\](<branch><status>)\[\033[0m\]
+  echo -e "\[${col}\](${b}${st})\[\033[0m\]"
 }
 
 GIT_USER_COLOR='\033[38;2;0;200;0m'   # a mild green for username
@@ -81,7 +94,7 @@ GIT_HOST_COLOR='\033[38;2;0;255;255m' # cyan for hostname
 RESET_COLOR='\033[0m'
 
 PS1="\[$GIT_USER_COLOR\]\${GITHUB_USER}\[$RESET_COLOR\]@\
-\[$GIT_HOST_COLOR\]\h\[$RESET_COLOR\]: \w \[\$(git_prompt)\] \$ "
+\[$GIT_HOST_COLOR\]\h\[$RESET_COLOR\]: \w $(git_prompt) $ "
 
 export PROMPT_DIRTRIM=4
 
