@@ -18,6 +18,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/config"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/middleware"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	userService "github.com/seanhuebl/unity-wealth/internal/services/user"
@@ -44,7 +45,7 @@ func main() {
 		Database:    db,
 	}
 
-	tokenGen := auth.NewRealTokenGenerator(cfg.TokenSecret, auth.TokenType(os.Getenv("TOKEN_TYPE")))
+	tokenGen := auth.NewRealTokenGenerator(cfg.TokenSecret, models.TokenType(os.Getenv("TOKEN_TYPE")))
 	tokenExtract := auth.NewRealTokenExtractor()
 	pwdHasher := auth.NewRealPwdHasher()
 	transactionalQ := database.NewRealTransactionalQuerier(cfg.Queries)

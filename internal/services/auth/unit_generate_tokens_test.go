@@ -1,4 +1,4 @@
-package auth
+package auth_test
 
 import (
 	"errors"
@@ -8,6 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	authmocks "github.com/seanhuebl/unity-wealth/internal/mocks/auth"
+	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/stretchr/testify/require"
 )
 
@@ -62,8 +63,8 @@ func TestGenerateTokens(t *testing.T) {
 				mockTokenGen.On("MakeRefreshToken").Return(tc.refreshToken, tc.refreshError)
 			}
 
-			svc := NewAuthService(nil, nil, mockTokenGen, nil, nil)
-			jwtToken, refreshToken, err := svc.generateTokens(userID)
+			svc := auth.NewAuthService(nil, nil, mockTokenGen, nil, nil)
+			jwtToken, refreshToken, err := svc.GenerateTokens(userID)
 			if tc.expectedErrorSubstring != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.expectedErrorSubstring)

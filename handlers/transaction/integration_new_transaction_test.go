@@ -2,15 +2,13 @@ package transaction_test
 
 import (
 	"bytes"
-	"context"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/testfixtures"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 
@@ -68,22 +66,20 @@ func TestIntegrationNewTx(t *testing.T) {
 			env := testhelpers.SetupTestEnv(t)
 			defer env.Db.Close()
 
-			testhelpers.SeedTestUser(t, env.UserQ, tc.UserID)
+			testhelpers.SeedTestUser(t, env.UserQ, tc.UserID, false)
 			testhelpers.SeedTestCategories(t, env.Db)
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest("POST", "/transactions", bytes.NewBufferString(tc.ReqBody))
 			req.Header.Set("Content-Type", "application/json")
 
-			if strings.Contains(tc.Name, "user ID not UUID") {
-				req = req.WithContext(context.WithValue(req.Context(), constants.UserIDKey, "not-a-uuid"))
-			} else {
-				req = req.WithContext(context.WithValue(req.Context(), constants.UserIDKey, tc.UserID))
-			}
+			env.Router.Use(func(c *gin.Context) {
+				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
+			})
 
-			env.Router.POST("/transactions", env.Handler.NewTransaction)
+			env.Router.POST("/transactions", env.Handlers.TxHandler.NewTransaction)
 			env.Router.ServeHTTP(w, req)
 			actualResponse := testhelpers.ProcessResponse(w, t)
-			testhelpers.CheckTxHTTPResponse(t, w, tc, actualResponse)
+			testhelpers.CheckHTTPResponse(t, w, tc.ExpectedError, tc.ExpectedStatusCode, tc.ExpectedResponse, actualResponse)
 		})
 	}
 

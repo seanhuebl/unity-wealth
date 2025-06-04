@@ -1,0 +1,72 @@
+{
+  "name": "go backend container",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "args": {
+      "GPG_PRIVATE_KEY_ASC": "${localEnv:GPG_PRIVATE_KEY_ASC}"
+    }
+  },
+  "mounts": [
+    "source=${env:HOME}/.gnupg/my-gpg-key.asc,target=/home/vscode/my-gpg-key.asc,type=bind"
+  ],
+  "workspaceFolder": "/workspaces/unity-wealth",
+  "postCreateCommand": "bash ./.devcontainer/setup-dev.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "ms-azuretools.vscode-docker",
+        "ms-azuretools.vscode-postgresql",
+        "github.codespaces",
+        "github.vscode-github-actions",
+        "github.copilot",
+        "github.copilot-chat",
+        "humao.rest-client",
+        "mechatroner.rainbow-csv",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-sqlite",
+        "mtxr.sqltools-driver-pg",
+        "davidanson.vscode-markdownlint",
+        "daltonmenezes.aura-theme"
+      ],
+      "settings": {
+        "workbench.colorTheme": "Aura Dark"
+      },
+      "snippets": {
+        "go-snippets.code-snippets": {
+          "FnGin": {
+            "prefix": "fngin",
+            "body": [
+              "func(c *gin.Context){",
+              "$1",
+              "}$0"
+            ],
+            "description": "gin anonymous with c instead of ctx"
+          },
+          "Table-Driven Test": {
+            "prefix": "tdt",
+            "body": [
+              "func Test$1(t *testing.T) {",
+              "  tests := []struct {",
+              "    name string",
+              "    $2",
+              "  }{",
+              "     {",
+              "        $3",
+              "     },",
+              "  }",
+              "  for _, tc := range tests {",
+              "    t.Run(tc.name, func(t *testing.T) {",
+              "      $0",
+              "    })",
+              "  }",
+              "}"
+            ],
+            "description": "Go table-driven test "
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,12 +1,10 @@
 package user
 
-import "github.com/seanhuebl/unity-wealth/internal/services/user"
-
 type Handler struct {
-	userService *user.UserService
+	userService UserService
 }
 
-func NewHandler(userSvc *user.UserService) *Handler {
+func NewHandler(userSvc UserService) *Handler {
 	return &Handler{
 		userService: userSvc,
 	}

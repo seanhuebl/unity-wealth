@@ -1,12 +1,10 @@
 package transaction
 
-import "github.com/seanhuebl/unity-wealth/internal/services/transaction"
-
 type Handler struct {
-	txSvc *transaction.TransactionService
+	txSvc TransactionService
 }
 
-func NewHandler(txSvc *transaction.TransactionService) *Handler {
+func NewHandler(txSvc TransactionService) *Handler {
 	return &Handler{
 		txSvc: txSvc,
 	}

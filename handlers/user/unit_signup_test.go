@@ -2,24 +2,17 @@ package user_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-	httpuser "github.com/seanhuebl/unity-wealth/handlers/user"
-	"github.com/seanhuebl/unity-wealth/internal/database"
-	authmocks "github.com/seanhuebl/unity-wealth/internal/mocks/auth"
-	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
+	"github.com/seanhuebl/unity-wealth/handlers/user"
+	handlermocks "github.com/seanhuebl/unity-wealth/internal/mocks/handlers"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
-	"github.com/seanhuebl/unity-wealth/internal/services/user"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 )
 
 func TestAddUserHandler(t *testing.T) {
@@ -28,119 +21,101 @@ func TestAddUserHandler(t *testing.T) {
 	tests := []struct {
 		name               string
 		reqBody            string
-		validPasswordError error
-		hashPasswordOutput string
-		hashPasswordError  error
-		createUserError    error
+		err                error
 		expectedError      string
 		expectedStatusCode int
 		expectedResponse   map[string]interface{}
 	}{
 		{
-			name:               "successful sign up",
-			reqBody:            `{"email": "valid@example.com", "password": "Validpass1!"}`,
-			validPasswordError: nil,
-			hashPasswordOutput: "hashedpassword",
-			hashPasswordError:  nil,
-			createUserError:    nil,
-			expectedError:      "",
-			expectedStatusCode: http.StatusCreated,
+			name:               "invalid email",
+			reqBody:            `{"email": "invalid", "password": "Validpass1!"}`,
+			err:                auth.ErrInvalidEmail,
+			expectedError:      "invalid email",
+			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse: map[string]interface{}{
 				"data": map[string]interface{}{
-					"message": "sign up successful!",
-					"email":   "valid@example.com",
+					"error": "invalid email",
 				},
 			},
 		},
 		{
-			name:               "invalid req body",
-			reqBody:            `{"email": "valid@example.com", "password": "ValidPass1!"`,
-			expectedError:      "invalid request",
-			expectedStatusCode: http.StatusBadRequest,
-		},
-		{
-			name:               "invalid email",
-			reqBody:            `{"email": "invalid", "password": "Validpass1!"}`,
-			expectedError:      "invalid email",
-			expectedStatusCode: http.StatusInternalServerError,
-		},
-		{
 			name:               "invalid password",
 			reqBody:            `{"email": "valid@example.com", "password": "invalid"}`,
-			validPasswordError: errors.New("passwords must contain at least one uppercase letter"),
+			err:                auth.ErrInvalidPassword,
 			expectedError:      "invalid password",
-			expectedStatusCode: http.StatusInternalServerError,
+			expectedStatusCode: http.StatusBadRequest,
+			expectedResponse: map[string]interface{}{
+				"data": map[string]interface{}{
+					"error": "invalid password",
+				},
+			},
 		},
 		{
 			name:               "hash password error",
 			reqBody:            `{"email": "valid@example.com", "password": "Validpass1!"}`,
-			validPasswordError: nil,
-			hashPasswordError:  errors.New("hash error"),
+			err:                errors.New("hash error"),
 			expectedError:      "internal server error",
 			expectedStatusCode: http.StatusInternalServerError,
+			expectedResponse: map[string]interface{}{
+				"data": map[string]interface{}{
+					"error": "internal server error",
+				},
+			},
 		},
 		{
 			name:               "create user error",
 			reqBody:            `{"email": "valid@example.com", "password": "Validpass1!"}`,
-			validPasswordError: nil,
-			hashPasswordOutput: "hashedpassword",
-			hashPasswordError:  nil,
-			createUserError:    errors.New("db error"),
+			err:                errors.New("create user error"),
 			expectedError:      "internal server error",
 			expectedStatusCode: http.StatusInternalServerError,
+			expectedResponse: map[string]interface{}{
+				"data": map[string]interface{}{
+					"error": "internal server error",
+				},
+			},
 		},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			mockUserQ := dbmocks.NewUserQuerier(t)
-			mockPwdHasher := authmocks.NewPasswordHasher(t)
-			if json.Valid([]byte(tc.reqBody)) {
-				if auth.IsValidEmail(testhelpers.GetEmailFromBody(tc.reqBody)) {
-					if tc.validPasswordError == nil {
-						mockPwdHasher.On("HashPassword", testhelpers.GetPasswordFromBody(tc.reqBody)).Return(tc.hashPasswordOutput, tc.hashPasswordError)
-						if tc.hashPasswordError == nil {
-							mockUserQ.On("CreateUser", mock.Anything, mock.MatchedBy(func(params database.CreateUserParams) bool {
-								expected := database.CreateUserParams{
-									Email:          testhelpers.GetEmailFromBody(tc.reqBody),
-									HashedPassword: tc.hashPasswordOutput,
-								}
-
-								diff := cmp.Diff(expected, params, cmpopts.IgnoreFields(database.CreateUserParams{}, "ID"))
-								if diff != "" {
-									t.Logf("CreateUserParams mismatch (-want, +got):\n%s", diff)
-									return false
-								}
-								return params.ID != ""
-							})).Return(tc.createUserError)
-						}
-					}
-				}
-			}
-			userSvc := user.NewUserService(mockUserQ, mockPwdHasher)
-			h := httpuser.NewHandler(userSvc)
-			req := httptest.NewRequest(http.MethodPost, "/signup", bytes.NewBufferString(tc.reqBody))
-			req.Header.Set("Content-Type", "application/json")
+			mockSvc := handlermocks.NewUserService(t)
 			w := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/signup", bytes.NewBufferString(tc.reqBody))
+			req.Header.Set("Content-Type", "application/json")
 
+			mockSvc.On("SignUp", mock.Anything, mock.AnythingOfType("user.SignUpInput")).Return(tc.err)
+			h := user.NewHandler(mockSvc)
 			router := gin.New()
+
 			router.POST("/signup", h.SignUp)
 			router.ServeHTTP(w, req)
 
-			var actualResponse map[string]interface{}
-			err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
-			require.NoError(t, err)
-			if tc.expectedError != "" {
-				data := actualResponse["data"].(map[string]interface{})
-				require.Contains(t, data["error"].(string), tc.expectedError)
-			} else {
-				expected := tc.expectedResponse
-				if diff := cmp.Diff(expected, actualResponse); diff != "" {
-					t.Errorf("response mismatch (-want, +got):\n%s", diff)
-				}
-			}
-			mockUserQ.AssertExpectations(t)
-			mockPwdHasher.AssertExpectations(t)
+			actualResponse := testhelpers.ProcessResponse(w, t)
+			testhelpers.CheckHTTPResponse(t, w, tc.expectedError, tc.expectedStatusCode, tc.expectedResponse, actualResponse)
+			mockSvc.AssertExpectations(t)
 		})
 	}
+	t.Run("invalid req body", func(t *testing.T) {
+		mockSvc := handlermocks.NewUserService(t)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/signup", bytes.NewBufferString(`{"email": "valid@example.com", "password": "ValidPass1!"`))
+		h := user.NewHandler(mockSvc)
+		router := gin.New()
+		router.POST("/signup", h.SignUp)
+		router.ServeHTTP(w, req)
+
+		actualResponse := testhelpers.ProcessResponse(w, t)
+		testhelpers.CheckHTTPResponse(
+			t,
+			w,
+			"invalid request",
+			http.StatusBadRequest,
+			map[string]interface{}{
+				"data": map[string]interface{}{
+					"error": "invalid request",
+				},
+			},
+			actualResponse,
+		)
+	})
 }

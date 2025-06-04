@@ -7,13 +7,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	_ "github.com/mattn/go-sqlite3"
+	httpauth "github.com/seanhuebl/unity-wealth/handlers/auth"
 	txhandler "github.com/seanhuebl/unity-wealth/handlers/transaction"
+	httpuser "github.com/seanhuebl/unity-wealth/handlers/user"
 	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/interfaces"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	"github.com/seanhuebl/unity-wealth/internal/services/user"
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
 	"github.com/stretchr/testify/require"
 )
@@ -27,10 +32,19 @@ func CreateTestingSchema(t *testing.T, db *sql.DB) {
 	require.NoError(t, err)
 	_, err = db.Exec(constants.CreateTxTable)
 	require.NoError(t, err)
+	_, err = db.Exec(constants.CreateDeviceInfoTable)
+	require.NoError(t, err)
+	_, err = db.Exec(constants.CreateRefrTokenTable)
+	require.NoError(t, err)
 }
 
-func SeedTestUser(t *testing.T, userQ database.UserQuerier, userID uuid.UUID) {
-	hashedPassword := "hashedpwd"
+func SeedTestUser(t *testing.T, userQ database.UserQuerier, userID uuid.UUID, requiresHash bool) {
+	var hashedPassword string
+	if requiresHash {
+		hashedPassword, _ = auth.NewRealPwdHasher().HashPassword("Validpass1!")
+	} else {
+		hashedPassword = "hashedpwd"
+	}
 	email := "user@example.com"
 
 	err := userQ.CreateUser(context.Background(), database.CreateUserParams{
@@ -84,7 +98,7 @@ func SeedMultipleTestTransactions[T interfaces.TxPageRow](t *testing.T, txQ data
 }
 
 func SeedCreateTxTestData(t *testing.T, db *sql.DB, userQ database.UserQuerier, userID uuid.UUID) {
-	SeedTestUser(t, userQ, userID)
+	SeedTestUser(t, userQ, userID, false)
 	SeedTestCategories(t, db)
 }
 
@@ -101,16 +115,39 @@ func SetupTestEnv(t *testing.T) *testmodels.TestEnv {
 	transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
 	txQ := database.NewRealTransactionQuerier(transactionalQ)
 	userQ := database.NewRealUserQuerier(transactionalQ)
-	svc := transaction.NewTransactionService(txQ)
+	tokenQ := database.NewRealTokenQuerier(transactionalQ)
+	deviceQ := database.NewRealDevicequerier(transactionalQ)
+	sqlTxQ := database.NewRealSqlTxQuerier(transactionalQ)
+	pwdHasher := auth.NewRealPwdHasher()
+	tokenGen := auth.NewRealTokenGenerator("your-secret-key", "your-issuer")
+	tokenExtractor := auth.NewRealTokenExtractor()
 
-	h := txhandler.NewHandler(svc)
+	authSvc := auth.NewAuthService(sqlTxQ, userQ, tokenGen, tokenExtractor, pwdHasher)
+	txSvc := transaction.NewTransactionService(txQ)
+	userSvc := user.NewUserService(userQ, pwdHasher)
+
+	txH := txhandler.NewHandler(txSvc)
+	authH := httpauth.NewHandler(authSvc)
+	userH := httpuser.NewHandler(userSvc)
+
 	r := gin.New()
 	return &testmodels.TestEnv{
 		Router:  r,
 		Db:      db,
 		UserQ:   userQ,
 		TxQ:     txQ,
-		Handler: h,
+		TokenQ:  tokenQ,
+		DeviceQ: deviceQ,
+		Services: &testmodels.Services{
+			AuthService: authSvc,
+			TxService:   txSvc,
+			UserService: userSvc,
+		},
+		Handlers: &testmodels.Handlers{
+			AuthHandler: authH,
+			TxHandler:   txH,
+			UserHandler: userH,
+		},
 	}
 }
 
@@ -130,4 +167,17 @@ func IsTxFound(t *testing.T, tc testmodels.BaseHTTPTestCase, txID uuid.UUID, env
 			DetailedCategory: 40,
 		})
 	}
+}
+
+func SeedTestDeviceInfo(t *testing.T, deviceQ database.DeviceQuerier, userID uuid.UUID) {
+	_, err := deviceQ.CreateDeviceInfo(context.Background(), database.CreateDeviceInfoParams{
+		ID:             uuid.New().String(),
+		UserID:         userID.String(),
+		DeviceType:     "Mobile",
+		Browser:        "Chrome",
+		BrowserVersion: "100.0",
+		Os:             "Android",
+		OsVersion:      "11",
+	})
+	require.NoError(t, err)
 }

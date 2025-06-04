@@ -11,7 +11,7 @@ import (
 )
 
 func (h *Handler) NewTransaction(ctx *gin.Context) {
-	userID, err := helpers.GetUserID(ctx.Request.Context())
+	userID, err := helpers.GetUserID(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"data": gin.H{
@@ -42,7 +42,7 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 		return
 	}
 
-	response := h.txSvc.ConvertToResponse(txn)
+	response := models.ConvertToResponse(txn)
 
 	ctx.JSON(http.StatusCreated, gin.H{
 		"data": response,
@@ -167,21 +167,17 @@ func (h *Handler) GetTransactionByID(ctx *gin.Context) {
 		return
 	}
 
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"data": gin.H{
-				"error": "invalid id",
-			},
-		})
+	txId, ok := helpers.BindUUIDParam(ctx, "id")
+	if !ok {
+		// response is in the helper
 		return
 	}
-	txn, err := h.txSvc.GetTransactionByID(ctx.Request.Context(), userID.String(), id)
+	txn, err := h.txSvc.GetTransactionByID(ctx.Request.Context(), userID.String(), txId.String())
 	if err != nil {
 		if strings.Contains(err.Error(), "transaction not found") {
 			ctx.JSON(http.StatusNotFound, gin.H{
 				"data": gin.H{
-					"error": "transaction not found",
+					"error": "not found",
 				},
 			})
 			return
@@ -194,7 +190,7 @@ func (h *Handler) GetTransactionByID(ctx *gin.Context) {
 		return
 	}
 
-	response := h.txSvc.ConvertToResponse(txn)
+	response := models.ConvertToResponse(txn)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"data": response,
@@ -223,22 +219,18 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 		return
 	}
 
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"data": gin.H{
-				"error": "invalid id",
-			},
-		})
+	txId, ok := helpers.BindUUIDParam(ctx, "id")
+	if !ok {
+		// response is in the helper
 		return
 	}
 
-	txn, err := h.txSvc.UpdateTransaction(ctx.Request.Context(), id, userID.String(), req)
+	txn, err := h.txSvc.UpdateTransaction(ctx.Request.Context(), txId.String(), userID.String(), req)
 	if err != nil {
-		if strings.Contains(err.Error(), "transaction not found") {
+		if strings.Contains(err.Error(), "not found") {
 			ctx.JSON(http.StatusNotFound, gin.H{
 				"data": gin.H{
-					"error": "transaction not found",
+					"error": "not found",
 				},
 			})
 			return
@@ -251,7 +243,7 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 		return
 	}
 
-	response := h.txSvc.ConvertToResponse(txn)
+	response := models.ConvertToResponse(txn)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"data": response,
@@ -269,22 +261,18 @@ func (h *Handler) DeleteTransaction(ctx *gin.Context) {
 		return
 	}
 
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"data": gin.H{
-				"error": "invalid id",
-			},
-		})
+	txId, ok := helpers.BindUUIDParam(ctx, "id")
+	if !ok {
+		// response is in the helper
 		return
 	}
 
-	err = h.txSvc.DeleteTransaction(ctx.Request.Context(), id, userID.String())
+	err = h.txSvc.DeleteTransaction(ctx.Request.Context(), txId.String(), userID.String())
 	if err != nil {
 		if strings.Contains(err.Error(), "transaction not found") {
 			ctx.JSON(http.StatusNotFound, gin.H{
 				"data": gin.H{
-					"error": "transaction not found",
+					"error": "not found",
 				},
 			})
 			return

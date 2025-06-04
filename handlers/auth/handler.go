@@ -1,12 +1,10 @@
 package auth
 
-import "github.com/seanhuebl/unity-wealth/internal/services/auth"
-
 type Handler struct {
-	authSvc *auth.AuthService
+	authSvc AuthService
 }
 
-func NewHandler(authSvc *auth.AuthService) *Handler {
+func NewHandler(authSvc AuthService) *Handler {
 	return &Handler{
 		authSvc: authSvc,
 	}

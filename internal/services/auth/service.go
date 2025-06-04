@@ -14,76 +14,77 @@ import (
 	"github.com/mssola/user_agent"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 )
 
 type AuthService struct {
-	sqlTxQuerier database.SqlTxQuerier
-	userQuerier  database.UserQuerier
-	tokenGen     TokenGenerator
-	tokenExtract TokenExtractor
-	pwdHasher    PasswordHasher
+	SqlTxQuerier database.SqlTxQuerier
+	UserQuerier  database.UserQuerier
+	TokenGen     TokenGenerator
+	TokenExtract TokenExtractor
+	PwdHasher    PasswordHasher
 }
 
-func NewAuthService(sqlTxQuerier database.SqlTxQuerier, userQuerier database.UserQuerier, tokenGen TokenGenerator, tokenExtract TokenExtractor, pwdHasher PasswordHasher) *AuthService {
+func NewAuthService(SqlTxQuerier database.SqlTxQuerier, UserQuerier database.UserQuerier, TokenGen TokenGenerator, tokenExtract TokenExtractor, PwdHasher PasswordHasher) *AuthService {
 	return &AuthService{
-		sqlTxQuerier: sqlTxQuerier,
-		userQuerier:  userQuerier,
-		tokenGen:     tokenGen,
-		tokenExtract: tokenExtract,
-		pwdHasher:    pwdHasher,
+		SqlTxQuerier: SqlTxQuerier,
+		UserQuerier:  UserQuerier,
+		TokenGen:     TokenGen,
+		TokenExtract: tokenExtract,
+		PwdHasher:    PwdHasher,
 	}
 }
 
 // Login encapsulates the entire login process.
-func (a *AuthService) Login(ctx context.Context, input LoginInput) (LoginResponse, error) {
+func (a *AuthService) Login(ctx context.Context, input models.LoginInput) (models.LoginResponse, error) {
 
 	// 1. Validate the email format (optionally done here or in the handler)
-	if !IsValidEmail(input.Email) {
-		return LoginResponse{}, fmt.Errorf("invalid email format")
+	if !models.IsValidEmail(input.Email) {
+		return models.LoginResponse{}, fmt.Errorf("invalid email format")
 	}
 
 	// 2. Validate credentials and fetch user.
-	userID, err := a.validateCredentials(ctx, input)
+	userID, err := a.ValidateCredentials(ctx, input)
 	if err != nil {
-		return LoginResponse{}, err
+		return models.LoginResponse{}, err
 	}
 
 	req, err := helpers.GetRequestFromContext(ctx)
 	if err != nil {
-		return LoginResponse{}, err
+		return models.LoginResponse{}, err
 	}
 	// 3. Extract device information.
-	deviceInfo, err := getDeviceInfoFromRequest(req)
+	deviceInfo, err := GetDeviceInfoFromRequest(req)
 	if err != nil {
-		return LoginResponse{}, fmt.Errorf("device information could not be verified")
+		return models.LoginResponse{}, err
 	}
 
 	// 4. Start a database transaction.
-	tx, err := a.sqlTxQuerier.BeginTx(ctx, nil)
+	tx, err := a.SqlTxQuerier.BeginTx(ctx, nil)
 	if err != nil {
-		return LoginResponse{}, fmt.Errorf("failed to start transaction: %w", err)
+		return models.LoginResponse{}, fmt.Errorf("failed to start transaction: %w", err)
 	}
 	defer tx.Rollback()
-	queriesTx := a.sqlTxQuerier.WithTx(tx)
+	queriesTx := a.SqlTxQuerier.WithTx(tx)
 	deviceQ := database.NewRealDevicequerier(queriesTx)
 	tokenQ := database.NewRealTokenQuerier(queriesTx)
 
 	// 5. Handle device information.
-	deviceID, err := a.handleDeviceInfo(ctx, deviceQ, tokenQ, userID, deviceInfo)
+	deviceID, err := a.HandleDeviceInfo(ctx, deviceQ, tokenQ, userID, deviceInfo)
 	if err != nil {
-		return LoginResponse{}, err
+		return models.LoginResponse{}, err
 	}
 
 	// 6. Generate JWT and refresh token.
-	jwtToken, refreshToken, err := a.generateTokens(userID)
+	jwtToken, refreshToken, err := a.GenerateTokens(userID)
 	if err != nil {
-		return LoginResponse{}, err
+		return models.LoginResponse{}, err
 	}
 
 	// 7. Hash the refresh token.
-	refreshHash, err := a.pwdHasher.HashPassword(refreshToken)
+	refreshHash, err := a.PwdHasher.HashPassword(refreshToken)
 	if err != nil {
-		return LoginResponse{}, fmt.Errorf("failed to hash refresh token: %w", err)
+		return models.LoginResponse{}, fmt.Errorf("failed to hash refresh token: %w", err)
 	}
 
 	// 8. Create a refresh token record.
@@ -99,38 +100,38 @@ func (a *AuthService) Login(ctx context.Context, input LoginInput) (LoginRespons
 		DeviceInfoID: deviceID.String(),
 	})
 	if err != nil {
-		return LoginResponse{}, fmt.Errorf("failed to create refresh token entry: %w", err)
+		return models.LoginResponse{}, fmt.Errorf("failed to create refresh token entry: %w", err)
 	}
 
 	// 9. Commit the transaction.
 	if err := tx.Commit(); err != nil {
-		return LoginResponse{}, fmt.Errorf("failed to commit transaction: %w", err)
+		return models.LoginResponse{}, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	// 10. Return a structured login response.
-	return LoginResponse{
+	return models.LoginResponse{
 		UserID:       userID,
-		JWT:          jwtToken,
 		RefreshToken: refreshToken,
+		JWTToken:     jwtToken,
 	}, nil
 }
 
 // Helpers
-func (a *AuthService) validateCredentials(ctx context.Context, input LoginInput) (uuid.UUID, error) {
-	user, err := a.userQuerier.GetUserByEmail(ctx, input.Email)
+func (a *AuthService) ValidateCredentials(ctx context.Context, input models.LoginInput) (uuid.UUID, error) {
+	user, err := a.UserQuerier.GetUserByEmail(ctx, input.Email)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return uuid.Nil, fmt.Errorf("invalid email / password")
 		}
 		return uuid.Nil, fmt.Errorf("failed to fetch user: %w", err)
 	}
-	if err := a.pwdHasher.CheckPasswordHash(input.Password, user.HashedPassword); err != nil {
+	if err := a.PwdHasher.CheckPasswordHash(input.Password, user.HashedPassword); err != nil {
 		return uuid.Nil, fmt.Errorf("invalid email / password")
 	}
 	return uuid.Parse(user.ID)
 }
 
-func (a *AuthService) handleDeviceInfo(ctx context.Context, deviceQ database.DeviceQuerier, tokenQ database.TokenQuerier, userID uuid.UUID, info DeviceInfo) (uuid.UUID, error) {
+func (a *AuthService) HandleDeviceInfo(ctx context.Context, deviceQ database.DeviceQuerier, tokenQ database.TokenQuerier, userID uuid.UUID, info models.DeviceInfo) (uuid.UUID, error) {
 	foundDevice, err := deviceQ.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
 		UserID:         userID.String(),
 		DeviceType:     info.DeviceType,
@@ -174,13 +175,13 @@ func (a *AuthService) handleDeviceInfo(ctx context.Context, deviceQ database.Dev
 	return deviceID, nil
 }
 
-func (a *AuthService) generateTokens(userID uuid.UUID) (string, string, error) {
-	jwtToken, err := a.tokenGen.MakeJWT(userID, 15*time.Minute)
+func (a *AuthService) GenerateTokens(userID uuid.UUID) (string, string, error) {
+	jwtToken, err := a.TokenGen.MakeJWT(userID, 15*time.Minute)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate JWT: %w", err)
 	}
 
-	refreshToken, err := a.tokenGen.MakeRefreshToken()
+	refreshToken, err := a.TokenGen.MakeRefreshToken()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate refresh token: %w", err)
 	}
@@ -188,29 +189,29 @@ func (a *AuthService) generateTokens(userID uuid.UUID) (string, string, error) {
 	return jwtToken, refreshToken, nil
 }
 
-func getDeviceInfoFromRequest(req *http.Request) (DeviceInfo, error) {
+func GetDeviceInfoFromRequest(req *http.Request) (models.DeviceInfo, error) {
 	// Check for the X-Device-Info header first.
 	xDeviceInfo := req.Header.Get("X-Device-Info")
 	if xDeviceInfo != "" {
-		deviceInfo := parseDeviceInfoFromHeader(xDeviceInfo)
-		if isValidDeviceInfo(deviceInfo) {
+		deviceInfo := ParseDeviceInfoFromHeader(xDeviceInfo)
+		if IsValidDeviceInfo(deviceInfo) {
 			return deviceInfo, nil
 		}
 	}
 	// Fallback to parsing the User-Agent header.
 	userAgent := req.Header.Get("User-Agent")
 	if userAgent != "" {
-		deviceInfo := parseUserAgent(userAgent)
-		if isValidDeviceInfo(deviceInfo) {
+		deviceInfo := ParseUserAgent(userAgent)
+		if IsValidDeviceInfo(deviceInfo) {
 			return deviceInfo, nil
 		}
 	}
-	return DeviceInfo{}, fmt.Errorf("invalid or unknown device information")
+	return models.DeviceInfo{}, fmt.Errorf("invalid or unknown device information")
 }
 
-// parseDeviceInfoFromHeader parses the X-Device-Info header into a DeviceInfo struct.
-func parseDeviceInfoFromHeader(header string) DeviceInfo {
-	var info DeviceInfo
+// parseDeviceInfoFromHeader parses the X-Device-Info header into a models.DeviceInfo struct.
+func ParseDeviceInfoFromHeader(header string) models.DeviceInfo {
+	var info models.DeviceInfo
 	pairs := strings.Split(header, ";")
 	for _, pair := range pairs {
 		kv := strings.Split(strings.TrimSpace(pair), "=")
@@ -234,15 +235,15 @@ func parseDeviceInfoFromHeader(header string) DeviceInfo {
 	return info
 }
 
-// parseUserAgent parses the User-Agent header using the mssola/user_agent package.
-func parseUserAgent(userAgent string) DeviceInfo {
+// ParseUserAgent parses the User-Agent header using the mssola/user_agent package.
+func ParseUserAgent(userAgent string) models.DeviceInfo {
 	ua := user_agent.New(userAgent)
 	deviceType := "Desktop"
 	if ua.Mobile() {
 		deviceType = "Mobile"
 	}
 	browser, browserVersion := ua.Browser()
-	return DeviceInfo{
+	return models.DeviceInfo{
 		DeviceType:     deviceType,
 		Browser:        sanitizeInput(browser),
 		BrowserVersion: sanitizeInput(browserVersion),
@@ -251,7 +252,7 @@ func parseUserAgent(userAgent string) DeviceInfo {
 	}
 }
 
-func isValidDeviceInfo(info DeviceInfo) bool {
+func IsValidDeviceInfo(info models.DeviceInfo) bool {
 	validDeviceTypes := map[string]bool{
 		"desktop": true,
 		"mobile":  true,

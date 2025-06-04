@@ -1,19 +1,18 @@
 package transaction_test
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	htx "github.com/seanhuebl/unity-wealth/handlers/transaction"
 	"github.com/seanhuebl/unity-wealth/internal/constants"
-	"github.com/seanhuebl/unity-wealth/internal/database"
-	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
-	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	handlermocks "github.com/seanhuebl/unity-wealth/internal/mocks/handlers"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/seanhuebl/unity-wealth/internal/testfixtures"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
@@ -24,7 +23,7 @@ func TestGetTransactionsByUserID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	userID := uuid.New()
 	txID := uuid.New()
-	tests := []testmodels.GetAllTxByUserIDTestCase{
+	successTests := []testmodels.GetAllTxByUserIDTestCase{
 		{
 			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
 				Name:               "first page, more data, success",
@@ -48,6 +47,8 @@ func TestGetTransactionsByUserID(t *testing.T) {
 					},
 				},
 			},
+			CursorDate:    "2025-03-19",
+			CursorID:      txID.String(),
 			PageSize:      1,
 			FirstPageTest: true,
 			MoreData:      true,
@@ -131,12 +132,58 @@ func TestGetTransactionsByUserID(t *testing.T) {
 					},
 				},
 			},
-			CursorDate:    "2025-03-19",
-			CursorID:      txID.String(),
 			PageSize:      1,
 			FirstPageTest: false,
 			MoreData:      false,
 		},
+	}
+	for _, tc := range successTests {
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			txs := []models.Tx{
+				{
+					ID:               txID.String(),
+					UserID:           tc.UserID.String(),
+					Date:             "2025-03-19",
+					Merchant:         "costco",
+					Amount:           127.89,
+					DetailedCategory: 40,
+				},
+			}
+
+			mockSvc := handlermocks.NewTransactionService(t)
+
+			mockSvc.On(
+				"ListUserTransactions",
+				mock.Anything,
+				tc.UserID,
+				testhelpers.StrPtr(tc.CursorDate),
+				testhelpers.StrPtr(tc.CursorID),
+				int64(tc.PageSize)).
+				Return(txs, tc.CursorDate, tc.CursorID, tc.MoreData, nil).Once()
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest("GET", "/transactions", nil)
+
+			h := htx.NewHandler(mockSvc)
+
+			router := gin.New()
+			router.Use(func(c *gin.Context) {
+				c.Set(string(constants.CursorDateKey), tc.CursorDate)
+				c.Set(string(constants.CursorIDKey), tc.CursorID)
+				c.Set(string(constants.PageSizeKey), tc.PageSize)
+				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
+				c.Next()
+			})
+			router.GET("/transactions", h.GetTransactionsByUserID)
+			router.ServeHTTP(w, req)
+			actualResponse := testhelpers.ProcessResponse(w, t)
+			testhelpers.CheckHTTPResponse(t, w, tc.ExpectedError, tc.ExpectedStatusCode, tc.ExpectedResponse, actualResponse)
+			mockSvc.AssertExpectations(t)
+		})
+	}
+
+	errorTests := []testmodels.GetAllTxByUserIDTestCase{
 		{
 			BaseHTTPTestCase: testfixtures.NilUserID,
 		},
@@ -192,78 +239,43 @@ func TestGetTransactionsByUserID(t *testing.T) {
 			PageSize: -1,
 		},
 	}
-	for _, tc := range tests {
-		tc := tc
+	for _, tc := range errorTests {
 		t.Run(tc.Name, func(t *testing.T) {
-			mockTxQ := dbmocks.NewTransactionQuerier(t)
-			w := httptest.NewRecorder()
-			svc := transaction.NewTransactionService(mockTxQ)
-			req := httptest.NewRequest("GET", "/transactions", nil)
-			firstPageTxSlice := []database.GetUserTransactionsFirstPageRow{
-				{
-					ID:                 txID.String(),
-					UserID:             tc.BaseAccess().UserID.String(),
-					TransactionDate:    "2025-03-19",
-					Merchant:           "costco",
-					AmountCents:        12789,
-					DetailedCategoryID: 40,
-				},
-			}
-			if tc.FirstPageTest && tc.MoreData {
-				firstPageTxSlice = append(firstPageTxSlice, database.GetUserTransactionsFirstPageRow{
-					ID:                 uuid.NewString(),
-					UserID:             tc.BaseAccess().UserID.String(),
-					TransactionDate:    "2025-03-20",
-					Merchant:           "costco",
-					AmountCents:        9999,
-					DetailedCategoryID: 40,
-				})
-			}
-			paginatedTxSlice := []database.GetUserTransactionsPaginatedRow{
-				{
-					ID:                 txID.String(),
-					UserID:             tc.BaseAccess().UserID.String(),
-					TransactionDate:    "2025-03-19",
-					Merchant:           "costco",
-					AmountCents:        12789,
-					DetailedCategoryID: 40,
-				},
-			}
-			if !tc.FirstPageTest && tc.MoreData {
-				paginatedTxSlice = append(paginatedTxSlice, database.GetUserTransactionsPaginatedRow{
-					ID:                 uuid.NewString(),
-					UserID:             tc.BaseAccess().UserID.String(),
-					TransactionDate:    "2025-03-20",
-					Merchant:           "costco",
-					AmountCents:        9999,
-					DetailedCategoryID: 40,
-				})
-			}
-			if tc.UserIDErr == nil && tc.PageSize > 0 {
-				if tc.FirstPageTest {
-					mockTxQ.On("GetUserTransactionsFirstPage", context.Background(), mock.AnythingOfType("database.GetUserTransactionsFirstPageParams")).
-						Return(firstPageTxSlice, tc.GetFirstPageErr)
-				} else {
-					mockTxQ.On("GetUserTransactionsPaginated", context.Background(), mock.AnythingOfType("database.GetUserTransactionsPaginatedParams")).
-						Return(paginatedTxSlice, tc.GetTxPaginatedErr)
-				}
-			}
+			tc := tc
 
-			h := htx.NewHandler(svc)
+			mockSvc := handlermocks.NewTransactionService(t)
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest("GET", "/transactions", nil)
+
+			h := htx.NewHandler(mockSvc)
+
+			if strings.Contains(tc.Name, "tx") {
+				mockSvc.On(
+					"ListUserTransactions",
+					mock.Anything,
+					tc.UserID,
+					testhelpers.StrPtr(tc.CursorDate),
+					testhelpers.StrPtr(tc.CursorID),
+					int64(tc.PageSize)).
+					Return(nil, "", "", false, errors.New(tc.ExpectedError))
+			}
 
 			router := gin.New()
-			router.GET("/transactions", func(c *gin.Context) {
-				c.Request = req
+
+			router.Use(func(c *gin.Context) {
 				c.Set(string(constants.CursorDateKey), tc.CursorDate)
 				c.Set(string(constants.CursorIDKey), tc.CursorID)
 				c.Set(string(constants.PageSizeKey), tc.PageSize)
 				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
-				h.GetTransactionsByUserID(c)
+				c.Next()
 			})
+
+			router.GET("/transactions", h.GetTransactionsByUserID)
+
 			router.ServeHTTP(w, req)
 			actualResponse := testhelpers.ProcessResponse(w, t)
-			testhelpers.CheckTxHTTPResponse(t, w, tc, actualResponse)
-			mockTxQ.AssertExpectations(t)
+			testhelpers.CheckHTTPResponse(t, w, tc.ExpectedError, tc.ExpectedStatusCode, tc.ExpectedResponse, actualResponse)
+			mockSvc.AssertExpectations(t)
 		})
 	}
 }

@@ -1,7 +1,6 @@
 package transaction_test
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,9 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	htx "github.com/seanhuebl/unity-wealth/handlers/transaction"
-	"github.com/seanhuebl/unity-wealth/internal/constants"
-	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
-	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	handlermocks "github.com/seanhuebl/unity-wealth/internal/mocks/handlers"
 	"github.com/seanhuebl/unity-wealth/internal/testfixtures"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
@@ -38,9 +35,45 @@ func TestDeleteTransaction(t *testing.T) {
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testfixtures.InvalidTxID,
+				TxID:             "INVALID",
+			},
+		},
+		{
+			GetTxTestCase: testmodels.GetTxTestCase{
+				BaseHTTPTestCase: testfixtures.EmptyTxID,
 				TxID:             "",
 			},
 		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			mockSvc := handlermocks.NewTransactionService(t)
+			req := httptest.NewRequest("DELETE", fmt.Sprintf("/transactions/%v", tc.TxID), nil)
+			h := htx.NewHandler(mockSvc)
+			router := gin.New()
+			router.Use(func(c *gin.Context) {
+				c.Params = gin.Params{{Key: "id", Value: tc.TxID}}
+				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
+				c.Next()
+			})
+
+			router.NoRoute(func(c *gin.Context) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"data": gin.H{"error": "not found"},
+				})
+			})
+
+			router.DELETE("/transactions/:id", h.DeleteTransaction)
+
+			router.ServeHTTP(w, req)
+			actualResponse := testhelpers.ProcessResponse(w, t)
+			testhelpers.CheckHTTPResponse(t, w, tc.ExpectedError, tc.ExpectedStatusCode, tc.ExpectedResponse, actualResponse)
+
+		})
+	}
+	txErrTests := []testmodels.DeleteTxTestCase{
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
@@ -49,54 +82,61 @@ func TestDeleteTransaction(t *testing.T) {
 					UserID:             uuid.New(),
 					ExpectedError:      "error deleting transaction",
 					ExpectedStatusCode: http.StatusInternalServerError,
+					ExpectedResponse: map[string]interface{}{
+						"data": map[string]interface{}{
+							"error": "error deleting transaction",
+						},
+					},
 				},
 				TxID:  uuid.NewString(),
 				TxErr: errors.New("error deleting transaction"),
 			},
 		},
+		{
+			GetTxTestCase: testmodels.GetTxTestCase{
+				BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
+
+					Name:               "not found",
+					UserID:             uuid.New(),
+					ExpectedError:      "not found",
+					ExpectedStatusCode: http.StatusNotFound,
+					ExpectedResponse: map[string]interface{}{
+						"data": map[string]interface{}{
+							"error": "not found",
+						},
+					},
+				},
+				TxID:  uuid.NewString(),
+				TxErr: errors.New("transaction not found"),
+			},
+		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range txErrTests {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			mockTxQ := dbmocks.NewTransactionQuerier(t)
 			w := httptest.NewRecorder()
-			svc := transaction.NewTransactionService(mockTxQ)
+			mockSvc := handlermocks.NewTransactionService(t)
 			req := httptest.NewRequest("DELETE", fmt.Sprintf("/transactions/%v", tc.TxID), nil)
 
-			if tc.UserIDErr == nil && tc.TxID != "" {
-				mockTxQ.On("DeleteTransactionByID", context.Background(), mock.AnythingOfType("database.DeleteTransactionByIDParams")).Return(tc.TxID, tc.TxErr)
-			}
+			mockSvc.On("DeleteTransaction", mock.Anything, tc.TxID, tc.UserID.String()).Return(tc.TxErr)
 
-			h := htx.NewHandler(svc)
+			h := htx.NewHandler(mockSvc)
 
 			router := gin.New()
-			if tc.TxID == "" {
-				c, _ := gin.CreateTestContext(w)
-				c.Request = req
-				c.Params = gin.Params{{Key: "id", Value: ""}}
-				if tc.Name == "unauthorized: user ID not UUID" {
-					c.Set(string(constants.UserIDKey), "userID")
-				} else {
-					c.Set(string(constants.UserIDKey), tc.UserID)
-				}
-				h.DeleteTransaction(c)
-			} else {
-				router.DELETE("/transactions/:id", func(c *gin.Context) {
-					if tc.Name == "unauthorized: user ID not UUID" {
-						c.Set(string(constants.UserIDKey), "userID")
-					} else {
-						c.Set(string(constants.UserIDKey), tc.UserID)
-					}
-					h.DeleteTransaction(c)
-				})
-				router.ServeHTTP(w, req)
-			}
+
+			router.Use(func(c *gin.Context) {
+				c.Params = gin.Params{{Key: "id", Value: tc.TxID}}
+				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
+				c.Next()
+			})
+			router.DELETE("/transactions/:id", h.DeleteTransaction)
+			router.ServeHTTP(w, req)
 
 			actualResponse := testhelpers.ProcessResponse(w, t)
-			testhelpers.CheckTxHTTPResponse(t, w, tc, actualResponse)
+			testhelpers.CheckHTTPResponse(t, w, tc.ExpectedError, tc.ExpectedStatusCode, tc.ExpectedResponse, actualResponse)
 
-			mockTxQ.AssertExpectations(t)
+			mockSvc.AssertExpectations(t)
 		})
 	}
 }

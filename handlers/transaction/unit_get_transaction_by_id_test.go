@@ -1,7 +1,6 @@
 package transaction_test
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,13 +10,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	htx "github.com/seanhuebl/unity-wealth/handlers/transaction"
-	"github.com/seanhuebl/unity-wealth/internal/constants"
-	"github.com/seanhuebl/unity-wealth/internal/database"
-	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
-	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
+	handlermocks "github.com/seanhuebl/unity-wealth/internal/mocks/handlers"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/seanhuebl/unity-wealth/internal/testfixtures"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestGetTxByID(t *testing.T) {
@@ -33,8 +31,38 @@ func TestGetTxByID(t *testing.T) {
 		},
 		{
 			BaseHTTPTestCase: testfixtures.InvalidTxID,
-			TxID:             "",
+			TxID:             "INVALID",
 		},
+		{
+			BaseHTTPTestCase: testfixtures.EmptyTxID,
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			mockSvc := handlermocks.NewTransactionService(t)
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest("GET", fmt.Sprintf("/transactions/%v", tc.TxID), nil)
+			h := htx.NewHandler(mockSvc)
+			router := gin.New()
+			router.Use(func(c *gin.Context) {
+				c.Params = gin.Params{{Key: "id", Value: tc.TxID}}
+				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
+				c.Next()
+			})
+			router.NoRoute(func(c *gin.Context) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"data": gin.H{"error": "not found"},
+				})
+			})
+			router.GET("/transactions/:id", h.GetTransactionByID)
+			router.ServeHTTP(w, req)
+			actualResponse := testhelpers.ProcessResponse(w, t)
+			testhelpers.CheckHTTPResponse(t, w, tc.ExpectedError, tc.ExpectedStatusCode, tc.ExpectedResponse, actualResponse)
+		})
+	}
+
+	txErrTests := []testmodels.GetTxTestCase{
 		{
 			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
 
@@ -42,64 +70,65 @@ func TestGetTxByID(t *testing.T) {
 				UserID:             uuid.New(),
 				ExpectedError:      "unable to get transaction",
 				ExpectedStatusCode: http.StatusInternalServerError,
+				ExpectedResponse: map[string]interface{}{
+					"data": map[string]interface{}{
+						"error": "unable to get transaction",
+					},
+				},
 			},
 			TxID:  uuid.NewString(),
 			TxErr: errors.New("error getting transaction"),
 		},
+		{
+			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
+
+				Name:               "not found",
+				UserID:             uuid.New(),
+				ExpectedError:      "not found",
+				ExpectedStatusCode: http.StatusNotFound,
+				ExpectedResponse: map[string]interface{}{
+					"data": map[string]interface{}{
+						"error": "not found",
+					},
+				},
+			},
+			TxID:  uuid.NewString(),
+			TxErr: errors.New("transaction not found"),
+		},
 	}
-	for _, tc := range tests {
+
+	for _, tc := range txErrTests {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			mockTxQ := dbmocks.NewTransactionQuerier(t)
 			w := httptest.NewRecorder()
-			svc := transaction.NewTransactionService(mockTxQ)
+			mockSvc := handlermocks.NewTransactionService(t)
+
 			req := httptest.NewRequest("GET", fmt.Sprintf("/transactions/%v", tc.TxID), nil)
 
-			dummyRow := database.GetUserTransactionByIDRow{
-				ID:                 tc.TxID,
-				UserID:             tc.UserID.String(),
-				TransactionDate:    "2025-03-05",
-				Merchant:           "costco",
-				AmountCents:        12598,
-				DetailedCategoryID: 40,
-			}
+			mockSvc.On("GetTransactionByID", mock.Anything, tc.UserID.String(), tc.TxID).Return((*models.Tx)(nil), tc.TxErr)
 
-			if tc.UserIDErr == nil && tc.TxID != "" {
-				mockTxQ.On("GetUserTransactionByID", context.Background(), database.GetUserTransactionByIDParams{
-					UserID: tc.UserID.String(),
-					ID:     tc.TxID,
-				}).Return(dummyRow, tc.TxErr)
-			}
-
-			h := htx.NewHandler(svc)
+			h := htx.NewHandler(mockSvc)
 
 			router := gin.New()
-			if tc.TxID == "" {
-				c, _ := gin.CreateTestContext(w)
-				c.Request = req
-				c.Params = gin.Params{{Key: "id", Value: ""}}
-				if tc.Name == "unauthorized: user ID not UUID" {
-					c.Set(string(constants.UserIDKey), "userID")
-				} else {
-					c.Set(string(constants.UserIDKey), tc.UserID)
-				}
-				h.GetTransactionByID(c)
-			} else {
+			router.Use(func(c *gin.Context) {
+				c.Params = gin.Params{{Key: "id", Value: tc.TxID}}
+				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
+				c.Next()
+			})
 
-				router.GET("/transactions/:id", func(c *gin.Context) {
-					if tc.Name == "unauthorized: user ID not UUID" {
-						c.Set(string(constants.UserIDKey), "userID")
-					} else {
-						c.Set(string(constants.UserIDKey), tc.UserID)
-					}
-					h.GetTransactionByID(c)
-				})
-				router.ServeHTTP(w, req)
-			}
+			router.GET("/transactions/:id", h.GetTransactionByID)
+
+			router.ServeHTTP(w, req)
+			mockSvc.AssertCalled(t,
+				"GetTransactionByID",
+				mock.Anything,
+				tc.UserID.String(),
+				tc.TxID,
+			)
 
 			actualResponse := testhelpers.ProcessResponse(w, t)
-			testhelpers.CheckTxHTTPResponse(t, w, tc, actualResponse)
-			mockTxQ.AssertExpectations(t)
+			testhelpers.CheckHTTPResponse(t, w, tc.ExpectedError, tc.ExpectedStatusCode, tc.ExpectedResponse, actualResponse)
+			mockSvc.AssertExpectations(t)
 		})
 	}
 }

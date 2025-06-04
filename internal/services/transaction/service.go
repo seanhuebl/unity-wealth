@@ -128,7 +128,7 @@ func (s *TransactionService) ListUserTransactions(
 			return nil, "", "", false, fmt.Errorf("error loading first page of transactions: %w", err)
 		}
 		for _, txn := range firstPageRows {
-			transactions = append(transactions, s.ConvertFirstPageRow(txn))
+			transactions = append(transactions, ConvertFirstPageRow(txn))
 		}
 	} else {
 		nextRows, err := s.txQueries.GetUserTransactionsPaginated(ctx, database.GetUserTransactionsPaginatedParams{
@@ -145,7 +145,7 @@ func (s *TransactionService) ListUserTransactions(
 			return nil, "", "", false, fmt.Errorf("error loading next page: %w", err)
 		}
 		for _, txn := range nextRows {
-			transactions = append(transactions, s.ConvertPaginatedRow(txn))
+			transactions = append(transactions, ConvertPaginatedRow(txn))
 		}
 
 	}
@@ -165,7 +165,7 @@ func (s *TransactionService) ListUserTransactions(
 }
 
 // Helpers
-func (s *TransactionService) ConvertFirstPageRow(row database.GetUserTransactionsFirstPageRow) models.Tx {
+func ConvertFirstPageRow(row database.GetUserTransactionsFirstPageRow) models.Tx {
 	return models.Tx{
 		ID:               row.ID,
 		UserID:           row.UserID,
@@ -176,7 +176,7 @@ func (s *TransactionService) ConvertFirstPageRow(row database.GetUserTransaction
 	}
 }
 
-func (s *TransactionService) ConvertPaginatedRow(row database.GetUserTransactionsPaginatedRow) models.Tx {
+func ConvertPaginatedRow(row database.GetUserTransactionsPaginatedRow) models.Tx {
 	return models.Tx{
 		ID:               row.ID,
 		UserID:           row.UserID,
@@ -184,14 +184,5 @@ func (s *TransactionService) ConvertPaginatedRow(row database.GetUserTransaction
 		Merchant:         row.Merchant,
 		Amount:           helpers.CentsToDollars(row.AmountCents),
 		DetailedCategory: row.DetailedCategoryID,
-	}
-}
-
-func (s *TransactionService) ConvertToResponse(txn *models.Tx) *models.TxResponse {
-	return &models.TxResponse{
-		Date:             txn.Date,
-		Merchant:         txn.Merchant,
-		Amount:           txn.Amount,
-		DetailedCategory: txn.DetailedCategory,
 	}
 }

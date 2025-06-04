@@ -1,32 +1,46 @@
 package auth
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/seanhuebl/unity-wealth/internal/services/auth"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 )
 
 func (h *Handler) Login(ctx *gin.Context) {
-	var input auth.LoginInput
+	var input models.LoginInput
 	if err := ctx.ShouldBindJSON(&input); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request data"})
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"data": gin.H{
+				"error": "invalid request body",
+			},
+		})
 		return
 	}
 
 	loginResp, err := h.authSvc.Login(ctx.Request.Context(), input)
 	if err != nil {
-		// Return a generic error message for the client.
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "login failed"})
+		fmt.Println("Login error:", err)
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"data": gin.H{
+				"error": "login failed",
+			},
+		})
 		return
 	}
 
 	// Set the refresh token cookie (HTTP-specific).
 	SetRefreshTokenCookie(ctx, loginResp.RefreshToken)
 
-	ctx.JSON(http.StatusOK, gin.H{"data": gin.H{"token": loginResp.JWT}})
+	ctx.JSON(http.StatusOK, gin.H{
+		"data": models.LoginResponseData{
+			Message: "login successful",
+			Token:   loginResp.JWTToken,
+		},
+	})
 }
 
 // Helpers

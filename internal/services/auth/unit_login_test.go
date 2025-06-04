@@ -1,4 +1,4 @@
-package auth
+package auth_test
 
 import (
 	"context"
@@ -16,6 +16,8 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	authmocks "github.com/seanhuebl/unity-wealth/internal/mocks/auth"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
+	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -29,22 +31,22 @@ func TestLogin(t *testing.T) {
 	}
 	tests := []struct {
 		name                   string
-		input                  LoginInput
-		expectedResponse       LoginResponse
+		input                  models.LoginInput
+		expectedResponse       models.LoginResponse
 		loginError             error
 		expectedErrorSubstring string
 		deviceFound            bool
 	}{
 		{
 			name: "login successful",
-			input: LoginInput{
+			input: models.LoginInput{
 				Email:    "user@example.com",
 				Password: "password123",
 			},
-			expectedResponse: LoginResponse{
+			expectedResponse: models.LoginResponse{
 				UserID:       validUserID,
-				JWT:          "JWT",
 				RefreshToken: "refresh",
+				JWTToken:     "JWT",
 			},
 			loginError:             nil,
 			expectedErrorSubstring: "",
@@ -57,7 +59,7 @@ func TestLogin(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			ctx, _ := gin.CreateTestContext(w)
-			req, _ := http.NewRequest("GET", "/", nil)
+			req, _ := http.NewRequest("POST", "/login", nil)
 			req.Header.Set("X-Device-Info", "os=Android; os_version=11; device_type=Mobile; browser=Chrome; browser_version=100.0")
 			reqWithCtx := req.WithContext(context.WithValue(req.Context(), constants.RequestKey, req))
 
@@ -98,7 +100,7 @@ func TestLogin(t *testing.T) {
 			}
 
 			dummyQueries.On("CreateRefreshToken", ctx.Request.Context(), mock.AnythingOfType("database.CreateRefreshTokenParams")).Return(nil)
-			svc := NewAuthService(mockSqlTxQ, mockUserQ, mockTokenGen, mockExtractor, mockHasher)
+			svc := auth.NewAuthService(mockSqlTxQ, mockUserQ, mockTokenGen, mockExtractor, mockHasher)
 			response, err := svc.Login(ctx.Request.Context(), tc.input)
 			if tc.expectedErrorSubstring != "" {
 				require.Error(t, err)

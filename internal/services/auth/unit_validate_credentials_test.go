@@ -1,4 +1,4 @@
-package auth
+package auth_test
 
 import (
 	"context"
@@ -11,6 +11,8 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	authmocks "github.com/seanhuebl/unity-wealth/internal/mocks/auth"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
+	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,7 +26,7 @@ func TestValidateCredentials(t *testing.T) {
 
 	tests := []struct {
 		name                   string
-		input                  LoginInput
+		input                  models.LoginInput
 		getUserErr             error
 		pwdHasherErr           error
 		expectedErrorSubstring string
@@ -32,7 +34,7 @@ func TestValidateCredentials(t *testing.T) {
 	}{
 		{
 			name: "successful credentials",
-			input: LoginInput{
+			input: models.LoginInput{
 				Email:    "user@example.com",
 				Password: "correctpassword",
 			},
@@ -43,7 +45,7 @@ func TestValidateCredentials(t *testing.T) {
 		},
 		{
 			name: "user not found",
-			input: LoginInput{
+			input: models.LoginInput{
 				Email:    "notfound@example.com",
 				Password: "password123",
 			},
@@ -53,7 +55,7 @@ func TestValidateCredentials(t *testing.T) {
 		},
 		{
 			name: "error fetching user",
-			input: LoginInput{
+			input: models.LoginInput{
 				Email:    "error@example.com",
 				Password: "password123",
 			},
@@ -63,7 +65,7 @@ func TestValidateCredentials(t *testing.T) {
 		},
 		{
 			name: "invalid password",
-			input: LoginInput{
+			input: models.LoginInput{
 				Email:    "user@example.com",
 				Password: "wrongpassword",
 			},
@@ -85,9 +87,9 @@ func TestValidateCredentials(t *testing.T) {
 			if tc.getUserErr == nil {
 				mockPwdHasher.On("CheckPasswordHash", tc.input.Password, dummyUser.HashedPassword).Return(tc.pwdHasherErr)
 			}
-			authSvc := NewAuthService(nil, mockUserQ, nil, nil, mockPwdHasher)
+			authSvc := auth.NewAuthService(nil, mockUserQ, nil, nil, mockPwdHasher)
 
-			userID, err := authSvc.validateCredentials(ctx, tc.input)
+			userID, err := authSvc.ValidateCredentials(ctx, tc.input)
 			if tc.expectedErrorSubstring != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.expectedErrorSubstring)

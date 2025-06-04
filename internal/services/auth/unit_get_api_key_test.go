@@ -1,4 +1,4 @@
-package auth
+package auth_test
 
 import (
 	"fmt"
@@ -6,11 +6,12 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 )
 
 func TestGetAPIKey(t *testing.T) {
 
-	tokenExtractor := NewRealTokenExtractor()
+	tokenExtractor := auth.NewRealTokenExtractor()
 
 	tests := map[string]struct {
 		input         http.Header
@@ -19,7 +20,7 @@ func TestGetAPIKey(t *testing.T) {
 		"simple":                 {input: http.Header{"Authorization": []string{"ApiKey 1234"}}, expectedValue: "1234"},
 		"wrong auth header":      {input: http.Header{"Authorization": []string{"Bearer 1234"}}, expectedValue: "malformed authorization header"},
 		"incomplete auth header": {input: http.Header{"Authorization": []string{"ApiKey "}}, expectedValue: "malformed authorization header"},
-		"no auth header":         {input: http.Header{"Authorization": []string{""}}, expectedValue: fmt.Sprint(ErrNoAuthHeaderIncluded)},
+		"no auth header":         {input: http.Header{"Authorization": []string{""}}, expectedValue: fmt.Sprint(auth.ErrNoAuthHeaderIncluded)},
 	}
 
 	for test, tt := range tests {

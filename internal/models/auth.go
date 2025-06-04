@@ -1,4 +1,4 @@
-package auth
+package models
 
 import (
 	"crypto/rand"
@@ -26,8 +26,13 @@ type LoginInput struct {
 
 type LoginResponse struct {
 	UserID       uuid.UUID
-	JWT          string
 	RefreshToken string
+	JWTToken     string
+}
+
+type LoginResponseData struct {
+	Message string `json:"message"`
+	Token   string `json:"token"`
 }
 
 type DeviceInfo struct {

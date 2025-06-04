@@ -10,6 +10,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	authmocks "github.com/seanhuebl/unity-wealth/internal/mocks/auth"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/seanhuebl/unity-wealth/internal/services/user"
 	"github.com/stretchr/testify/mock"
@@ -85,8 +86,8 @@ func TestSignup(t *testing.T) {
 			mockUserQ := dbmocks.NewUserQuerier(t)
 			mockPwdHasher := authmocks.NewPasswordHasher(t)
 			userSvc := user.NewUserService(mockUserQ, mockPwdHasher)
-			if auth.IsValidEmail(tc.input.Email) {
-				err := auth.ValidatePassword(tc.input.Password)
+			if models.IsValidEmail(tc.input.Email) {
+				err := models.ValidatePassword(tc.input.Password)
 
 				if err == nil {
 					mockPwdHasher.On("HashPassword", tc.input.Password).Return(tc.hashPasswordOutput, tc.hashPasswordError)

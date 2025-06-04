@@ -26,3 +26,4 @@ qualify: rename move
 mocks: qualify
 	mockery --config mockery_database.yaml
 	mockery --config mockery_auth.yaml
+	mockery --config mockery_handlers.yaml
