@@ -17,87 +17,76 @@ HISTFILESIZE=2000
 shopt -s checkwinsize      # update LINES/COLUMNS after each command
 
 ### ─── Prompt (colors + Git status) ─────────────────────────────────────────
-git_status() {
-  local porcelain out
-  porcelain="$(git status --porcelain 2>/dev/null)" || return
-  out=""
-  [[ -n $(egrep '^[MADRC]' <<<"$porcelain") ]] && out="${out}+"
-  [[ -n $(egrep '^.[MD]'   <<<"$porcelain") ]] && out="${out}!"
-  [[ -n $(egrep '^\?\?'   <<<"$porcelain") ]] && out="${out}?"
-  [[ -n $(git stash list)            ]] && out="${out}S"
-  [[ -n $(git log --branches --not --remotes 2>/dev/null) ]] && out="${out}P"
-
-  if [[ $out == *P* ]]; then
-    out="${out//\?/}"
-  fi
-
-  [[ -n $out ]] && echo "$out"
-}
-
-# 1) Pick a 24‑bit ANSI color based on the status flags string (e.g. "+", "+!", "S", or "").
-#    Returns a bare "\033[38;2;R;G;Bm" sequence.
-# ──────────────────────────────────────────────────────────────────────────
-git_color() {
-  local st="$1" has_staged has_dirty has_push
-
-  [[ $st =~ \+     ]] && has_staged=yes    # “+” means staged
-  [[ $st =~ [!\?]  ]] && has_dirty=yes     # “!” or “?” means dirty/untracked
-  [[ $st =~ P      ]] && has_push=yes      # “P” means push pending
-
-  if [[ -n $has_staged && -n $has_dirty ]]; then
-    echo "\033[38;2;255;255;0m"   # yellow
-  elif [[ -n $has_staged ]]; then
-    echo "\033[38;2;0;255;0m"     # green
-  elif [[ -n $has_dirty ]]; then
-    echo "\033[38;2;255;0;0m"     # red
-  elif [[ -n $has_push ]]; then
-    echo "\033[38;2;255;0;255m"   # magenta
-  else
-    echo "\033[38;2;255;255;255m" # white
-  fi
-}
-
-# ──────────────────────────────────────────────────────────────────────────
-# 2) Grab the current branch name; empty if not in a repo
-# ──────────────────────────────────────────────────────────────────────────
 git_branch() {
-  git rev-parse --abbrev-ref HEAD 2>/dev/null
+    # -- Finds and outputs the current branch name by parsing the list of
+    #    all branches
+    # -- Current branch is identified by an asterisk at the beginning
+    # -- If not in a Git repository, error message goes to /dev/null and
+    #    no output is produced
+    git branch --no-color 2>/dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/'
 }
 
-# ──────────────────────────────────────────────────────────────────────────
-# 3) Build “(branch<status>)” in one shot, with ALL raw \033[…] escapes wrapped
-#    in \[ \] so Bash treats them as zero‐width.  No extra “()” ever.
-#
-#    Even when clean (status=""), we still show “(branch)” in white.
-# ──────────────────────────────────────────────────────────────────────────
+git_status() {
+    # Outputs a series of indicators based on the status of the
+    # working directory:
+    # + changes are staged and ready to commit
+    # ! unstaged changes are present
+    # ? untracked files are present
+    # S changes have been stashed
+    # P local commits need to be pushed to the remote
+    local status="$(git status --porcelain 2>/dev/null)"
+    local output=''
+    [[ -n $(egrep '^[MADRC]' <<<"$status") ]] && output="$output+"
+    [[ -n $(egrep '^.[MD]' <<<"$status") ]] && output="$output!"
+    [[ -n $(egrep '^\?\?' <<<"$status") ]] && output="$output?"
+    [[ -n $(git stash list) ]] && output="${output}S"
+    [[ -n $(git log --branches --not --remotes) ]] && output="${output}P"
+    [[ -n $output ]] && output="$output"  # separate from branch name
+    echo $output
+}
+
+git_color() {
+    # Receives output of git_status as argument; produces appropriate color
+    # code based on status of working directory:
+    # - White if everything is clean
+    # - Green if all changes are staged
+    # - Red if there are uncommitted changes with nothing staged
+    # - Yellow if there are both staged and unstaged changes
+    # - Blue if there are unpushed commits
+    local staged=$([[ $1 =~ \+ ]] && echo yes)
+    local dirty=$([[ $1 =~ [!\?] ]] && echo yes)
+    local needs_push=$([[ $1 =~ P ]] && echo yes)
+    if [[ -n $staged ]] && [[ -n $dirty ]]; then
+        echo -e '\033[1;33m'  # bold yellow
+    elif [[ -n $staged ]]; then
+        echo -e '\033[1;35m'  # bold green
+    elif [[ -n $dirty ]]; then
+        echo -e '\033[1;31m'  # bold red
+    elif [[ -n $needs_push ]]; then
+        echo -e '\033[1;34m' # bold blue
+    else
+        echo -e '\033[1;37m'  # bold white
+    fi
+}
+
 git_prompt() {
-  if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-    return
-  fi
-
-  local b st col
-  b=$(git_branch) || return
-  st=$(git_status)
-
-  if [[ -z $st ]]; then
-    col="\033[38;2;255;255;255m"  # white when clean
-  else
-    col=$(git_color "$st")
-  fi
-
-  # Emit: \[<col>\](<branch><status>)\[\033[0m\]
-  echo -e "\[${col}\](${b}${st})\[\033[0m\]"
+    # First, get the branch name...
+    local branch=$(git_branch)
+    # Empty output? Then we're not in a Git repository, so bypass the rest
+    # of the function, producing no output
+    if [[ -n $branch ]]; then
+        local state=$(git_status)
+        local color=$(git_color $state)
+        # Now output the actual code to insert the branch and status
+        echo -e "\x01$color\x02($branch$state)\x01\033[00m\x02"  # last bit resets color
+    fi
 }
 
-GIT_USER_COLOR='\033[38;2;0;200;0m'   # a mild green for username
-GIT_HOST_COLOR='\033[38;2;0;255;255m' # cyan for hostname
-RESET_COLOR='\033[0m'
-
-PS1="\[$GIT_USER_COLOR\]\${GITHUB_USER}\[$RESET_COLOR\]@\
-\[$GIT_HOST_COLOR\]\h\[$RESET_COLOR\]: \w $(git_prompt) $ "
+# Sample prompt declaration. Tweak as you see fit, or just stick
+# "$(git_prompt)" into your favorite prompt.
+PS1='\[\e[0;35m\]${GITHUB_USER}\[\e[0m\]@\[\e[0;36m\]\u\[\e[0m\]: \w $(git_prompt)\[\033[00m\] \$ '
 
 export PROMPT_DIRTRIM=4
-
 ### ─── Aliases & Safety ────────────────────────────────────────────────────
 alias ll='ls -alF'
 alias la='ls -A'
@@ -176,3 +165,4 @@ fi
 cd() {    
       builtin cd "$@" && ls -a
 }
+export GPG_TTY=$(tty)

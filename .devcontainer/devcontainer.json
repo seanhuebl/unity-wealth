@@ -10,11 +10,8 @@
   "mounts": [
     "source=${env:HOME}/.gnupg/my-gpg-key.asc,target=/home/vscode/my-gpg-key.asc,type=bind"
   ],
-  "postCreateCommand": [
-    "sh -c 'go mod download'",
-    "sh -c 'chmod +x ./.devcontainer/setup-gpg.sh'",
-    "sh -c './.devcontainer/setup-gpg.sh'"
-  ],
+  "workspaceFolder": "/workspaces/unity-wealth",
+  "postCreateCommand": "bash ./.devcontainer/setup-dev.sh",
   "customizations": {
     "vscode": {
       "extensions": [
