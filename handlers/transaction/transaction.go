@@ -227,10 +227,10 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 
 	txn, err := h.txSvc.UpdateTransaction(ctx.Request.Context(), txId.String(), userID.String(), req)
 	if err != nil {
-		if strings.Contains(err.Error(), "transaction not found") {
+		if strings.Contains(err.Error(), "not found") {
 			ctx.JSON(http.StatusNotFound, gin.H{
 				"data": gin.H{
-					"error": "transaction not found",
+					"error": "not found",
 				},
 			})
 			return
