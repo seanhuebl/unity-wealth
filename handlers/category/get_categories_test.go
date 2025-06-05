@@ -13,17 +13,16 @@ import (
 	"github.com/seanhuebl/unity-wealth/cache"
 )
 
-// TestGetCategories is a table-driven test for the GetCategories handler.
 func TestGetCategories(t *testing.T) {
-	// Define our test cases.
+
 	tests := []struct {
 		name                 string
-		primaryResult        map[string]string // simulated value returned for primary categories
-		primaryErr           error             // simulated error for primary categories
-		detailedResult       map[string]string // simulated value returned for detailed categories
-		detailedErr          error             // simulated error for detailed categories
+		primaryResult        map[string]string
+		primaryErr           error
+		detailedResult       map[string]string
+		detailedErr          error
 		expectedStatus       int
-		expectedResponseJSON string // expected JSON response as a string
+		expectedResponseJSON string
 	}{
 		{
 			name: "success",
@@ -65,13 +64,12 @@ func TestGetCategories(t *testing.T) {
 		},
 	}
 
-	// Set Gin into test mode.
 	gin.SetMode(gin.TestMode)
 
 	for _, tt := range tests {
-		tt := tt // capture range variable
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a redismock client and override the global RedisClient.
+
 			mockRedis, mock := redismock.NewClientMock()
 			cache.RedisClient = mockRedis
 
@@ -80,7 +78,7 @@ func TestGetCategories(t *testing.T) {
 				expPrimary.SetErr(tt.primaryErr)
 			} else {
 				expPrimary.SetVal(tt.primaryResult)
-				// Only set detailed expectation if primary call succeeds.
+
 				expDetailed := mock.ExpectHGetAll("detailed_categories")
 				if tt.detailedErr != nil {
 					expDetailed.SetErr(tt.detailedErr)
@@ -89,7 +87,6 @@ func TestGetCategories(t *testing.T) {
 				}
 			}
 
-			// Create a test HTTP request and recorder.
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			req, _ := http.NewRequest("GET", "/categories", nil)
@@ -97,15 +94,12 @@ func TestGetCategories(t *testing.T) {
 
 			h := NewHandler()
 
-			// Call the handler.
 			h.GetCategories(c)
 
-			// Check the status code.
 			if w.Code != tt.expectedStatus {
 				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
 			}
 
-			// Unmarshal the JSON response so that ordering differences do not break the test.
 			var gotResp, expectedResp map[string]interface{}
 			if err := json.Unmarshal(w.Body.Bytes(), &gotResp); err != nil {
 				t.Fatalf("error unmarshalling got response: %v", err)
@@ -118,7 +112,6 @@ func TestGetCategories(t *testing.T) {
 				t.Errorf("response mismatch (-expected +got):\n%s", diff)
 			}
 
-			// Ensure that all expectations were met.
 			if err := mock.ExpectationsWereMet(); err != nil {
 				t.Errorf("unfulfilled Redis expectations: %v", err)
 			}

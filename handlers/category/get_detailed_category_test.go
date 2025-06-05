@@ -16,7 +16,6 @@ import (
 func TestGetDetailedCategoryByID_WithRedismock(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	// Create a redismock client.
 	client, mock := redismock.NewClientMock()
 	origRedisClient := cache.RedisClient
 	defer func() { cache.RedisClient = origRedisClient }()
@@ -57,9 +56,9 @@ func TestGetDetailedCategoryByID_WithRedismock(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc // capture range variable
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			// Setup the redismock expectation:
+
 			cmd := mock.ExpectHGet("detailed_categories", tc.id)
 			if tc.hgetError != nil {
 				cmd.SetErr(tc.hgetError)
@@ -67,24 +66,20 @@ func TestGetDetailedCategoryByID_WithRedismock(t *testing.T) {
 				cmd.SetVal(tc.hgetResult)
 			}
 
-			// Prepare the Gin context.
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
-			// Set a valid HTTP request on the Gin context.
+
 			c.Request = httptest.NewRequest(http.MethodGet, "/detailed_categories/"+tc.id, nil)
 			c.Params = gin.Params{{Key: "id", Value: tc.id}}
 
 			h := NewHandler()
 
-			// Call the handler.
 			h.GetDetailedCategoryByID(c)
 
-			// Assert the HTTP status.
 			if w.Code != tc.expectedStatus {
 				t.Errorf("expected status %d, got %d", tc.expectedStatus, w.Code)
 			}
 
-			// Parse and compare the response body.
 			var body map[string]interface{}
 			if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 				t.Fatalf("failed to unmarshal response body: %v", err)
@@ -93,7 +88,6 @@ func TestGetDetailedCategoryByID_WithRedismock(t *testing.T) {
 				t.Errorf("response body mismatch (-want +got):\n%s", diff)
 			}
 
-			// Verify that all expectations were met.
 			if err := mock.ExpectationsWereMet(); err != nil {
 				t.Errorf("there were unfulfilled expectations: %s", err)
 			}
