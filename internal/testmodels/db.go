@@ -11,6 +11,7 @@ import (
 	authSvc "github.com/seanhuebl/unity-wealth/internal/services/auth"
 	txSvc "github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	userSvc "github.com/seanhuebl/unity-wealth/internal/services/user"
+	"go.uber.org/zap"
 )
 
 type TestEnv struct {
@@ -20,6 +21,7 @@ type TestEnv struct {
 	TxQ      database.TransactionQuerier
 	TokenQ   database.TokenQuerier
 	DeviceQ  database.DeviceQuerier
+	Logger   *zap.Logger
 	Services *Services
 	Handlers *Handlers
 }

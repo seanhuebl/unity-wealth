@@ -125,7 +125,7 @@ func TestLoginIntegration(t *testing.T) {
 				ctx = context.WithValue(req.Context(), constants.RequestKey, req)
 			}
 
-			svc := auth.NewAuthService(sqlTxQ, userQ, tokenGen, nil, pwdHasher)
+			svc := auth.NewAuthService(sqlTxQ, userQ, tokenGen, nil, pwdHasher, nil)
 			response, err := svc.Login(ctx, tc.input)
 			if tc.hasErr {
 				require.Error(t, err)

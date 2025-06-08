@@ -6,10 +6,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/seanhuebl/unity-wealth/cache"
-	"github.com/seanhuebl/unity-wealth/handlers"
 	authHandler "github.com/seanhuebl/unity-wealth/handlers/auth"
 	"github.com/seanhuebl/unity-wealth/handlers/category"
 	"github.com/seanhuebl/unity-wealth/handlers/common"
@@ -22,7 +20,10 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	userService "github.com/seanhuebl/unity-wealth/internal/services/user"
+	"github.com/seanhuebl/unity-wealth/logger"
+	"github.com/seanhuebl/unity-wealth/server"
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -30,47 +31,52 @@ func main() {
 	if err != nil {
 		log.Fatal("unable to load environment:", err)
 	}
+
+	appLogger, err := logger.InitLogger()
+	if err != nil {
+		log.Fatalf("failed to initialize zap logger: %v", err)
+	}
+	defer appLogger.Sync()
+
 	db, err := sql.Open("libsql", os.Getenv("DATABASE_URL"))
 	if err != nil {
-		log.Fatalf("unable to connect to database: %v", err)
+		appLogger.Fatal("unable to connect to database", zap.Error(err))
 	}
 	if err := db.Ping(); err != nil {
-		log.Fatalf("database connection test failed: %v", err)
+		appLogger.Fatal("database connection test failed", zap.Error(err))
 	}
 
-	cfg := config.ApiConfig{
-		Port:        fmt.Sprintf(":%v", os.Getenv("PORT")),
-		Queries:     database.New(db),
-		TokenSecret: os.Getenv("TOKEN_SECRET"),
-		Database:    db,
+	cfg := &config.ApiConfig{
+		Port:     fmt.Sprintf(":%v", os.Getenv("PORT")),
+		Queries:  database.New(db),
+		Database: db,
 	}
 
-	tokenGen := auth.NewRealTokenGenerator(cfg.TokenSecret, models.TokenType(os.Getenv("TOKEN_TYPE")))
-	tokenExtract := auth.NewRealTokenExtractor()
+	if err := cache.WarmCategoriesCache(cfg); err != nil {
+		appLogger.Warn("unable to warm cache", zap.Error(err))
+	}
+
 	pwdHasher := auth.NewRealPwdHasher()
+	tokenGen := auth.NewRealTokenGenerator(os.Getenv("TOKEN_SECRET"), models.TokenType(os.Getenv("TOKEN_TYPE")))
+	tokenExtract := auth.NewRealTokenExtractor()
+
 	transactionalQ := database.NewRealTransactionalQuerier(cfg.Queries)
+
 	sqlTxQ := database.NewRealSqlTxQuerier(transactionalQ)
-	//tokenQ := database.NewRealTokenQuerier(cfg.Queries)
+	txQ := database.NewRealTransactionQuerier(transactionalQ)
 	userQ := database.NewRealUserQuerier(transactionalQ)
 
-	authSvc := auth.NewAuthService(sqlTxQ, userQ, tokenGen, tokenExtract, pwdHasher)
+	authSvc := auth.NewAuthService(sqlTxQ, userQ, tokenGen, tokenExtract, pwdHasher, appLogger)
+	txnSvc := transaction.NewTransactionService(txQ, appLogger)
+	userSvc := userService.NewUserService(cfg.Queries, pwdHasher, appLogger)
 
-	userSvc := userService.NewUserService(cfg.Queries, pwdHasher)
-
-	if err := cache.WarmCategoriesCache(&cfg); err != nil {
-		log.Printf("unable to warm cache: %v", err)
-	}
-	router := gin.Default()
-	txQ := database.NewRealTransactionQuerier(transactionalQ)
-	txnSvc := transaction.NewTransactionService(txQ)
-
-	// Initialize handlers
-	userHandler := userHandler.NewHandler(userSvc)
-	catHandler := category.NewHandler()
 	authHandler := authHandler.NewHandler(authSvc)
-	txHandler := txHandler.NewHandler(txnSvc)
+	catHandler := category.NewHandler()
 	commonHandler := common.NewHandler()
-	h := handlers.NewHandlers(
+	txHandler := txHandler.NewHandler(txnSvc)
+	userHandler := userHandler.NewHandler(userSvc)
+
+	h := server.NewHandlers(
 		authHandler,
 		catHandler,
 		commonHandler,
@@ -78,11 +84,13 @@ func main() {
 		userHandler,
 	)
 	m := middleware.NewMiddleware(tokenGen, tokenExtract)
-	handlers.RegisterRoutes(router, &cfg, h, m)
 
+	router := server.NewRouter(cfg, h, m, appLogger)
+
+	appLogger.Info("starting server", zap.String("port", cfg.Port))
 	err = router.Run(cfg.Port)
 	if err != nil {
-		log.Fatal("error starting server:", err)
+		appLogger.Fatal("error starting server", zap.Error(err))
 	}
 
 }

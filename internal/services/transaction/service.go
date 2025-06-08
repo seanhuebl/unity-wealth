@@ -11,14 +11,16 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"go.uber.org/zap"
 )
 
 type TransactionService struct {
 	txQueries database.TransactionQuerier
+	logger    *zap.Logger
 }
 
-func NewTransactionService(txQueries database.TransactionQuerier) *TransactionService {
-	return &TransactionService{txQueries: txQueries}
+func NewTransactionService(txQueries database.TransactionQuerier, logger *zap.Logger) *TransactionService {
+	return &TransactionService{txQueries: txQueries, logger: logger}
 }
 
 func (s *TransactionService) CreateTransaction(ctx context.Context, userID string, req models.NewTxRequest) (*models.Tx, error) {

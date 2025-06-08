@@ -15,6 +15,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestGetTransactionByID(t *testing.T) {
@@ -68,7 +69,8 @@ func TestGetTransactionByID(t *testing.T) {
 			}
 			mockTxQ.On("GetUserTransactionByID", ctx, mock.AnythingOfType("database.GetUserTransactionByIDParams")).Return(expectedRow, tc.txErr)
 
-			svc := transaction.NewTransactionService(mockTxQ)
+			nopLogger := zap.NewNop()
+			svc := transaction.NewTransactionService(mockTxQ, nopLogger)
 
 			txn, err := svc.GetTransactionByID(ctx, tc.userID.String(), tc.txnID.String())
 			if tc.expectedTxErrSubstr != "" {

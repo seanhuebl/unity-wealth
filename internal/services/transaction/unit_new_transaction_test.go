@@ -13,6 +13,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestCreateTransaction(t *testing.T) {
@@ -58,12 +59,12 @@ func TestCreateTransaction(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			mockTxQ := dbmocks.NewTransactionQuerier(t)
-
+			nopLogger := zap.NewNop()
 			if tc.dateErr == nil {
 				mockTxQ.On("CreateTransaction", ctx, mock.AnythingOfType("database.CreateTransactionParams")).Return(tc.txErr)
 			}
 
-			svc := transaction.NewTransactionService(mockTxQ)
+			svc := transaction.NewTransactionService(mockTxQ, nopLogger)
 			tx, err := svc.CreateTransaction(ctx, userID.String(), tc.req)
 
 			if tc.expDateErrSubStr != "" {

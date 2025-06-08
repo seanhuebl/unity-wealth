@@ -15,6 +15,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/services/user"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestSignup(t *testing.T) {
@@ -85,7 +86,8 @@ func TestSignup(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockUserQ := dbmocks.NewUserQuerier(t)
 			mockPwdHasher := authmocks.NewPasswordHasher(t)
-			userSvc := user.NewUserService(mockUserQ, mockPwdHasher)
+			nopLogger := zap.NewNop()
+			userSvc := user.NewUserService(mockUserQ, mockPwdHasher, nopLogger)
 			if models.IsValidEmail(tc.input.Email) {
 				err := models.ValidatePassword(tc.input.Password)
 

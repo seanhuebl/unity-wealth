@@ -14,6 +14,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestValidateCredentials(t *testing.T) {
@@ -79,7 +80,7 @@ func TestValidateCredentials(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockUserQ := dbmocks.NewUserQuerier(t)
 			mockPwdHasher := authmocks.NewPasswordHasher(t)
-
+			nopLogger := zap.NewNop()
 			mockUserQ.On("GetUserByEmail", ctx, tc.input.Email).Return(func(ctx context.Context, email string) database.GetUserByEmailRow {
 				return dummyUser
 			}, tc.getUserErr)
@@ -87,7 +88,7 @@ func TestValidateCredentials(t *testing.T) {
 			if tc.getUserErr == nil {
 				mockPwdHasher.On("CheckPasswordHash", tc.input.Password, dummyUser.HashedPassword).Return(tc.pwdHasherErr)
 			}
-			authSvc := auth.NewAuthService(nil, mockUserQ, nil, nil, mockPwdHasher)
+			authSvc := auth.NewAuthService(nil, mockUserQ, nil, nil, mockPwdHasher, nopLogger)
 
 			userID, err := authSvc.ValidateCredentials(ctx, tc.input)
 			if tc.expectedErrorSubstring != "" {

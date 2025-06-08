@@ -11,6 +11,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestDeleteTransaction(t *testing.T) {
@@ -42,10 +43,10 @@ func TestDeleteTransaction(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockTxQ := dbmocks.NewTransactionQuerier(t)
-
+			nopLogger := zap.NewNop()
 			mockTxQ.On("DeleteTransactionByID", ctx, mock.AnythingOfType("database.DeleteTransactionByIDParams")).Return(txnID.String(), tc.deleteErr)
 
-			svc := transaction.NewTransactionService(mockTxQ)
+			svc := transaction.NewTransactionService(mockTxQ, nopLogger)
 
 			err := svc.DeleteTransaction(ctx, txnID.String(), userID.String())
 

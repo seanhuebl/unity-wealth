@@ -21,6 +21,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/services/user"
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func CreateTestingSchema(t *testing.T, db *sql.DB) {
@@ -122,9 +123,11 @@ func SetupTestEnv(t *testing.T) *testmodels.TestEnv {
 	tokenGen := auth.NewRealTokenGenerator("your-secret-key", "your-issuer")
 	tokenExtractor := auth.NewRealTokenExtractor()
 
-	authSvc := auth.NewAuthService(sqlTxQ, userQ, tokenGen, tokenExtractor, pwdHasher)
-	txSvc := transaction.NewTransactionService(txQ)
-	userSvc := user.NewUserService(userQ, pwdHasher)
+	testLogger := zap.NewNop()
+
+	authSvc := auth.NewAuthService(sqlTxQ, userQ, tokenGen, tokenExtractor, pwdHasher, testLogger)
+	txSvc := transaction.NewTransactionService(txQ, testLogger)
+	userSvc := user.NewUserService(userQ, pwdHasher, testLogger)
 
 	txH := txhandler.NewHandler(txSvc)
 	authH := httpauth.NewHandler(authSvc)
@@ -138,6 +141,7 @@ func SetupTestEnv(t *testing.T) *testmodels.TestEnv {
 		TxQ:     txQ,
 		TokenQ:  tokenQ,
 		DeviceQ: deviceQ,
+		Logger:  testLogger,
 		Services: &testmodels.Services{
 			AuthService: authSvc,
 			TxService:   txSvc,

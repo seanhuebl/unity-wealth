@@ -15,6 +15,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"go.uber.org/zap"
 )
 
 type AuthService struct {
@@ -23,15 +24,17 @@ type AuthService struct {
 	TokenGen     TokenGenerator
 	TokenExtract TokenExtractor
 	PwdHasher    PasswordHasher
+	logger       *zap.Logger
 }
 
-func NewAuthService(SqlTxQuerier database.SqlTxQuerier, UserQuerier database.UserQuerier, TokenGen TokenGenerator, tokenExtract TokenExtractor, PwdHasher PasswordHasher) *AuthService {
+func NewAuthService(SqlTxQuerier database.SqlTxQuerier, UserQuerier database.UserQuerier, TokenGen TokenGenerator, tokenExtract TokenExtractor, PwdHasher PasswordHasher, logger *zap.Logger) *AuthService {
 	return &AuthService{
 		SqlTxQuerier: SqlTxQuerier,
 		UserQuerier:  UserQuerier,
 		TokenGen:     TokenGen,
 		TokenExtract: tokenExtract,
 		PwdHasher:    PwdHasher,
+		logger:       logger,
 	}
 }
 

@@ -20,6 +20,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestLogin(t *testing.T) {
@@ -80,6 +81,7 @@ func TestLogin(t *testing.T) {
 			require.NoError(t, err)
 
 			dummyQueries := dbmocks.NewSqlTransactionalQuerier(t)
+			nopLogger := zap.NewNop()
 
 			mockUserQ.On("GetUserByEmail", ctx.Request.Context(), tc.input.Email).Return(dummyUserRow, nil)
 
@@ -100,7 +102,7 @@ func TestLogin(t *testing.T) {
 			}
 
 			dummyQueries.On("CreateRefreshToken", ctx.Request.Context(), mock.AnythingOfType("database.CreateRefreshTokenParams")).Return(nil)
-			svc := auth.NewAuthService(mockSqlTxQ, mockUserQ, mockTokenGen, mockExtractor, mockHasher)
+			svc := auth.NewAuthService(mockSqlTxQ, mockUserQ, mockTokenGen, mockExtractor, mockHasher, nopLogger)
 			response, err := svc.Login(ctx.Request.Context(), tc.input)
 			if tc.expectedErrorSubstring != "" {
 				require.Error(t, err)

@@ -15,6 +15,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestListUserTransactions(t *testing.T) {
@@ -134,8 +135,8 @@ func TestListUserTransactions(t *testing.T) {
 			mockTxQ := dbmocks.NewTransactionQuerier(t)
 			fetchSize := tc.pageSize + 1
 			expectedTxs := make([]models.Tx, 0)
-
-			svc := transaction.NewTransactionService(mockTxQ)
+			nopLogger := zap.NewNop()
+			svc := transaction.NewTransactionService(mockTxQ, nopLogger)
 
 			firstPageRows := generateFirstPageRows(tc.userID, tc.txSliceLength)
 

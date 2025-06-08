@@ -14,6 +14,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestHandleDeviceInfo(t *testing.T) {
@@ -148,12 +149,12 @@ func TestHandleDeviceInfo(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockDeviceQ := dbmocks.NewDeviceQuerier(t)
 			mockTokenQ := dbmocks.NewTokenQuerier(t)
-
+			nopLogger := zap.NewNop()
 			if tc.setupMocks != nil {
 				tc.setupMocks(mockDeviceQ, mockTokenQ)
 			}
 
-			deviceID, err := auth.NewAuthService(nil, nil, nil, nil, nil).HandleDeviceInfo(ctx, mockDeviceQ, mockTokenQ, userID, inputDeviceInfo)
+			deviceID, err := auth.NewAuthService(nil, nil, nil, nil, nil, nopLogger).HandleDeviceInfo(ctx, mockDeviceQ, mockTokenQ, userID, inputDeviceInfo)
 
 			if tc.expectedErrorSubstring != "" {
 				require.Error(t, err)

@@ -7,8 +7,7 @@ import (
 )
 
 type ApiConfig struct {
-	Port        string
-	Queries     *database.Queries
-	Database    *sql.DB
-	TokenSecret string
+	Port     string
+	Queries  *database.Queries
+	Database *sql.DB
 }

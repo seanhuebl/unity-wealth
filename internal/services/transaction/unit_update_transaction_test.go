@@ -14,6 +14,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestUpdateTransaction(t *testing.T) {
@@ -87,7 +88,8 @@ func TestUpdateTransaction(t *testing.T) {
 				}
 				mockTxQ.On("UpdateTransactionByID", ctx, mock.AnythingOfType("database.UpdateTransactionByIDParams")).Return(returnRow, tc.txErr)
 			}
-			svc := transaction.NewTransactionService(mockTxQ)
+			nopLogger := zap.NewNop()
+			svc := transaction.NewTransactionService(mockTxQ, nopLogger)
 			tx, err := svc.UpdateTransaction(ctx, txID.String(), userID.String(), tc.req)
 			if tc.expectedDateErrSubStr != "" {
 				require.Error(t, err)

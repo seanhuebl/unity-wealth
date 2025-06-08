@@ -47,7 +47,7 @@ func TestIntSignup(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			env := testhelpers.SetupTestEnv(t)
-			userSvc := user.NewUserService(env.UserQ, auth.NewRealPwdHasher())
+			userSvc := user.NewUserService(env.UserQ, auth.NewRealPwdHasher(), env.Logger)
 			err := userSvc.SignUp(ctx, tc.input)
 			if tc.wantErrSubstr != "" {
 				if tc.wantErrSubstr == auth.ErrInvalidEmail.Error() {
@@ -69,7 +69,7 @@ func TestIntSignup(t *testing.T) {
 	}
 	t.Run("create user failure", func(t *testing.T) {
 		env := testhelpers.SetupTestEnv(t)
-		svc := user.NewUserService(env.UserQ, auth.NewRealPwdHasher())
+		svc := user.NewUserService(env.UserQ, auth.NewRealPwdHasher(), env.Logger)
 		input := user.SignUpInput{"duplicate@example.com", "Validpass1!"}
 
 		require.NoError(t, svc.SignUp(ctx, input))

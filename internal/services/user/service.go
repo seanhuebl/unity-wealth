@@ -8,17 +8,20 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
+	"go.uber.org/zap"
 )
 
 type UserService struct {
 	userQueries database.UserQuerier
 	pwdHasher   auth.PasswordHasher
+	logger      *zap.Logger
 }
 
-func NewUserService(userQueries database.UserQuerier, pwdHasher auth.PasswordHasher) *UserService {
+func NewUserService(userQueries database.UserQuerier, pwdHasher auth.PasswordHasher, logger *zap.Logger) *UserService {
 	return &UserService{
 		userQueries: userQueries,
 		pwdHasher:   pwdHasher,
+		logger:      logger,
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	authmocks "github.com/seanhuebl/unity-wealth/internal/mocks/auth"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestGenerateTokens(t *testing.T) {
@@ -57,13 +58,13 @@ func TestGenerateTokens(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockTokenGen := authmocks.NewTokenGenerator(t)
-
+			nopLogger := zap.NewNop()
 			mockTokenGen.On("MakeJWT", userID, 15*time.Minute).Return(tc.jwtToken, tc.jwtError)
 			if tc.jwtError == nil {
 				mockTokenGen.On("MakeRefreshToken").Return(tc.refreshToken, tc.refreshError)
 			}
 
-			svc := auth.NewAuthService(nil, nil, mockTokenGen, nil, nil)
+			svc := auth.NewAuthService(nil, nil, mockTokenGen, nil, nil, nopLogger)
 			jwtToken, refreshToken, err := svc.GenerateTokens(userID)
 			if tc.expectedErrorSubstring != "" {
 				require.Error(t, err)
