@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
+	"github.com/seanhuebl/unity-wealth/internal/sentinels"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -32,12 +33,12 @@ func TestDeleteTransaction(t *testing.T) {
 		{
 			name:                    "delete transaction failure",
 			deleteErr:               errors.New("delete error"),
-			expectedDeleteErrSubStr: "error deleting transaction",
+			expectedDeleteErrSubStr: sentinels.ErrDBExecFailed.Error(),
 		},
 		{
 			name:                    "no err but tx not found",
 			deleteErr:               sql.ErrNoRows,
-			expectedDeleteErrSubStr: "transaction not found",
+			expectedDeleteErrSubStr: transaction.ErrTxNotFound.Error(),
 		},
 	}
 	for _, tc := range tests {

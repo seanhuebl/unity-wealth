@@ -11,6 +11,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/sentinels"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/stretchr/testify/mock"
@@ -91,7 +92,7 @@ func TestListUserTransactions(t *testing.T) {
 			cursorID:                   nil,
 			pageSize:                   1,
 			getFirstPageErr:            errors.New("db error"),
-			expectedFirstPageErrSubStr: "error loading first page of transactions",
+			expectedFirstPageErrSubStr: sentinels.ErrDBExecFailed.Error(),
 		},
 		{
 			name:                       "first page, no transactions found",
@@ -101,7 +102,7 @@ func TestListUserTransactions(t *testing.T) {
 			cursorID:                   nil,
 			pageSize:                   1,
 			getFirstPageErr:            nil,
-			expectedFirstPageErrSubStr: "",
+			expectedFirstPageErrSubStr: transaction.ErrTxNotFound.Error(),
 		},
 		{
 			name:                         "paginated, db error",
@@ -111,7 +112,7 @@ func TestListUserTransactions(t *testing.T) {
 			cursorID:                     testhelpers.StrPtr(uuid.NewString()),
 			pageSize:                     1,
 			getTxPaginatedErr:            errors.New("db error"),
-			expectedTxPaginatedErrSubStr: "error loading next page",
+			expectedTxPaginatedErrSubStr: sentinels.ErrDBExecFailed.Error(),
 		},
 		{
 			name:                         "paginated, no transactions found",
@@ -121,13 +122,13 @@ func TestListUserTransactions(t *testing.T) {
 			cursorID:                     testhelpers.StrPtr(uuid.NewString()),
 			pageSize:                     1,
 			getTxPaginatedErr:            nil,
-			expectedTxPaginatedErrSubStr: "",
+			expectedTxPaginatedErrSubStr: transaction.ErrTxNotFound.Error(),
 		},
 		{
 			name:                      "page size <= 0",
 			userID:                    uuid.New(),
 			pageSize:                  0,
-			expectedPageSizeErrSubStr: "pageSize must be a positive integer",
+			expectedPageSizeErrSubStr: transaction.ErrInvalidPageSize.Error(),
 		},
 	}
 	for _, tc := range tests {
@@ -160,7 +161,15 @@ func TestListUserTransactions(t *testing.T) {
 						firstPageRows = firstPageRows[:tc.pageSize]
 					}
 					for _, row := range firstPageRows {
-						expectedTxs = append(expectedTxs, transaction.ConvertFirstPageRow(row))
+						expectedTxs = append(transactions, transaction.MapToTx(
+							row.ID,
+							row.UserID,
+							row.TransactionDate,
+							row.Merchant,
+							row.AmountCents,
+							row.DetailedCategoryID,
+						),
+						)
 					}
 					if hasMoreData == true {
 						require.NotEmpty(t, nextCursorID)
@@ -194,7 +203,15 @@ func TestListUserTransactions(t *testing.T) {
 						nextRows = nextRows[:tc.pageSize]
 					}
 					for _, row := range nextRows {
-						expectedTxs = append(expectedTxs, transaction.ConvertPaginatedRow(row))
+						expectedTxs = append(transactions, transaction.MapToTx(
+							row.ID,
+							row.UserID,
+							row.TransactionDate,
+							row.Merchant,
+							row.AmountCents,
+							row.DetailedCategoryID,
+						),
+						)
 					}
 					if hasMoreData == true {
 						require.NotEmpty(t, nextCursorID)

@@ -12,6 +12,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/sentinels"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -32,14 +33,14 @@ func TestGetTransactionByID(t *testing.T) {
 			userID:              uuid.New(),
 			txnID:               uuid.New(),
 			txErr:               errors.New("db error"),
-			expectedTxErrSubstr: "error getting transaction",
+			expectedTxErrSubstr: sentinels.ErrDBExecFailed.Error(),
 		},
 		{
 			name:                "userID / txnID pair not found",
 			userID:              uuid.New(),
 			txnID:               uuid.New(),
 			txErr:               sql.ErrNoRows,
-			expectedTxErrSubstr: "transaction not found",
+			expectedTxErrSubstr: transaction.ErrTxNotFound.Error(),
 		},
 	}
 

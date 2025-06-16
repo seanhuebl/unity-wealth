@@ -12,9 +12,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mssola/user_agent"
+	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/sentinels"
 	"go.uber.org/zap"
 )
 
@@ -38,59 +40,105 @@ func NewAuthService(SqlTxQuerier database.SqlTxQuerier, UserQuerier database.Use
 	}
 }
 
-// Login encapsulates the entire login process.
 func (a *AuthService) Login(ctx context.Context, input models.LoginInput) (models.LoginResponse, error) {
+	start := time.Now()
+	reqID, _ := ctx.Value(constants.RequestIDKey).(string)
 
-	// 1. Validate the email format (optionally done here or in the handler)
+	a.logger.Info(evtLoginAttempt,
+		zap.String("request_id", reqID),
+		zap.String("email", input.Email),
+	)
+
 	if !models.IsValidEmail(input.Email) {
-		return models.LoginResponse{}, fmt.Errorf("invalid email format")
+		a.logger.Warn(evtLoginInvalidEmail,
+			zap.String("request_id", reqID),
+			zap.String("email", input.Email),
+		)
+		return models.LoginResponse{}, sentinels.ErrInvalidEmail
 	}
 
-	// 2. Validate credentials and fetch user.
 	userID, err := a.ValidateCredentials(ctx, input)
 	if err != nil {
-		return models.LoginResponse{}, err
+		wrapped := fmt.Errorf("login: validate credentials: %w", err)
+		a.logger.Warn(evtLoginInvalidCreds,
+			zap.String("request_id", reqID),
+			zap.String("email", input.Email),
+			zap.Error(wrapped),
+		)
+		return models.LoginResponse{}, wrapped
 	}
+
+	a.logger.Info(evtLoginCredsValid,
+		zap.String("request_id", reqID),
+		zap.String("user_id", userID.String()),
+	)
+
+	logger := a.logger.With(
+		zap.String("request_id", reqID),
+		zap.String("user_id", userID.String()),
+	)
 
 	req, err := helpers.GetRequestFromContext(ctx)
 	if err != nil {
-		return models.LoginResponse{}, err
-	}
-	// 3. Extract device information.
-	deviceInfo, err := GetDeviceInfoFromRequest(req)
-	if err != nil {
-		return models.LoginResponse{}, err
+		wrapped := fmt.Errorf("login: get req from ctx: %w", err)
+		logger.Error(evtLoginMissingReq,
+			zap.Error(wrapped),
+		)
+		return models.LoginResponse{}, wrapped
 	}
 
-	// 4. Start a database transaction.
+	deviceInfo, err := GetDeviceInfoFromRequest(req)
+	if err != nil {
+		wrapped := fmt.Errorf("login: get device info from ctx: %w", err)
+		logger.Error(evtLoginInvalidDeviceInfo,
+			zap.Error(wrapped),
+		)
+		return models.LoginResponse{}, wrapped
+	}
+
+	jwtToken, refreshToken, err := a.GenerateTokens(userID)
+	if err != nil {
+		wrapped := fmt.Errorf("login: generate tokens: %w", err)
+		logger.Error(evtLoginGenerateTokensFailed,
+			zap.Error(wrapped),
+		)
+		return models.LoginResponse{}, wrapped
+	}
+
+	refreshHash, err := a.PwdHasher.HashPassword(refreshToken)
+	if err != nil {
+		wrapped := fmt.Errorf("login: hash refreshToken: %w", err)
+		logger.Error(evtLoginHashRefTokenFailed,
+			zap.Error(wrapped),
+		)
+		return models.LoginResponse{}, wrapped
+	}
+
+	dbStart := time.Now()
+
 	tx, err := a.SqlTxQuerier.BeginTx(ctx, nil)
 	if err != nil {
-		return models.LoginResponse{}, fmt.Errorf("failed to start transaction: %w", err)
+		wrapped := fmt.Errorf("login: begin sql tx: %w", err)
+		logger.Error(evtLoginBeginSqlTxFailed,
+			zap.Error(wrapped),
+		)
+		return models.LoginResponse{}, wrapped
 	}
+
 	defer tx.Rollback()
 	queriesTx := a.SqlTxQuerier.WithTx(tx)
 	deviceQ := database.NewRealDevicequerier(queriesTx)
 	tokenQ := database.NewRealTokenQuerier(queriesTx)
 
-	// 5. Handle device information.
 	deviceID, err := a.HandleDeviceInfo(ctx, deviceQ, tokenQ, userID, deviceInfo)
 	if err != nil {
-		return models.LoginResponse{}, err
+		wrapped := fmt.Errorf("login: device info: %w", err)
+		logger.Error(evtLoginHandleDeviceInfoFailed,
+			zap.Error(wrapped),
+		)
+		return models.LoginResponse{}, wrapped
 	}
 
-	// 6. Generate JWT and refresh token.
-	jwtToken, refreshToken, err := a.GenerateTokens(userID)
-	if err != nil {
-		return models.LoginResponse{}, err
-	}
-
-	// 7. Hash the refresh token.
-	refreshHash, err := a.PwdHasher.HashPassword(refreshToken)
-	if err != nil {
-		return models.LoginResponse{}, fmt.Errorf("failed to hash refresh token: %w", err)
-	}
-
-	// 8. Create a refresh token record.
 	expiration := sql.NullTime{
 		Time:  time.Now().Add(60 * 24 * time.Hour),
 		Valid: true,
@@ -103,15 +151,28 @@ func (a *AuthService) Login(ctx context.Context, input models.LoginInput) (model
 		DeviceInfoID: deviceID.String(),
 	})
 	if err != nil {
-		return models.LoginResponse{}, fmt.Errorf("failed to create refresh token entry: %w", err)
+		wrapped := fmt.Errorf("login: %w: %v", sentinels.ErrDBExecFailed, err)
+		logger.Error(evtLoginRefTokInsertDBFailed,
+			zap.Error(wrapped),
+		)
+		return models.LoginResponse{}, wrapped
 	}
 
-	// 9. Commit the transaction.
 	if err := tx.Commit(); err != nil {
-		return models.LoginResponse{}, fmt.Errorf("failed to commit transaction: %w", err)
+		wrapped := fmt.Errorf("login: sql commit tx: %w", err)
+		logger.Error(evtLoginSqlCommitTxFailed,
+			zap.Error(wrapped),
+		)
+		return models.LoginResponse{}, wrapped
 	}
 
-	// 10. Return a structured login response.
+	dbDuration := time.Since(dbStart)
+	totalDuration := time.Since(start)
+
+	logger.Info(evtLoginSuccess,
+		zap.Duration("db_duration_ms", dbDuration),
+		zap.Duration("total_duration_ms", totalDuration),
+	)
 	return models.LoginResponse{
 		UserID:       userID,
 		RefreshToken: refreshToken,
@@ -124,14 +185,18 @@ func (a *AuthService) ValidateCredentials(ctx context.Context, input models.Logi
 	user, err := a.UserQuerier.GetUserByEmail(ctx, input.Email)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return uuid.Nil, fmt.Errorf("invalid email / password")
+			return uuid.Nil, fmt.Errorf("%w: %v", ErrInvalidCreds, err)
 		}
 		return uuid.Nil, fmt.Errorf("failed to fetch user: %w", err)
 	}
 	if err := a.PwdHasher.CheckPasswordHash(input.Password, user.HashedPassword); err != nil {
-		return uuid.Nil, fmt.Errorf("invalid email / password")
+		return uuid.Nil, fmt.Errorf("%w: %v", ErrInvalidCreds, err)
 	}
-	return uuid.Parse(user.ID)
+	id, err := uuid.Parse(user.ID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("validate credentials: parse user ID: %w", err)
+	}
+	return id, nil
 }
 
 func (a *AuthService) HandleDeviceInfo(ctx context.Context, deviceQ database.DeviceQuerier, tokenQ database.TokenQuerier, userID uuid.UUID, info models.DeviceInfo) (uuid.UUID, error) {
@@ -209,7 +274,7 @@ func GetDeviceInfoFromRequest(req *http.Request) (models.DeviceInfo, error) {
 			return deviceInfo, nil
 		}
 	}
-	return models.DeviceInfo{}, fmt.Errorf("invalid or unknown device information")
+	return models.DeviceInfo{}, ErrInvalidDeviceInfo
 }
 
 // parseDeviceInfoFromHeader parses the X-Device-Info header into a models.DeviceInfo struct.

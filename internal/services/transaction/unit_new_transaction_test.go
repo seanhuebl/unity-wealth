@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/sentinels"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -52,7 +53,7 @@ func TestCreateTransaction(t *testing.T) {
 			dateErr:          nil,
 			expDateErrSubStr: "",
 			txErr:            errors.New("tx error"),
-			expTxErrSubStr:   "unable to create transaction",
+			expTxErrSubStr:   sentinels.ErrDBExecFailed.Error(),
 		},
 	}
 	for _, tc := range tests {

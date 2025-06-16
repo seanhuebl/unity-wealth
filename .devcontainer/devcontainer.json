@@ -44,7 +44,21 @@
             ],
             "description": "gin anonymous with c instead of ctx"
           },
-          "Table-Driven Test": {
+          "Base err": {
+            "prefix": "base",
+            "body": [
+              "baseErr := fmt.Errorf(\"%w: %v\", $1, err)$0"
+            ],
+            "description": "setting up base err for wrapping"
+          },
+          "Wrapped error": {
+            "prefix": "wrp",
+            "body": [
+              "wrapped := fmt.Errorf(\"$1: %w\", baseErr)$0"
+            ],
+            "description": "fast way to write wrapped error boilerplate"
+          },
+          "Table-driven test": {
             "prefix": "tdt",
             "body": [
               "func Test$1(t *testing.T) {",

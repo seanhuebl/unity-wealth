@@ -9,6 +9,7 @@ const (
 	CursorDateKey = contextKey("cursor_date")
 	CursorIDKey   = contextKey("cursor_id")
 	PageSizeKey   = contextKey("page_size")
+	RequestIDKey  = contextKey("request_id")
 
 	CreateTxTable = `
 			CREATE TABLE IF NOT EXISTS transactions (

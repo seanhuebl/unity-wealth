@@ -11,6 +11,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/sentinels"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -54,7 +55,7 @@ func TestUpdateTransaction(t *testing.T) {
 			dateErr:               nil,
 			expectedDateErrSubStr: "",
 			txErr:                 errors.New("tx error"),
-			expectedTxErrSubStr:   "error updating transaction",
+			expectedTxErrSubStr:   sentinels.ErrDBExecFailed.Error(),
 		},
 		{
 			name: "transaction not found",
@@ -67,7 +68,7 @@ func TestUpdateTransaction(t *testing.T) {
 			dateErr:               nil,
 			expectedDateErrSubStr: "",
 			txErr:                 sql.ErrNoRows,
-			expectedTxErrSubStr:   "transaction not found",
+			expectedTxErrSubStr:   transaction.ErrTxNotFound.Error(),
 		},
 	}
 	for _, tc := range tests {

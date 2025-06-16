@@ -11,7 +11,7 @@ import (
 	authmocks "github.com/seanhuebl/unity-wealth/internal/mocks/auth"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/models"
-	"github.com/seanhuebl/unity-wealth/internal/services/auth"
+	"github.com/seanhuebl/unity-wealth/internal/sentinels"
 	"github.com/seanhuebl/unity-wealth/internal/services/user"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -46,7 +46,7 @@ func TestSignup(t *testing.T) {
 				Email:    "invalid",
 				Password: "Validpass1!",
 			},
-			expectedError: auth.ErrInvalidEmail.Error(),
+			expectedError: sentinels.ErrInvalidEmail.Error(),
 		},
 		{
 			name: "invalid password",
@@ -55,7 +55,7 @@ func TestSignup(t *testing.T) {
 				Password: "invalid",
 			},
 			validatePasswordError: errors.New("password must contain one uppercase letter"),
-			expectedError:         auth.ErrInvalidPassword.Error(),
+			expectedError:         sentinels.ErrInvalidPassword.Error(),
 		},
 		{
 			name: "hashing failure",
@@ -65,7 +65,7 @@ func TestSignup(t *testing.T) {
 			},
 			validatePasswordError: nil,
 			hashPasswordError:     errors.New("hash error"),
-			expectedError:         "failed to hash password",
+			expectedError:         "hash error",
 		},
 		{
 			name: "create user failure",
@@ -77,7 +77,7 @@ func TestSignup(t *testing.T) {
 			hashPasswordOutput:    "hashedpassword",
 			hashPasswordError:     nil,
 			createUserError:       errors.New("db error"),
-			expectedError:         "unable to create user",
+			expectedError:         sentinels.ErrDBExecFailed.Error(),
 		},
 	}
 
@@ -113,10 +113,10 @@ func TestSignup(t *testing.T) {
 			err := userSvc.SignUp(context.Background(), tc.input)
 
 			if tc.expectedError == "" {
-				if tc.expectedError == auth.ErrInvalidEmail.Error() {
-					require.ErrorIs(t, err, auth.ErrInvalidEmail)
-				} else if tc.expectedError == auth.ErrInvalidPassword.Error() {
-					require.ErrorIs(t, err, auth.ErrInvalidPassword)
+				if tc.expectedError == sentinels.ErrInvalidEmail.Error() {
+					require.ErrorIs(t, err, sentinels.ErrInvalidEmail)
+				} else if tc.expectedError == sentinels.ErrInvalidPassword.Error() {
+					require.ErrorIs(t, err, sentinels.ErrInvalidPassword)
 				} else {
 					require.NoError(t, err, "expected no error, but got one")
 				}

@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/seanhuebl/unity-wealth/handlers/user"
 	handlermocks "github.com/seanhuebl/unity-wealth/internal/mocks/handlers"
-	"github.com/seanhuebl/unity-wealth/internal/services/auth"
+	"github.com/seanhuebl/unity-wealth/internal/sentinels"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/stretchr/testify/mock"
 )
@@ -29,7 +29,7 @@ func TestAddUserHandler(t *testing.T) {
 		{
 			name:               "invalid email",
 			reqBody:            `{"email": "invalid", "password": "Validpass1!"}`,
-			err:                auth.ErrInvalidEmail,
+			err:                sentinels.ErrInvalidEmail,
 			expectedError:      "invalid email",
 			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse: map[string]interface{}{
@@ -41,7 +41,7 @@ func TestAddUserHandler(t *testing.T) {
 		{
 			name:               "invalid password",
 			reqBody:            `{"email": "valid@example.com", "password": "invalid"}`,
-			err:                auth.ErrInvalidPassword,
+			err:                sentinels.ErrInvalidPassword,
 			expectedError:      "invalid password",
 			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse: map[string]interface{}{

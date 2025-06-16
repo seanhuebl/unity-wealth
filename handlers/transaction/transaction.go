@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/constants"
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 )
 
 func (h *Handler) NewTransaction(ctx *gin.Context) {
@@ -174,7 +176,7 @@ func (h *Handler) GetTransactionByID(ctx *gin.Context) {
 	}
 	txn, err := h.txSvc.GetTransactionByID(ctx.Request.Context(), userID.String(), txId.String())
 	if err != nil {
-		if strings.Contains(err.Error(), "transaction not found") {
+		if errors.Is(err, transaction.ErrTxNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{
 				"data": gin.H{
 					"error": "not found",
@@ -184,7 +186,7 @@ func (h *Handler) GetTransactionByID(ctx *gin.Context) {
 		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"data": gin.H{
-				"error": "unable to get transaction",
+				"error": "something went wrong",
 			},
 		})
 		return
@@ -266,10 +268,10 @@ func (h *Handler) DeleteTransaction(ctx *gin.Context) {
 		// response is in the helper
 		return
 	}
-
 	err = h.txSvc.DeleteTransaction(ctx.Request.Context(), txId.String(), userID.String())
+
 	if err != nil {
-		if strings.Contains(err.Error(), "transaction not found") {
+		if errors.Is(err, transaction.ErrTxNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{
 				"data": gin.H{
 					"error": "not found",
@@ -279,7 +281,7 @@ func (h *Handler) DeleteTransaction(ctx *gin.Context) {
 		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"data": gin.H{
-				"error": "error deleting transaction",
+				"error": "something went wrong",
 			},
 		})
 		return

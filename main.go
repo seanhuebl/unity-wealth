@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/seanhuebl/unity-wealth/cache"
 	authHandler "github.com/seanhuebl/unity-wealth/handlers/auth"
@@ -56,6 +57,8 @@ func main() {
 		appLogger.Warn("unable to warm cache", zap.Error(err))
 	}
 
+	gin.SetMode(os.Getenv("GIN_ENV"))
+
 	pwdHasher := auth.NewRealPwdHasher()
 	tokenGen := auth.NewRealTokenGenerator(os.Getenv("TOKEN_SECRET"), models.TokenType(os.Getenv("TOKEN_TYPE")))
 	tokenExtract := auth.NewRealTokenExtractor()
@@ -87,7 +90,10 @@ func main() {
 
 	router := server.NewRouter(cfg, h, m, appLogger)
 
-	appLogger.Info("starting server", zap.String("port", cfg.Port))
+	appLogger.Info("starting server",
+		zap.String("port", cfg.Port),
+		zap.String("GIN_ENV", os.Getenv("GIN_ENV")),
+	)
 	err = router.Run(cfg.Port)
 	if err != nil {
 		appLogger.Fatal("error starting server", zap.Error(err))

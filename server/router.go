@@ -46,6 +46,8 @@ func NewRouter(
 		},
 	))
 
+	r.Use(m.RequestID())
+
 	registerPublicRoutes(r, h)
 	registerAppRoutes(r, h, m)
 	registerLookupRoutes(r, h)

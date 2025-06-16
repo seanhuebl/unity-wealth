@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/seanhuebl/unity-wealth/internal/sentinels"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/seanhuebl/unity-wealth/internal/services/user"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
@@ -32,7 +33,7 @@ func TestIntSignup(t *testing.T) {
 				Email:    "invalid",
 				Password: "Validpass1!",
 			},
-			wantErrSubstr: "invalid email",
+			wantErrSubstr: sentinels.ErrInvalidEmail.Error(),
 		},
 		{
 			name: "invalid password",
@@ -40,7 +41,7 @@ func TestIntSignup(t *testing.T) {
 				Email:    "valid@example.com",
 				Password: "invalid",
 			},
-			wantErrSubstr: "invalid password",
+			wantErrSubstr: sentinels.ErrInvalidPassword.Error(),
 		},
 	}
 	for _, tc := range tests {
@@ -50,10 +51,10 @@ func TestIntSignup(t *testing.T) {
 			userSvc := user.NewUserService(env.UserQ, auth.NewRealPwdHasher(), env.Logger)
 			err := userSvc.SignUp(ctx, tc.input)
 			if tc.wantErrSubstr != "" {
-				if tc.wantErrSubstr == auth.ErrInvalidEmail.Error() {
-					require.ErrorIs(t, err, auth.ErrInvalidEmail)
-				} else if tc.wantErrSubstr == auth.ErrInvalidPassword.Error() {
-					require.ErrorIs(t, err, auth.ErrInvalidPassword)
+				if tc.wantErrSubstr == sentinels.ErrInvalidEmail.Error() {
+					require.ErrorIs(t, err, sentinels.ErrInvalidEmail)
+				} else if tc.wantErrSubstr == sentinels.ErrInvalidPassword.Error() {
+					require.ErrorIs(t, err, sentinels.ErrInvalidPassword)
 				} else {
 					require.ErrorContains(t, err, tc.wantErrSubstr)
 				}
@@ -75,7 +76,7 @@ func TestIntSignup(t *testing.T) {
 		require.NoError(t, svc.SignUp(ctx, input))
 
 		err := svc.SignUp(ctx, input)
-		require.ErrorContains(t, err, "unable to create user")
+		require.ErrorContains(t, err, sentinels.ErrDBExecFailed.Error())
 
 	})
 }

@@ -2,6 +2,7 @@ package logger
 
 import (
 	"os"
+	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -12,6 +13,10 @@ func InitLogger() (*zap.Logger, error) {
 	encoderCfg := zap.NewProductionEncoderConfig()
 	encoderCfg.TimeKey = "timestamp"
 	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
+	encoderCfg.EncodeDuration = func(d time.Duration, enc zapcore.PrimitiveArrayEncoder) {
+		enc.AppendInt64(d.Milliseconds()) // now every zap.Duration field is in ms
+	}
+
 	encoder := zapcore.NewJSONEncoder(encoderCfg)
 
 	infoLevel := zap.LevelEnablerFunc(func(l zapcore.Level) bool {

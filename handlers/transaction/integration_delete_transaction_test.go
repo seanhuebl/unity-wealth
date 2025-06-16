@@ -33,7 +33,7 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testfixtures.InvalidTxID,
-				TxID:             "",
+				TxID:             "INVALID",
 			},
 		},
 		{
@@ -58,32 +58,35 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-
+			gin.SetMode(gin.TestMode)
 			env := testhelpers.SetupTestEnv(t)
 			defer env.Db.Close()
+			parsedTxID, err := uuid.Parse(tc.TxID)
 
-			if tc.TxID != "" {
+			if err == nil {
 				testhelpers.SeedTestUser(t, env.UserQ, tc.UserID, false)
 				testhelpers.SeedTestCategories(t, env.Db)
-				testhelpers.IsTxFound(t, tc.BaseHTTPTestCase, uuid.MustParse(tc.TxID), env)
+				fmt.Printf("txID: %v", parsedTxID)
+				testhelpers.IsTxFound(t, tc.BaseHTTPTestCase, parsedTxID, env)
 			}
 			w := httptest.NewRecorder()
 
-			req := httptest.NewRequest("DELETE", fmt.Sprintf("/transactions/%v", tc.TxID), nil)
+			req := httptest.NewRequest("DELETE", fmt.Sprintf("/transactions/%v", parsedTxID), nil)
 
-			if tc.TxID == "" {
-				c, _ := gin.CreateTestContext(w)
-				c.Request = req
-				c.Params = gin.Params{{Key: "id", Value: ""}}
+			env.Router.Use(func(c *gin.Context) {
+				c.Params = gin.Params{{Key: "id", Value: tc.TxID}}
 				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
-				env.Handlers.TxHandler.DeleteTransaction(c)
-			} else {
-				env.Router.DELETE("/transactions/:id", func(c *gin.Context) {
-					testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
-					env.Handlers.TxHandler.DeleteTransaction(c)
+				c.Next()
+			})
+			env.Router.NoRoute(func(c *gin.Context) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"data": gin.H{"error": "not found"},
 				})
-				env.Router.ServeHTTP(w, req)
-			}
+			})
+
+			env.Router.DELETE("/transactions/:id", env.Handlers.TxHandler.DeleteTransaction)
+
+			env.Router.ServeHTTP(w, req)
 			actualResponse := testhelpers.ProcessResponse(w, t)
 			testhelpers.CheckHTTPResponse(t, w, tc.ExpectedError, tc.ExpectedStatusCode, tc.ExpectedResponse, actualResponse)
 		})
