@@ -3,7 +3,10 @@ package testhelpers
 import (
 	"context"
 	"database/sql"
+	"log"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -12,6 +15,7 @@ import (
 	txhandler "github.com/seanhuebl/unity-wealth/handlers/transaction"
 	httpuser "github.com/seanhuebl/unity-wealth/handlers/user"
 	"github.com/seanhuebl/unity-wealth/internal/constants"
+	"github.com/seanhuebl/unity-wealth/internal/cursor"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/interfaces"
@@ -49,7 +53,7 @@ func SeedTestUser(t *testing.T, userQ database.UserQuerier, userID uuid.UUID, re
 	email := "user@example.com"
 
 	err := userQ.CreateUser(context.Background(), database.CreateUserParams{
-		ID:             userID.String(),
+		ID:             userID,
 		Email:          email,
 		HashedPassword: hashedPassword,
 	})
@@ -72,10 +76,12 @@ func SeedTestCategories(t *testing.T, db *sql.DB) {
 
 func SeedTestTransaction(t *testing.T, txQ database.TransactionQuerier, userID, txID uuid.UUID, req *models.NewTxRequest) {
 	ctx := context.Background()
-	err := txQ.CreateTransaction(ctx, database.CreateTransactionParams{
-		ID:                 txID.String(),
-		UserID:             userID.String(),
-		TransactionDate:    req.Date,
+	date, err := time.Parse(constants.LayoutDate, req.Date)
+
+	err = txQ.CreateTransaction(ctx, database.CreateTransactionParams{
+		ID:                 txID,
+		UserID:             userID,
+		TransactionDate:    date,
 		Merchant:           req.Merchant,
 		AmountCents:        helpers.ConvertToCents(req.Amount),
 		DetailedCategoryID: req.DetailedCategory,
@@ -87,8 +93,8 @@ func SeedMultipleTestTransactions[T interfaces.TxPageRow](t *testing.T, txQ data
 	ctx := context.Background()
 	for _, row := range rows {
 		err := txQ.CreateTransaction(ctx, database.CreateTransactionParams{
-			ID:                 row.GetTxID().String(),
-			UserID:             row.GetUserID().String(),
+			ID:                 row.GetTxID(),
+			UserID:             row.GetUserID(),
 			TransactionDate:    row.GetTxDate(),
 			Merchant:           row.GetMerchant(),
 			AmountCents:        row.GetAmountCents(),
@@ -122,11 +128,17 @@ func SetupTestEnv(t *testing.T) *testmodels.TestEnv {
 	pwdHasher := auth.NewRealPwdHasher()
 	tokenGen := auth.NewRealTokenGenerator("your-secret-key", "your-issuer")
 	tokenExtractor := auth.NewRealTokenExtractor()
+	
+	secretB64 := os.Getenv("ENCODE_CURSOR_SECRET")
+	if secretB64 == "" {
+		log.Fatalf("ENCODE_CURSOR_SECRET not set")
+	}
+	cs, _ := cursor.NewSigner(secretB64)
 
 	testLogger := zap.NewNop()
 
 	authSvc := auth.NewAuthService(sqlTxQ, userQ, tokenGen, tokenExtractor, pwdHasher, testLogger)
-	txSvc := transaction.NewTransactionService(txQ, testLogger)
+	txSvc := transaction.NewTransactionService(txQ, cs, testLogger)
 	userSvc := user.NewUserService(userQ, pwdHasher, testLogger)
 
 	txH := txhandler.NewHandler(txSvc)
@@ -175,8 +187,8 @@ func IsTxFound(t *testing.T, tc testmodels.BaseHTTPTestCase, txID uuid.UUID, env
 
 func SeedTestDeviceInfo(t *testing.T, deviceQ database.DeviceQuerier, userID uuid.UUID) {
 	_, err := deviceQ.CreateDeviceInfo(context.Background(), database.CreateDeviceInfoParams{
-		ID:             uuid.New().String(),
-		UserID:         userID.String(),
+		ID:             uuid.New(),
+		UserID:         userID,
 		DeviceType:     "Mobile",
 		Browser:        "Chrome",
 		BrowserVersion: "100.0",

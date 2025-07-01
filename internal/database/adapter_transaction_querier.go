@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/models"
 )
 
@@ -24,7 +25,7 @@ func (rt *RealTransactionQuerier) UpdateTransactionByID(ctx context.Context, arg
 	return rt.q.UpdateTransactionByID(ctx, arg)
 }
 
-func (rt *RealTransactionQuerier) DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (string, error) {
+func (rt *RealTransactionQuerier) DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (uuid.UUID, error) {
 	return rt.q.DeleteTransactionByID(ctx, arg)
 }
 
@@ -48,6 +49,6 @@ func (rt *RealTransactionQuerier) GetDetailedCategories(ctx context.Context) ([]
 	return rt.q.GetDetailedCategories(ctx)
 }
 
-func (rt *RealTransactionQuerier) GetDetailedCategoryID(ctx context.Context, name string) (int64, error) {
+func (rt *RealTransactionQuerier) GetDetailedCategoryID(ctx context.Context, name string) (int32, error) {
 	return rt.q.GetDetailedCategoryID(ctx, name)
 }

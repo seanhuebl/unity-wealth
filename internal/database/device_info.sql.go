@@ -7,6 +7,8 @@ package database
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const createDeviceInfo = `-- name: CreateDeviceInfo :one
@@ -20,20 +22,20 @@ INSERT INTO device_info_logs (
         os_version
     )
 VALUES (
-        ?1,
-        ?2,
-        ?3,
-        ?4,
-        ?5,
-        ?6,
-        ?7
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7
     )
 RETURNING id
 `
 
 type CreateDeviceInfoParams struct {
-	ID             string
-	UserID         string
+	ID             uuid.UUID
+	UserID         uuid.UUID
 	DeviceType     string
 	Browser        string
 	BrowserVersion string
@@ -41,7 +43,7 @@ type CreateDeviceInfoParams struct {
 	OsVersion      string
 }
 
-func (q *Queries) CreateDeviceInfo(ctx context.Context, arg CreateDeviceInfoParams) (string, error) {
+func (q *Queries) CreateDeviceInfo(ctx context.Context, arg CreateDeviceInfoParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, createDeviceInfo,
 		arg.ID,
 		arg.UserID,
@@ -51,7 +53,7 @@ func (q *Queries) CreateDeviceInfo(ctx context.Context, arg CreateDeviceInfoPara
 		arg.Os,
 		arg.OsVersion,
 	)
-	var id string
+	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }
@@ -59,17 +61,17 @@ func (q *Queries) CreateDeviceInfo(ctx context.Context, arg CreateDeviceInfoPara
 const getDeviceInfoByUser = `-- name: GetDeviceInfoByUser :one
 SELECT id
 FROM device_info_logs
-WHERE user_id = ?1
-    AND device_type = ?2
-    AND browser = ?3
-    AND browser_version = ?4
-    AND os = ?5
-    AND os_version = ?6
+WHERE user_id = $1
+    AND device_type = $2
+    AND browser = $3
+    AND browser_version = $4
+    AND os = $5
+    AND os_version = $6
 LIMIT 1
 `
 
 type GetDeviceInfoByUserParams struct {
-	UserID         string
+	UserID         uuid.UUID
 	DeviceType     string
 	Browser        string
 	BrowserVersion string
@@ -77,7 +79,7 @@ type GetDeviceInfoByUserParams struct {
 	OsVersion      string
 }
 
-func (q *Queries) GetDeviceInfoByUser(ctx context.Context, arg GetDeviceInfoByUserParams) (string, error) {
+func (q *Queries) GetDeviceInfoByUser(ctx context.Context, arg GetDeviceInfoByUserParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, getDeviceInfoByUser,
 		arg.UserID,
 		arg.DeviceType,
@@ -86,7 +88,7 @@ func (q *Queries) GetDeviceInfoByUser(ctx context.Context, arg GetDeviceInfoByUs
 		arg.Os,
 		arg.OsVersion,
 	)
-	var id string
+	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }

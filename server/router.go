@@ -69,9 +69,9 @@ func registerAppRoutes(r *gin.Engine, h *HandlersGroup, m *middleware.Middleware
 	app.Use(m.UserAuthMiddleware(), m.ClaimsAuthMiddleware())
 
 	app.POST("transactions", h.Tx.NewTransaction)
-	app.GET("transactions", h.Tx.GetTransactionsByUserID)
+	app.GET("transactions", m.Paginate(), h.Tx.GetTransactionsByUserID)
 	app.GET("transactions/:id", h.Tx.GetTransactionByID)
-	app.POST("transactions/:id", h.Tx.UpdateTransaction) // I want full transaction update to be re-written not partiel
+	app.POST("transactions/:id", h.Tx.UpdateTransaction) // I want full transaction update to be re-written not partial
 	app.DELETE("transactions/:id", h.Tx.DeleteTransaction)
 
 }

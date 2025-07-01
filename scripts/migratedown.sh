@@ -5,4 +5,4 @@ if [ -f .env ]; then
 fi
 
 cd sql/schema
-goose turso $DATABASE_URL down
+goose turso $TURSO_DATABASE_URL down

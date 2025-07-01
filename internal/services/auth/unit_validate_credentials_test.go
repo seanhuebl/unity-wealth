@@ -21,7 +21,7 @@ func TestValidateCredentials(t *testing.T) {
 	ctx := context.Background()
 
 	dummyUser := database.GetUserByEmailRow{
-		ID:             uuid.NewString(),
+		ID:             uuid.New(),
 		HashedPassword: "hashedpassword",
 	}
 
@@ -42,7 +42,7 @@ func TestValidateCredentials(t *testing.T) {
 			getUserErr:             nil,
 			pwdHasherErr:           nil,
 			expectedErrorSubstring: "",
-			expectedUserID:         uuid.MustParse(dummyUser.ID),
+			expectedUserID:         dummyUser.ID,
 		},
 		{
 			name: "user not found",

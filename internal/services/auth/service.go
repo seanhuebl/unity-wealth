@@ -144,11 +144,11 @@ func (a *AuthService) Login(ctx context.Context, input models.LoginInput) (model
 		Valid: true,
 	}
 	err = queriesTx.CreateRefreshToken(ctx, database.CreateRefreshTokenParams{
-		ID:           uuid.NewString(),
+		ID:           uuid.New(),
 		TokenHash:    refreshHash,
 		ExpiresAt:    expiration,
-		UserID:       userID.String(),
-		DeviceInfoID: deviceID.String(),
+		UserID:       userID,
+		DeviceInfoID: deviceID,
 	})
 	if err != nil {
 		wrapped := fmt.Errorf("login: %w: %v", sentinels.ErrDBExecFailed, err)
@@ -192,16 +192,16 @@ func (a *AuthService) ValidateCredentials(ctx context.Context, input models.Logi
 	if err := a.PwdHasher.CheckPasswordHash(input.Password, user.HashedPassword); err != nil {
 		return uuid.Nil, fmt.Errorf("%w: %v", ErrInvalidCreds, err)
 	}
-	id, err := uuid.Parse(user.ID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("validate credentials: parse user ID: %w", err)
+
+	if user.ID == uuid.Nil {
+		return uuid.Nil, fmt.Errorf("validate credentials: nil user ID: %w", err)
 	}
-	return id, nil
+	return user.ID, nil
 }
 
 func (a *AuthService) HandleDeviceInfo(ctx context.Context, deviceQ database.DeviceQuerier, tokenQ database.TokenQuerier, userID uuid.UUID, info models.DeviceInfo) (uuid.UUID, error) {
 	foundDevice, err := deviceQ.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
-		UserID:         userID.String(),
+		UserID:         userID,
 		DeviceType:     info.DeviceType,
 		Browser:        info.Browser,
 		BrowserVersion: info.BrowserVersion,
@@ -211,8 +211,8 @@ func (a *AuthService) HandleDeviceInfo(ctx context.Context, deviceQ database.Dev
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			newDeviceID, err := deviceQ.CreateDeviceInfo(ctx, database.CreateDeviceInfoParams{
-				ID:             uuid.NewString(),
-				UserID:         userID.String(),
+				ID:             uuid.New(),
+				UserID:         userID,
 				DeviceType:     info.DeviceType,
 				Browser:        info.Browser,
 				BrowserVersion: info.BrowserVersion,
@@ -222,25 +222,25 @@ func (a *AuthService) HandleDeviceInfo(ctx context.Context, deviceQ database.Dev
 			if err != nil {
 				return uuid.Nil, fmt.Errorf("failed to create new device: %w", err)
 			}
-			return uuid.Parse(newDeviceID)
+			return newDeviceID, nil
 		}
 		return uuid.Nil, fmt.Errorf("failed to fetch device info: %w", err)
 	}
 
-	deviceID, err := uuid.Parse(foundDevice)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to parse device ID: %w", err)
+	if foundDevice == uuid.Nil {
+		return uuid.Nil, fmt.Errorf("nil device ID: %w", err)
+
 	}
 
 	if err := tokenQ.RevokeToken(ctx, database.RevokeTokenParams{
 		RevokedAt:    sql.NullTime{Time: time.Now(), Valid: true},
-		UserID:       userID.String(),
-		DeviceInfoID: deviceID.String(),
+		UserID:       userID,
+		DeviceInfoID: foundDevice,
 	}); err != nil {
 		return uuid.Nil, fmt.Errorf("failed to revoke token: %w", err)
 	}
 
-	return deviceID, nil
+	return foundDevice, nil
 }
 
 func (a *AuthService) GenerateTokens(userID uuid.UUID) (string, string, error) {

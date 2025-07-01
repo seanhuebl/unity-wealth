@@ -70,7 +70,7 @@ func (u *UserService) SignUp(ctx context.Context, input SignUpInput) error {
 
 	dbStart := time.Now()
 	if err = u.userQueries.CreateUser(ctx, database.CreateUserParams{
-		ID:             newID.String(),
+		ID:             newID,
 		Email:          input.Email,
 		HashedPassword: hashedPW,
 	}); err != nil {

@@ -5,18 +5,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 )
 
 type TransactionService interface {
-	CreateTransaction(ctx context.Context, userID string, req models.NewTxRequest) (*models.Tx, error)
-	UpdateTransaction(ctx context.Context, txnID, userID string, req models.NewTxRequest) (*models.Tx, error)
-	DeleteTransaction(ctx context.Context, txnID, userID string) error
-	GetTransactionByID(ctx context.Context, userID, txnID string) (*models.Tx, error)
-	ListUserTransactions(
-		ctx context.Context,
-		userID uuid.UUID,
-		cursorDate *string,
-		cursorID *string,
-		pageSize int64,
-	) (transactions []models.Tx, nextCursorDate, nextCursorID string, hasMoreData bool, err error)
+	CreateTransaction(ctx context.Context, userID uuid.UUID, req models.NewTxRequest) (*models.Tx, error)
+	UpdateTransaction(ctx context.Context, txnID, userID uuid.UUID, req models.NewTxRequest) (*models.Tx, error)
+	DeleteTransaction(ctx context.Context, txnID, userID uuid.UUID) error
+	GetTransactionByID(ctx context.Context, userID, txnID uuid.UUID) (*models.Tx, error)
+	ListUserTransactions(ctx context.Context, userID uuid.UUID, cursorToken string, pageSize int32) (transaction.ListTxResult, error)
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	authmocks "github.com/seanhuebl/unity-wealth/internal/mocks/auth"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
@@ -104,7 +105,7 @@ func TestSignup(t *testing.T) {
 								t.Logf("CreateUserParams mismatch (-want +got):\n%s", diff)
 								return false
 							}
-							return params.ID != ""
+							return params.ID != uuid.Nil
 						})).Return(tc.createUserError)
 					}
 				}

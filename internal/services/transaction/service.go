@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/constants"
+	"github.com/seanhuebl/unity-wealth/internal/cursor"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/models"
@@ -17,36 +18,42 @@ import (
 )
 
 type TransactionService struct {
-	txQueries database.TransactionQuerier
-	logger    *zap.Logger
+	txQueries    database.TransactionQuerier
+	cursorSigner *cursor.Signer
+	logger       *zap.Logger
 }
 
-func NewTransactionService(txQueries database.TransactionQuerier, logger *zap.Logger) *TransactionService {
-	return &TransactionService{txQueries: txQueries, logger: logger}
+func NewTransactionService(txQueries database.TransactionQuerier, cs *cursor.Signer, logger *zap.Logger) *TransactionService {
+	if logger == nil {
+		logger = zap.NewNop()
+	}
+	if cs == nil {
+		logger.Fatal("cursor signer is required")
+	}
+	return &TransactionService{txQueries: txQueries, cursorSigner: cs, logger: logger}
 }
 
-func (s *TransactionService) CreateTransaction(ctx context.Context, userID string, req models.NewTxRequest) (*models.Tx, error) {
+func (s *TransactionService) CreateTransaction(ctx context.Context, userID uuid.UUID, req models.NewTxRequest) (*models.Tx, error) {
 	start := time.Now()
-	reqID, _ := ctx.Value(constants.RequestIDKey).(string)
-	txID := uuid.NewString()
-
+	reqID := ctx.Value(constants.RequestIDKey).(uuid.UUID)
+	txID := uuid.New()
 	logger := s.logger.With(
-		zap.String("request_id", reqID),
-		zap.String("user_id", userID),
-		zap.String("tx_id", txID),
+		zap.Stringer("request_id", reqID),
+		zap.Stringer("user_id", userID),
+		zap.Stringer("tx_id", txID),
 	)
 
-	logger.Info(evtCreateTxAttempt,
+	logger.Debug(evtCreateTxAttempt,
 		zap.String("raw_date", req.Date),
 		zap.String("merchant", req.Merchant),
 		zap.Float64("amount", req.Amount),
-		zap.Int64("detailed_category_id", req.DetailedCategory),
+		zap.Int32("detailed_category_id", req.DetailedCategory),
 	)
 
 	parsedDate, err := time.Parse("2006-01-02", req.Date)
 
 	if err != nil {
-		baseErr := fmt.Errorf("%w: %v", ErrInvalidDateFormat, err)
+		baseErr := errors.Join(ErrInvalidDateFormat, err)
 		wrapped := fmt.Errorf("create tx: %w", baseErr)
 		logger.Warn(evtCreateTxInvalidDateFormat,
 			zap.String("raw_date", req.Date),
@@ -54,11 +61,10 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, userID strin
 		)
 		return nil, wrapped
 	}
-	dateStr := parsedDate.Format("2006-01-02")
 	tx := models.NewTransaction(
 		txID,
 		userID,
-		dateStr,
+		parsedDate,
 		req.Merchant,
 		req.Amount,
 		req.DetailedCategory,
@@ -68,14 +74,14 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, userID strin
 	err = s.txQueries.CreateTransaction(ctx, database.CreateTransactionParams{
 		ID:                 tx.ID,
 		UserID:             tx.UserID,
-		TransactionDate:    dateStr,
+		TransactionDate:    parsedDate,
 		Merchant:           tx.Merchant,
 		AmountCents:        helpers.ConvertToCents(req.Amount),
 		DetailedCategoryID: tx.DetailedCategory,
 	})
 	dbDuration := time.Since(dbStart)
 	if err != nil {
-		baseErr := fmt.Errorf("%w: %v", sentinels.ErrDBExecFailed, err)
+		baseErr := errors.Join(sentinels.ErrDBExecFailed, err)
 		wrapped := fmt.Errorf("create tx: %w", baseErr)
 		logger.Error(evtCreateTxDBExecFailed,
 			zap.Duration("db_duration_ms", dbDuration),
@@ -85,11 +91,11 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, userID strin
 	}
 	totalDuration := time.Since(start)
 	logger.Info(evtCreateTxSuccess,
-		zap.String("parsed_date", dateStr),
+		zap.Time("parsed_date", parsedDate),
 		zap.String("merchant", req.Merchant),
 		zap.Float64("amount", req.Amount),
 		zap.Int64("amount_cents", helpers.ConvertToCents(req.Amount)),
-		zap.Int64("detailed_category_id", req.DetailedCategory),
+		zap.Int32("detailed_category_id", req.DetailedCategory),
 		zap.Duration("db_duration_ms", dbDuration),
 		zap.Duration("total_duration_ms", totalDuration),
 	)
@@ -98,26 +104,26 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, userID strin
 
 }
 
-func (s *TransactionService) UpdateTransaction(ctx context.Context, txID, userID string, req models.NewTxRequest) (*models.Tx, error) {
+func (s *TransactionService) UpdateTransaction(ctx context.Context, txID, userID uuid.UUID, req models.NewTxRequest) (*models.Tx, error) {
 	start := time.Now()
-	reqID, _ := ctx.Value(constants.RequestIDKey).(string)
+	reqID, _ := ctx.Value(constants.RequestIDKey).(uuid.UUID)
 
 	logger := s.logger.With(
-		zap.String("request_id", reqID),
-		zap.String("user_id", userID),
-		zap.String("tx_id", txID),
+		zap.Stringer("request_id", reqID),
+		zap.Stringer("user_id", userID),
+		zap.Stringer("tx_id", txID),
 	)
 
-	logger.Info(evtUpdateTxAttempt,
+	logger.Debug(evtUpdateTxAttempt,
 		zap.String("raw_date", req.Date),
 		zap.String("merchant", req.Merchant),
 		zap.Float64("amount", req.Amount),
-		zap.Int64("detailed_category_id", req.DetailedCategory),
+		zap.Int32("detailed_category_id", req.DetailedCategory),
 	)
 
 	parsedDate, err := time.Parse("2006-01-02", req.Date)
 	if err != nil {
-		baseErr := fmt.Errorf("%w: %v", ErrInvalidDateFormat, err)
+		baseErr := errors.Join(ErrInvalidDateFormat, err)
 		wrapped := fmt.Errorf("update tx: %w", baseErr)
 
 		logger.Warn(evtUpdateTxInvalidDateFormat,
@@ -126,20 +132,21 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, txID, userID
 		)
 		return nil, wrapped
 	}
-	dateStr := parsedDate.Format("2006-01-02")
+
 	dbStart := time.Now()
+
 	txRow, err := s.txQueries.UpdateTransactionByID(ctx, database.UpdateTransactionByIDParams{
-		TransactionDate:    dateStr,
+		TransactionDate:    parsedDate,
 		Merchant:           req.Merchant,
 		AmountCents:        helpers.ConvertToCents(req.Amount),
 		DetailedCategoryID: req.DetailedCategory,
-		UpdatedAt:          sql.NullTime{Time: time.Now(), Valid: true},
+		UpdatedAt:          time.Now().UTC(),
 		ID:                 txID,
 	})
 	dbDuration := time.Since(dbStart)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			baseErr := fmt.Errorf("%w: %v", ErrTxNotFound, err)
+		if errors.Is(err, sql.ErrNoRows) {
+			baseErr := errors.Join(ErrTxNotFound, err)
 			wrapped := fmt.Errorf("update tx: %w", baseErr)
 
 			logger.Warn(evtUpdateTxNotFound,
@@ -149,7 +156,7 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, txID, userID
 			)
 			return nil, wrapped
 		}
-		baseErr := fmt.Errorf("%w: %v", sentinels.ErrDBExecFailed, err)
+		baseErr := errors.Join(sentinels.ErrDBExecFailed, err)
 		wrapped := fmt.Errorf("update tx: %w", baseErr)
 		logger.Error(evtUpdateTxDBExecFailed,
 			zap.Duration("db_duration_ms", dbDuration),
@@ -160,7 +167,7 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, txID, userID
 	tx := &models.Tx{
 		ID:               txRow.ID,
 		UserID:           userID,
-		Date:             dateStr,
+		Date:             parsedDate,
 		Merchant:         txRow.Merchant,
 		Amount:           helpers.CentsToDollars(txRow.AmountCents),
 		DetailedCategory: txRow.DetailedCategoryID,
@@ -168,28 +175,28 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, txID, userID
 
 	totalDuration := time.Since(start)
 	logger.Info(evtUpdateTxSuccess,
-		zap.String("parsed_date", tx.Date),
+		zap.Time("parsed_date", tx.Date),
 		zap.String("merchant", tx.Merchant),
 		zap.Float64("amount", tx.Amount),
 		zap.Int64("amount_cents", txRow.AmountCents),
-		zap.Int64("detailed_category_id", tx.DetailedCategory),
+		zap.Int32("detailed_category_id", tx.DetailedCategory),
 		zap.Duration("db_duration_ms", dbDuration),
 		zap.Duration("total_duration_ms", totalDuration),
 	)
 	return tx, nil
 }
 
-func (s *TransactionService) DeleteTransaction(ctx context.Context, userID, txID string) error {
+func (s *TransactionService) DeleteTransaction(ctx context.Context, userID, txID uuid.UUID) error {
 	start := time.Now()
-	reqID, _ := ctx.Value(constants.RequestIDKey).(string)
+	reqID, _ := ctx.Value(constants.RequestIDKey).(uuid.UUID)
 
 	logger := s.logger.With(
-		zap.String("request_id", reqID),
-		zap.String("user_id", userID),
-		zap.String("tx_id", txID),
+		zap.Stringer("request_id", reqID),
+		zap.Stringer("user_id", userID),
+		zap.Stringer("tx_id", txID),
 	)
 
-	logger.Info(evtDeleteTxAttempt)
+	logger.Debug(evtDeleteTxAttempt)
 
 	dbStart := time.Now()
 	_, err := s.txQueries.DeleteTransactionByID(ctx, database.DeleteTransactionByIDParams{
@@ -200,8 +207,8 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, userID, txID
 	dbDuration := time.Since(dbStart)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			baseErr := fmt.Errorf("%w: %v", ErrTxNotFound, err)
+		if errors.Is(err, sql.ErrNoRows) {
+			baseErr := errors.Join(ErrTxNotFound, err)
 			wrapped := fmt.Errorf("delete tx: %w", baseErr)
 
 			logger.Warn(evtDeleteTxNotFound,
@@ -210,7 +217,7 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, userID, txID
 			)
 			return wrapped
 		}
-		baseErr := fmt.Errorf("%w: %v", sentinels.ErrDBExecFailed, err)
+		baseErr := errors.Join(sentinels.ErrDBExecFailed, err)
 		wrapped := fmt.Errorf("delete tx: %w", baseErr)
 		logger.Error(evtCreateTxDBExecFailed,
 			zap.Duration("db_duration_ms", dbDuration),
@@ -226,32 +233,40 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, userID, txID
 	return nil
 }
 
-func (s *TransactionService) GetTransactionByID(ctx context.Context, userID, txID string) (*models.Tx, error) {
+func (s *TransactionService) GetTransactionByID(ctx context.Context, userID, txID uuid.UUID) (*models.Tx, error) {
 	start := time.Now()
-	reqID, _ := ctx.Value(constants.RequestIDKey).(string)
+	reqID, _ := ctx.Value(constants.RequestIDKey).(uuid.UUID)
 
 	logger := s.logger.With(
-		zap.String("request_id", reqID),
-		zap.String("user_id", userID),
-		zap.String("tx_id", txID),
+		zap.Stringer("request_id", reqID),
+		zap.Stringer("user_id", userID),
+		zap.Stringer("tx_id", txID),
 	)
 
-	logger.Info(evtGetTxAttempt)
+	if userID == uuid.Nil || txID == uuid.Nil {
+		wrapped := fmt.Errorf("get tx by ID: zero UUID: %w", sentinels.ErrInvalidID)
+		logger.Warn(evtGetTxZeroUUID,
+			zap.Error(wrapped),
+		)
+		return nil, wrapped
+	}
+
+	logger.Debug(evtGetTxAttempt)
 
 	dbStart := time.Now()
 	row, err := s.txQueries.GetUserTransactionByID(ctx, database.GetUserTransactionByIDParams{UserID: userID, ID: txID})
 	if err != nil {
-		if err == sql.ErrNoRows {
-			baseErr := fmt.Errorf("%w: %v", ErrTxNotFound, err)
-			wrapped := fmt.Errorf("get tx: %w", baseErr)
+		if errors.Is(err, sql.ErrNoRows) {
+			baseErr := errors.Join(ErrTxNotFound, err)
+			wrapped := fmt.Errorf("get tx by ID: %w", baseErr)
 
 			logger.Warn(evtGetTxNotFound,
 				zap.Error(wrapped),
 			)
 			return nil, wrapped
 		}
-		baseErr := fmt.Errorf("%w: %v", sentinels.ErrDBExecFailed, err)
-		wrapped := fmt.Errorf("get tx: %w", baseErr)
+		baseErr := errors.Join(sentinels.ErrDBExecFailed, err)
+		wrapped := fmt.Errorf("get tx by ID: %w", baseErr)
 		logger.Error(evtGetTxDBExecFailed,
 			zap.Error(wrapped),
 		)
@@ -269,11 +284,11 @@ func (s *TransactionService) GetTransactionByID(ctx context.Context, userID, txI
 	totalDuration := time.Since(start)
 
 	logger.Info(evtGetTxSuccess,
-		zap.String("parsed_date", txn.Date),
+		zap.Time("parsed_date", txn.Date),
 		zap.String("merchant", txn.Merchant),
 		zap.Float64("amount", txn.Amount),
 		zap.Int64("amount_cents", row.AmountCents),
-		zap.Int64("detailed_category_id", txn.DetailedCategory),
+		zap.Int32("detailed_category_id", txn.DetailedCategory),
 		zap.Duration("db_duration_ms", dbDuration),
 		zap.Duration("total_duration_ms", totalDuration),
 	)
@@ -281,68 +296,102 @@ func (s *TransactionService) GetTransactionByID(ctx context.Context, userID, txI
 	return txn, nil
 }
 
-func (s *TransactionService) ListUserTransactions(
-	ctx context.Context,
-	userID uuid.UUID,
-	cursorDate *string,
-	cursorID *string,
-	pageSize int64,
-) (transactions []models.Tx, nextCursorDate, nextCursorID string, hasMoreData bool, e error) {
+func (s *TransactionService) ListUserTransactions(ctx context.Context, userID uuid.UUID, cursorToken string, pageSize int32) (ListTxResult, error) {
+
 	start := time.Now()
-	reqID, _ := ctx.Value(constants.RequestIDKey).(string)
-	dateCursor, idCursor := "", ""
-	fetchType := "first_page"
+	reqID, _ := ctx.Value(constants.RequestIDKey).(uuid.UUID)
+	logger := s.logger.With(
+		zap.Stringer("request_id", reqID),
+		zap.Stringer("user_id", userID),
+		zap.Int32("page_size", pageSize),
+	)
 
-	if cursorDate != nil && cursorID != nil {
-		fetchType = "paginated"
-		dateCursor = *cursorDate
-		idCursor = *cursorID
+	logger.Debug(evtListTxsDecodeOpaque,
+		zap.String("cursor", cursorToken),
+	)
 
+	datePtr, curID, err := s.cursorSigner.DecodeCursorSigned(cursorToken)
+	if err != nil {
+		baseErr := errors.Join(sentinels.ErrInvalidCursor, err)
+		wrapped := fmt.Errorf("list txs: %w", baseErr)
+		logger.Error(evtListTxsDecodeFailed,
+			zap.String("cursor", cursorToken),
+			zap.Error(wrapped),
+		)
+		return ListTxResult{}, wrapped
+	}
+	var dateCursor time.Time
+	if datePtr != nil {
+		dateCursor = *datePtr
+	}
+	if !dateCursor.IsZero() {
+		logger = logger.With(
+			zap.Time("cursor_date", dateCursor),
+			zap.Stringer("cursor_id", curID),
+		)
+	}
+	if (datePtr == nil) != (curID == uuid.Nil) {
+		wrapped := fmt.Errorf("list txs: %w", ErrInconsistentToken)
+		logger.Error(evtListTxsInconToken,
+			zap.Stringer("cursor_id", curID),
+			zap.Time("cursor_date", dateCursor),
+			zap.Error(wrapped),
+		)
+		return ListTxResult{}, wrapped
 	}
 
-	logger := s.logger.With(
-		zap.String("request_id", reqID),
-		zap.String("user_id", userID.String()),
-		zap.Int64("page_size", pageSize),
-	)
+	idCursor := curID
+
+	fetchType := constants.FTFirst
+
+	if datePtr != nil && curID != uuid.Nil {
+		fetchType = constants.FTPag
+	}
 
 	logger.Info(evtListTxsAttempt,
 		zap.String("fetch_type", fetchType),
-		zap.String("cursor_date", dateCursor),
-		zap.String("cursor_id", idCursor))
+	)
 
 	if pageSize <= 0 {
-		baseErr := fmt.Errorf("%w: %v", ErrInvalidPageSize, errors.New("pageSize <= 0"))
-		wrapped := fmt.Errorf("list txs: %w", baseErr)
+		wrapped := fmt.Errorf("list txs: %w", ErrInvalidPageSizeNonPositive)
 		logger.Warn(evtListTxsPageSize,
 			zap.String("fetch_type", fetchType),
-			zap.String("cursor_date", dateCursor),
-			zap.String("cursor_id", idCursor),
 			zap.Error(wrapped),
 		)
-		return nil, "", "", false, wrapped
+		return ListTxResult{}, wrapped
 	}
+
+	clamped := false
+
+	if pageSize > constants.MaxPageSize {
+		// to identify potential dos attacks
+		logger.Warn(evtListTxsMaxPageSize,
+			zap.Int64("requested_page_size", int64(pageSize)),
+			zap.Int32("clamped_to", constants.MaxPageSize),
+			zap.Error(ErrPageSizeTooLarge),
+		)
+		clamped = true
+		pageSize = constants.MaxPageSize
+	}
+
 	fetchSize := pageSize + 1
 
 	logger.Info(evtListTxsFetchAttempt,
 		zap.String("fetch_type", fetchType),
-		zap.String("cursor_date", dateCursor),
-		zap.String("cursor_id", idCursor))
+		zap.Int32("page_size", pageSize))
 
 	var rowsFirst []database.GetUserTransactionsFirstPageRow
 	var rowsNext []database.GetUserTransactionsPaginatedRow
-	var err error
-
 	dbStart := time.Now()
 
-	if fetchType == "first_page" {
+	if fetchType == constants.FTFirst {
 		rowsFirst, err = s.txQueries.GetUserTransactionsFirstPage(ctx, database.GetUserTransactionsFirstPageParams{
-			UserID: userID.String(),
+			UserID: userID,
 			Limit:  fetchSize,
 		})
 	} else {
 		rowsNext, err = s.txQueries.GetUserTransactionsPaginated(ctx, database.GetUserTransactionsPaginatedParams{
-			UserID:          userID.String(),
+			UserID:          userID,
 			TransactionDate: dateCursor,
 			ID:              idCursor,
 			Limit:           fetchSize,
@@ -350,92 +399,71 @@ func (s *TransactionService) ListUserTransactions(
 	}
 	dbDuration := time.Since(dbStart)
 
-	if err == sql.ErrNoRows {
-		if fetchType == "first_page" {
-			logger.Warn(evtListTxsNotFound,
+	if errors.Is(err, sql.ErrNoRows) {
+		if fetchType == constants.FTFirst {
+			logger.Debug(evtListTxsNotFound,
 				zap.String("fetch_type", fetchType),
-				zap.String("cursor_date", dateCursor),
-				zap.String("cursor_id", idCursor),
-				zap.Duration("db_duration_ms", dbDuration),
+				zap.Duration("db_duration_ms", dbDuration), // custom zap encoder outputs ms
 			)
-			return []models.Tx{}, "", "", false, nil
+			return ListTxResult{}, nil
 		}
 		logger.Info(evtListTxsPaginatedempty,
 			zap.String("fetch_type", fetchType),
-			zap.String("cursor_date", dateCursor),
-			zap.String("cursor_id", idCursor),
 			zap.Duration("db_duration_ms", dbDuration),
 		)
-		return []models.Tx{}, "", "", false, nil
+		return ListTxResult{}, nil
 	}
 	if err != nil {
-		baseErr := fmt.Errorf("%w: %v", sentinels.ErrDBExecFailed, err)
+		baseErr := errors.Join(sentinels.ErrDBExecFailed, err)
 		wrapped := fmt.Errorf("list txs: %w", baseErr)
 		logger.Error(evtListTxsDBExecFailed,
 			zap.String("fetch_type", fetchType),
-			zap.String("cursor_date", dateCursor),
-			zap.String("cursor_id", idCursor),
 			zap.Duration("db_duration_ms", dbDuration),
 			zap.Error(wrapped),
 		)
-		return nil, "", "", false, wrapped
+		return ListTxResult{}, wrapped
 	}
 	txs := make([]models.Tx, 0, pageSize)
 
-	if fetchType == "first_page" {
-		for _, r := range rowsFirst {
-			txs = append(txs, MapToTx(
-				r.ID, r.UserID,
-				r.TransactionDate,
-				r.Merchant,
-				r.AmountCents,
-				r.DetailedCategoryID,
-			))
-		}
+	if fetchType == constants.FTFirst {
+		txs = helpers.AppendTxs(txs, helpers.SliceToTxRows(rowsFirst))
 	} else {
-		for _, r := range rowsNext {
-			txs = append(txs, MapToTx(
-				r.ID, r.UserID,
-				r.TransactionDate,
-				r.Merchant,
-				r.AmountCents,
-				r.DetailedCategoryID),
-			)
-		}
+		txs = helpers.AppendTxs(txs, helpers.SliceToTxRows(rowsNext))
 	}
 
-	if int64(len(txs)) > pageSize {
+	var hasMoreData bool
+	var nextCursor string
+
+	if int32(len(txs)) > pageSize {
 		hasMoreData = true
 		lastTxn := txs[pageSize-1]
-		nextCursorDate = lastTxn.Date
-		nextCursorID = lastTxn.ID
+		nextCursor, err = s.cursorSigner.EncodeCursorSigned(lastTxn.Date, lastTxn.ID)
+		if err != nil {
+			hasMoreData = false
+			baseErr := errors.Join(ErrEncodingFailed, err)
+			wrapped := fmt.Errorf("list txs: %w", baseErr)
+			logger.Error("cursor_encode_failed", zap.Error(wrapped))
+			return ListTxResult{}, wrapped
+		}
 		txs = txs[:pageSize]
-
 	} else {
 		hasMoreData = false
 	}
+
 	totalDuration := time.Since(start)
 	logger.Info(evtListTxsSuccess,
 		zap.String("fetch_type", fetchType),
 		zap.Int("number_of_records", len(txs)),
-		zap.String("next_cursor_date", nextCursorDate),
-		zap.String("next_cursor_id", nextCursorID),
+		zap.String("next_cursor", nextCursor),
 		zap.Bool("has_more_data", hasMoreData),
 		zap.Duration("db_duration_ms", dbDuration),
-		zap.Duration("total_duration_ms", totalDuration),
+		zap.Duration("total_duration_ms", totalDuration), // custom zap encoder outputs ms
 	)
-	return txs, nextCursorDate, nextCursorID, hasMoreData, nil
-}
-
-func MapToTx(id, userID, date, merchant string,
-	amountCents, detailedCategoryID int64,
-) models.Tx {
-	return models.Tx{
-		ID:               id,
-		UserID:           userID,
-		Date:             date,
-		Merchant:         merchant,
-		Amount:           helpers.CentsToDollars(amountCents),
-		DetailedCategory: detailedCategoryID,
-	}
+	return ListTxResult{
+		Transactions:  txs,
+		NextCursor:    nextCursor,
+		HasMoreData:   hasMoreData,
+		Clamped:       clamped,
+		EffectiveSize: pageSize,
+	}, nil
 }

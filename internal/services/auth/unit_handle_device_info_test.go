@@ -20,8 +20,8 @@ import (
 func TestHandleDeviceInfo(t *testing.T) {
 	ctx := context.Background()
 	userID := uuid.New()
-	validDeviceIDStr := uuid.NewString()
-	newDeviceIDStr := uuid.NewString()
+	validDeviceID := uuid.New()
+	newDeviceID := uuid.New()
 
 	inputDeviceInfo := models.DeviceInfo{
 		DeviceType:     "Mobile",
@@ -41,26 +41,26 @@ func TestHandleDeviceInfo(t *testing.T) {
 			name: "found valid device and token revoked",
 			setupMocks: func(deviceQ *dbmocks.DeviceQuerier, tokenQ *dbmocks.TokenQuerier) {
 				deviceQ.On("GetDeviceInfoByUser", ctx, database.GetDeviceInfoByUserParams{
-					UserID:         userID.String(),
+					UserID:         userID,
 					DeviceType:     inputDeviceInfo.DeviceType,
 					Browser:        inputDeviceInfo.Browser,
 					BrowserVersion: inputDeviceInfo.BrowserVersion,
 					Os:             inputDeviceInfo.Os,
 					OsVersion:      inputDeviceInfo.OsVersion,
-				}).Return(validDeviceIDStr, nil)
+				}).Return(validDeviceID, nil)
 
 				tokenQ.On("RevokeToken", ctx, mock.MatchedBy(func(params database.RevokeTokenParams) bool {
-					return params.UserID == userID.String() && params.DeviceInfoID == validDeviceIDStr
+					return params.UserID == userID && params.DeviceInfoID == validDeviceID
 				})).Return(nil)
 			},
 			expectedErrorSubstring: "",
-			expectedDeviceID:       uuid.MustParse(validDeviceIDStr),
+			expectedDeviceID:       validDeviceID,
 		},
 		{
 			name: "device not found and new device created",
 			setupMocks: func(deviceQ *dbmocks.DeviceQuerier, tokenQ *dbmocks.TokenQuerier) {
 				deviceQ.On("GetDeviceInfoByUser", ctx, database.GetDeviceInfoByUserParams{
-					UserID:         userID.String(),
+					UserID:         userID,
 					DeviceType:     inputDeviceInfo.DeviceType,
 					Browser:        inputDeviceInfo.Browser,
 					BrowserVersion: inputDeviceInfo.BrowserVersion,
@@ -69,19 +69,19 @@ func TestHandleDeviceInfo(t *testing.T) {
 				}).Return("", sql.ErrNoRows)
 
 				deviceQ.On("CreateDeviceInfo", ctx, mock.MatchedBy(func(params database.CreateDeviceInfoParams) bool {
-					return params.UserID == userID.String() &&
+					return params.UserID == userID &&
 						params.DeviceType == inputDeviceInfo.DeviceType &&
 						params.Browser == inputDeviceInfo.Browser
-				})).Return(newDeviceIDStr, nil)
+				})).Return(newDeviceID, nil)
 			},
 			expectedErrorSubstring: "",
-			expectedDeviceID:       uuid.MustParse(newDeviceIDStr),
+			expectedDeviceID:       newDeviceID,
 		},
 		{
 			name: "device not found and creation fails",
 			setupMocks: func(deviceQ *dbmocks.DeviceQuerier, tokenQ *dbmocks.TokenQuerier) {
 				deviceQ.On("GetDeviceInfoByUser", ctx, database.GetDeviceInfoByUserParams{
-					UserID:         userID.String(),
+					UserID:         userID,
 					DeviceType:     inputDeviceInfo.DeviceType,
 					Browser:        inputDeviceInfo.Browser,
 					BrowserVersion: inputDeviceInfo.BrowserVersion,
@@ -98,7 +98,7 @@ func TestHandleDeviceInfo(t *testing.T) {
 			name: "unexpected error fetching device info",
 			setupMocks: func(deviceQ *dbmocks.DeviceQuerier, tokenQ *dbmocks.TokenQuerier) {
 				deviceQ.On("GetDeviceInfoByUser", ctx, database.GetDeviceInfoByUserParams{
-					UserID:         userID.String(),
+					UserID:         userID,
 					DeviceType:     inputDeviceInfo.DeviceType,
 					Browser:        inputDeviceInfo.Browser,
 					BrowserVersion: inputDeviceInfo.BrowserVersion,
@@ -113,7 +113,7 @@ func TestHandleDeviceInfo(t *testing.T) {
 			name: "found device with invalid UUID",
 			setupMocks: func(deviceQ *dbmocks.DeviceQuerier, tokenQ *dbmocks.TokenQuerier) {
 				deviceQ.On("GetDeviceInfoByUser", ctx, database.GetDeviceInfoByUserParams{
-					UserID:         userID.String(),
+					UserID:         userID,
 					DeviceType:     inputDeviceInfo.DeviceType,
 					Browser:        inputDeviceInfo.Browser,
 					BrowserVersion: inputDeviceInfo.BrowserVersion,
@@ -128,16 +128,16 @@ func TestHandleDeviceInfo(t *testing.T) {
 			name: "failed to revoke token",
 			setupMocks: func(deviceQ *dbmocks.DeviceQuerier, tokenQ *dbmocks.TokenQuerier) {
 				deviceQ.On("GetDeviceInfoByUser", ctx, database.GetDeviceInfoByUserParams{
-					UserID:         userID.String(),
+					UserID:         userID,
 					DeviceType:     inputDeviceInfo.DeviceType,
 					Browser:        inputDeviceInfo.Browser,
 					BrowserVersion: inputDeviceInfo.BrowserVersion,
 					Os:             inputDeviceInfo.Os,
 					OsVersion:      inputDeviceInfo.OsVersion,
-				}).Return(validDeviceIDStr, nil)
+				}).Return(validDeviceID, nil)
 
 				tokenQ.On("RevokeToken", ctx, mock.MatchedBy(func(params database.RevokeTokenParams) bool {
-					return params.DeviceInfoID == validDeviceIDStr
+					return params.DeviceInfoID == validDeviceID
 				})).Return(errors.New("revoke error"))
 			},
 			expectedErrorSubstring: "failed to revoke token",

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
 	"github.com/seanhuebl/unity-wealth/cache"
 	authHandler "github.com/seanhuebl/unity-wealth/handlers/auth"
@@ -15,6 +16,7 @@ import (
 	txHandler "github.com/seanhuebl/unity-wealth/handlers/transaction"
 	userHandler "github.com/seanhuebl/unity-wealth/handlers/user"
 	"github.com/seanhuebl/unity-wealth/internal/config"
+	"github.com/seanhuebl/unity-wealth/internal/cursor"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/middleware"
 	"github.com/seanhuebl/unity-wealth/internal/models"
@@ -23,7 +25,6 @@ import (
 	userService "github.com/seanhuebl/unity-wealth/internal/services/user"
 	"github.com/seanhuebl/unity-wealth/logger"
 	"github.com/seanhuebl/unity-wealth/server"
-	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	"go.uber.org/zap"
 )
 
@@ -39,7 +40,16 @@ func main() {
 	}
 	defer appLogger.Sync()
 
-	db, err := sql.Open("libsql", os.Getenv("DATABASE_URL"))
+	secretB64 := os.Getenv("ENCODE_CURSOR_SECRET")
+	if secretB64 == "" {
+		log.Fatalf("ENCODE_CURSOR_SECRET not set")
+	}
+	signer, err := cursor.NewSigner(secretB64)
+	if err != nil {
+		appLogger.Fatal("failed to init cursor signer", zap.Error(err))
+	}
+	
+	db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
 	if err != nil {
 		appLogger.Fatal("unable to connect to database", zap.Error(err))
 	}

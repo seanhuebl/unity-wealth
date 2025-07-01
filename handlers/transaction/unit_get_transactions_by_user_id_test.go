@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -23,6 +24,7 @@ func TestGetTransactionsByUserID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	userID := uuid.New()
 	txID := uuid.New()
+	date, _ := time.Parse("2006-01-02", "2025-03-19")
 	successTests := []testmodels.GetAllTxByUserIDTestCase{
 		{
 			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
@@ -33,22 +35,22 @@ func TestGetTransactionsByUserID(t *testing.T) {
 					"data": map[string]interface{}{
 						"transactions": []interface{}{
 							map[string]interface{}{
-								"id":                txID.String(),
-								"user_id":           userID.String(),
-								"date":              "2025-03-19",
+								"id":                txID,
+								"user_id":           userID,
+								"date":              date,
 								"merchant":          "costco",
 								"amount":            127.89,
 								"detailed_category": 40,
 							},
 						},
-						"next_cursor_date": "2025-03-19",
-						"next_cursor_id":   txID.String(),
+						"next_cursor_date": date,
+						"next_cursor_id":   txID,
 						"has_more_data":    true,
 					},
 				},
 			},
-			CursorDate:    "2025-03-19",
-			CursorID:      txID.String(),
+			CursorDate:    date,
+			CursorID:      txID,
 			PageSize:      1,
 			FirstPageTest: true,
 			MoreData:      true,
@@ -62,9 +64,9 @@ func TestGetTransactionsByUserID(t *testing.T) {
 					"data": map[string]interface{}{
 						"transactions": []interface{}{
 							map[string]interface{}{
-								"id":                txID.String(),
-								"user_id":           userID.String(),
-								"date":              "2025-03-19",
+								"id":                txID,
+								"user_id":           userID,
+								"date":              date,
 								"merchant":          "costco",
 								"amount":            127.89,
 								"detailed_category": 40,
@@ -89,22 +91,22 @@ func TestGetTransactionsByUserID(t *testing.T) {
 					"data": map[string]interface{}{
 						"transactions": []interface{}{
 							map[string]interface{}{
-								"id":                txID.String(),
-								"user_id":           userID.String(),
-								"date":              "2025-03-19",
+								"id":                txID,
+								"user_id":           userID,
+								"date":              date,
 								"merchant":          "costco",
 								"amount":            127.89,
 								"detailed_category": 40,
 							},
 						},
-						"next_cursor_date": "2025-03-19",
-						"next_cursor_id":   txID.String(),
+						"next_cursor_date": date,
+						"next_cursor_id":   txID,
 						"has_more_data":    true,
 					},
 				},
 			},
-			CursorDate:    "2025-03-19",
-			CursorID:      txID.String(),
+			CursorDate:    date,
+			CursorID:      txID,
 			PageSize:      1,
 			FirstPageTest: false,
 			MoreData:      true,
@@ -118,9 +120,9 @@ func TestGetTransactionsByUserID(t *testing.T) {
 					"data": map[string]interface{}{
 						"transactions": []interface{}{
 							map[string]interface{}{
-								"id":                txID.String(),
-								"user_id":           userID.String(),
-								"date":              "2025-03-19",
+								"id":                txID,
+								"user_id":           userID,
+								"date":              date,
 								"merchant":          "costco",
 								"amount":            127.89,
 								"detailed_category": 40,
@@ -142,9 +144,9 @@ func TestGetTransactionsByUserID(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			txs := []models.Tx{
 				{
-					ID:               txID.String(),
-					UserID:           tc.UserID.String(),
-					Date:             "2025-03-19",
+					ID:               txID,
+					UserID:           tc.UserID,
+					Date:             date,
 					Merchant:         "costco",
 					Amount:           127.89,
 					DetailedCategory: 40,
@@ -219,7 +221,7 @@ func TestGetTransactionsByUserID(t *testing.T) {
 				},
 			},
 			CursorDate:        "2025-03-19",
-			CursorID:          txID.String(),
+			CursorID:          txID,
 			PageSize:          1,
 			FirstPageTest:     false,
 			GetTxPaginatedErr: errors.New("error getting transactions"),

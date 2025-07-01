@@ -193,7 +193,7 @@ func TestWarmCategoriesCache_TableDriven(t *testing.T) {
 					if err != nil {
 						t.Fatalf("failed to marshal primary category: %v", err)
 					}
-					fieldName := strconv.FormatInt(cat.ID, 10)
+					fieldName := strconv.FormatInt(int64(cat.ID), 10)
 					// Assume the value stored in Redis will be the JSON string.
 					expectedPrimaryMap[fieldName] = string(catJSON)
 				}
@@ -216,7 +216,7 @@ func TestWarmCategoriesCache_TableDriven(t *testing.T) {
 					if err != nil {
 						t.Fatalf("failed to marshal detailed category: %v", err)
 					}
-					fieldName := strconv.FormatInt(cat.ID, 10)
+					fieldName := strconv.FormatInt(int64(cat.ID), 10)
 					expectedDetailedMap[fieldName] = string(catJSON)
 				}
 				exp := mock.ExpectHSet("detailed_categories", expectedDetailedMap)

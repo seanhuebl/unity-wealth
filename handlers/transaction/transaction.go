@@ -12,10 +12,10 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 )
 
-func (h *Handler) NewTransaction(ctx *gin.Context) {
-	userID, err := helpers.GetUserID(ctx)
+func (h *Handler) NewTransaction(c *gin.Context) {
+	userID, err := helpers.GetUserID(c)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
+		c.JSON(http.StatusUnauthorized, gin.H{
 			"data": gin.H{
 				"error": "unauthorized",
 			},
@@ -25,8 +25,8 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 
 	var req models.NewTxRequest
 
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
 			"data": gin.H{
 				"error": "invalid request body",
 			},
@@ -34,9 +34,9 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 		return
 	}
 
-	txn, err := h.txSvc.CreateTransaction(ctx.Request.Context(), userID.String(), req)
+	txn, err := h.txSvc.CreateTransaction(c.Request.Context(), userID, req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"data": gin.H{
 				"error": "failed to create transaction",
 			},
@@ -46,16 +46,16 @@ func (h *Handler) NewTransaction(ctx *gin.Context) {
 
 	response := models.ConvertToResponse(txn)
 
-	ctx.JSON(http.StatusCreated, gin.H{
+	c.JSON(http.StatusCreated, gin.H{
 		"data": response,
 	})
 
 }
 
-func (h *Handler) GetTransactionsByUserID(ctx *gin.Context) {
-	userID, err := helpers.GetUserID(ctx)
+func (h *Handler) GetTransactionsByUserID(c *gin.Context) {
+	userID, err := helpers.GetUserID(c)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
+		c.JSON(http.StatusUnauthorized, gin.H{
 			"data": gin.H{
 				"error": "unauthorized",
 			},
@@ -63,84 +63,39 @@ func (h *Handler) GetTransactionsByUserID(ctx *gin.Context) {
 		return
 	}
 
-	cursorDateVal, exists := ctx.Get(string(constants.CursorDateKey))
-	if !exists {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"data": gin.H{
-				"error": "cursor date key not set in context",
-			},
-		})
-		return
-	}
-	cursorDateStr, ok := cursorDateVal.(string)
+	ctx := c.Request.Context()
+
+	curString, ok := ctx.Value(constants.CursorKey).(string)
 	if !ok {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"data": gin.H{
-				"error": "invalid cursor date",
+				"error": "invalid cursor string",
 			},
 		})
 		return
 	}
-	cursorIDVal, exists := ctx.Get(string(constants.CursorIDKey))
-	if !exists {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"data": gin.H{
-				"error": "cursor ID key not set in context",
-			},
-		})
-		return
-	}
-	cursorIDStr, ok := cursorIDVal.(string)
-	if !ok {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"data": gin.H{
-				"error": "invalid cursor ID",
-			},
-		})
-		return
-	}
-	pageSizeVal, exists := ctx.Get(string(constants.PageSizeKey))
-	if !exists {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"data": gin.H{
-				"error": "page_size not provided",
-			},
-		})
-		return
-	}
-	pageSizeInt, ok := pageSizeVal.(int)
-	if !ok || pageSizeInt <= 0 {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+
+	pageSize, ok := ctx.Value(constants.LimitKey).(int32)
+	if !ok || pageSize <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
 			"data": gin.H{
 				"error": "invalid page_size; must be > 0",
 			},
 		})
 		return
 	}
-	pageSize := int64(pageSizeInt)
 
-	var cursorDatePtr *string
-	if cursorDateStr != "" {
-		cursorDatePtr = &cursorDateStr
-	}
-
-	var cursorIDPtr *string
-	if cursorIDStr != "" {
-		cursorIDPtr = &cursorIDStr
-	}
-
-	transactions, nextCursorDate, nextCursorID, hasMoreData, err :=
-		h.txSvc.ListUserTransactions(ctx.Request.Context(), userID, cursorDatePtr, cursorIDPtr, pageSize)
+	transactions, err := h.txSvc.ListUserTransactions(c.Request.Context(), userID, curString, pageSize)
 	if err != nil {
 		if strings.Contains(err.Error(), "no transactions found") {
-			ctx.JSON(http.StatusOK, gin.H{
+			c.JSON(http.StatusOK, gin.H{
 				"data": gin.H{
 					"error": "transactions not found",
 				},
 			})
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"data": gin.H{
 				"error": "unable to get transactions",
 			},
@@ -148,20 +103,21 @@ func (h *Handler) GetTransactionsByUserID(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
-			"transactions":     transactions,
-			"next_cursor_date": nextCursorDate,
-			"next_cursor_id":   nextCursorID,
-			"has_more_data":    hasMoreData,
+			"transactions":   transactions.Transactions,
+			"next_cursor":    transactions.NextCursor,
+			"has_more_data":  transactions.HasMoreData,
+			"clamped":        transactions.Clamped,
+			"effective_size": transactions.EffectiveSize,
 		},
 	})
 }
 
-func (h *Handler) GetTransactionByID(ctx *gin.Context) {
-	userID, err := helpers.GetUserID(ctx)
+func (h *Handler) GetTransactionByID(c *gin.Context) {
+	userID, err := helpers.GetUserID(c)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
+		c.JSON(http.StatusUnauthorized, gin.H{
 			"data": gin.H{
 				"error": "unauthorized",
 			},
@@ -169,22 +125,22 @@ func (h *Handler) GetTransactionByID(ctx *gin.Context) {
 		return
 	}
 
-	txId, ok := helpers.BindUUIDParam(ctx, "id")
+	txId, ok := helpers.BindUUIDParam(c, "id")
 	if !ok {
 		// response is in the helper
 		return
 	}
-	txn, err := h.txSvc.GetTransactionByID(ctx.Request.Context(), userID.String(), txId.String())
+	txn, err := h.txSvc.GetTransactionByID(c.Request.Context(), userID, txId)
 	if err != nil {
 		if errors.Is(err, transaction.ErrTxNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{
+			c.JSON(http.StatusNotFound, gin.H{
 				"data": gin.H{
 					"error": "not found",
 				},
 			})
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"data": gin.H{
 				"error": "something went wrong",
 			},
@@ -194,15 +150,15 @@ func (h *Handler) GetTransactionByID(ctx *gin.Context) {
 
 	response := models.ConvertToResponse(txn)
 
-	ctx.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"data": response,
 	})
 }
 
-func (h *Handler) UpdateTransaction(ctx *gin.Context) {
-	userID, err := helpers.GetUserID(ctx)
+func (h *Handler) UpdateTransaction(c *gin.Context) {
+	userID, err := helpers.GetUserID(c)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
+		c.JSON(http.StatusUnauthorized, gin.H{
 			"data": gin.H{
 				"error": "unauthorized",
 			},
@@ -212,8 +168,8 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 
 	var req models.NewTxRequest
 
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
 			"data": gin.H{
 				"error": "invalid request body",
 			},
@@ -221,23 +177,23 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 		return
 	}
 
-	txId, ok := helpers.BindUUIDParam(ctx, "id")
+	txId, ok := helpers.BindUUIDParam(c, "id")
 	if !ok {
 		// response is in the helper
 		return
 	}
 
-	txn, err := h.txSvc.UpdateTransaction(ctx.Request.Context(), txId.String(), userID.String(), req)
+	txn, err := h.txSvc.UpdateTransaction(c.Request.Context(), txId, userID, req)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			ctx.JSON(http.StatusNotFound, gin.H{
+			c.JSON(http.StatusNotFound, gin.H{
 				"data": gin.H{
 					"error": "not found",
 				},
 			})
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"data": gin.H{
 				"error": "failed to update transaction",
 			},
@@ -247,15 +203,15 @@ func (h *Handler) UpdateTransaction(ctx *gin.Context) {
 
 	response := models.ConvertToResponse(txn)
 
-	ctx.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"data": response,
 	})
 }
 
-func (h *Handler) DeleteTransaction(ctx *gin.Context) {
-	userID, err := helpers.GetUserID(ctx)
+func (h *Handler) DeleteTransaction(c *gin.Context) {
+	userID, err := helpers.GetUserID(c)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
+		c.JSON(http.StatusUnauthorized, gin.H{
 			"data": gin.H{
 				"error": "unauthorized",
 			},
@@ -263,23 +219,23 @@ func (h *Handler) DeleteTransaction(ctx *gin.Context) {
 		return
 	}
 
-	txId, ok := helpers.BindUUIDParam(ctx, "id")
+	txId, ok := helpers.BindUUIDParam(c, "id")
 	if !ok {
 		// response is in the helper
 		return
 	}
-	err = h.txSvc.DeleteTransaction(ctx.Request.Context(), txId.String(), userID.String())
+	err = h.txSvc.DeleteTransaction(c.Request.Context(), txId, userID)
 
 	if err != nil {
 		if errors.Is(err, transaction.ErrTxNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{
+			c.JSON(http.StatusNotFound, gin.H{
 				"data": gin.H{
 					"error": "not found",
 				},
 			})
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"data": gin.H{
 				"error": "something went wrong",
 			},
@@ -287,7 +243,7 @@ func (h *Handler) DeleteTransaction(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
 			"transaction_deleted": "success",
 		},

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/models"
 )
 
@@ -28,11 +29,11 @@ func (r *RealTransactionalQuerier) BeginTx(ctx context.Context, opts *sql.TxOpti
 }
 
 // DeviceQuerier methods.
-func (r *RealTransactionalQuerier) GetDeviceInfoByUser(ctx context.Context, arg GetDeviceInfoByUserParams) (string, error) {
+func (r *RealTransactionalQuerier) GetDeviceInfoByUser(ctx context.Context, arg GetDeviceInfoByUserParams) (uuid.UUID, error) {
 	return r.q.GetDeviceInfoByUser(ctx, arg)
 }
 
-func (r *RealTransactionalQuerier) CreateDeviceInfo(ctx context.Context, arg CreateDeviceInfoParams) (string, error) {
+func (r *RealTransactionalQuerier) CreateDeviceInfo(ctx context.Context, arg CreateDeviceInfoParams) (uuid.UUID, error) {
 	return r.q.CreateDeviceInfo(ctx, arg)
 }
 
@@ -58,7 +59,7 @@ func (r *RealTransactionalQuerier) UpdateTransactionByID(ctx context.Context, ar
 	return r.q.UpdateTransactionByID(ctx, arg)
 }
 
-func (r *RealTransactionalQuerier) DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (string, error) {
+func (r *RealTransactionalQuerier) DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (uuid.UUID, error) {
 	return r.q.DeleteTransactionByID(ctx, arg)
 }
 
@@ -82,7 +83,7 @@ func (r *RealTransactionalQuerier) GetDetailedCategories(ctx context.Context) ([
 	return r.q.GetDetailedCategories(ctx)
 }
 
-func (r *RealTransactionalQuerier) GetDetailedCategoryID(ctx context.Context, name string) (int64, error) {
+func (r *RealTransactionalQuerier) GetDetailedCategoryID(ctx context.Context, name string) (int32, error) {
 	return r.q.GetDetailedCategoryID(ctx, name)
 }
 

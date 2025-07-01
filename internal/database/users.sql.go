@@ -7,15 +7,17 @@ package database
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const createUser = `-- name: CreateUser :exec
 INSERT INTO users (id, email, hashed_password)
-VALUES (?1, ?2, ?3)
+VALUES ($1, $2, $3)
 `
 
 type CreateUserParams struct {
-	ID             string
+	ID             uuid.UUID
 	Email          string
 	HashedPassword string
 }
@@ -29,11 +31,11 @@ const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id,
     hashed_password
 FROM users
-WHERE email = ?1
+WHERE email = $1
 `
 
 type GetUserByEmailRow struct {
-	ID             string
+	ID             uuid.UUID
 	HashedPassword string
 }
 

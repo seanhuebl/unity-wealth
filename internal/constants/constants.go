@@ -3,14 +3,17 @@ package constants
 type contextKey string
 
 const (
-	ClaimsKey     = contextKey("claims")
-	UserIDKey     = contextKey("userID")
-	RequestKey    = contextKey("httpRequest")
-	CursorDateKey = contextKey("cursor_date")
-	CursorIDKey   = contextKey("cursor_id")
-	PageSizeKey   = contextKey("page_size")
-	RequestIDKey  = contextKey("request_id")
+	ClaimsKey    = contextKey("claims")
+	UserIDKey    = contextKey("userID")
+	RequestKey   = contextKey("httpRequest")
+	CursorKey    = contextKey("cursor")
+	LimitKey     = contextKey("limit")
+	RequestIDKey = contextKey("request_id")
 
+	LayoutDate    = "2006-01-02"
+	FTFirst       = "first_page"
+	FTPag         = "paginated"
+	MaxPageSize   = int32(50)
 	CreateTxTable = `
 			CREATE TABLE IF NOT EXISTS transactions (
 			id TEXT PRIMARY KEY,

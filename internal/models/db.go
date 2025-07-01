@@ -6,64 +6,68 @@ package models
 
 import (
 	"database/sql"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
 type DetailedCategory struct {
-	ID                int64
+	ID                int32
 	Name              string
 	Description       string
-	PrimaryCategoryID int64
+	PrimaryCategoryID int32
 }
 
 type DeviceInfoLog struct {
-	ID             string
-	UserID         string
+	ID             uuid.UUID
+	UserID         uuid.UUID
 	DeviceType     string
 	Browser        string
 	BrowserVersion string
 	Os             string
 	OsVersion      string
-	AppInfo        sql.NullString
-	CreatedAt      sql.NullTime
-	LastUsedAt     sql.NullTime
+	AppInfo        pqtype.NullRawMessage
+	CreatedAt      time.Time
+	LastUsedAt     time.Time
 }
 
 type PrimaryCategory struct {
-	ID   int64
+	ID   int32
 	Name string
 }
 
 type RefreshToken struct {
-	ID           string
+	ID           uuid.UUID
+	DeviceInfoID uuid.UUID
+	UserID       uuid.UUID
 	TokenHash    string
-	CreatedAt    sql.NullTime
-	UpdatedAt    sql.NullTime
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 	ExpiresAt    sql.NullTime
 	RevokedAt    sql.NullTime
-	UserID       string
-	DeviceInfoID string
 }
 
 type Transaction struct {
-	ID                 string
-	UserID             string
-	TransactionDate    string
+	ID                 uuid.UUID
+	DetailedCategoryID int32
+	UserID             uuid.UUID
+	TransactionDate    time.Time
 	Merchant           string
 	AmountCents        int64
-	DetailedCategoryID int64
-	CreatedAt          sql.NullTime
-	UpdatedAt          sql.NullTime
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 type User struct {
-	ID                   string
+	ID                   uuid.UUID
 	Email                string
 	HashedPassword       string
-	RiskPreference       string
-	PlanType             string
+	RiskPreference       interface{}
+	PlanType             interface{}
 	StripeCustomerID     sql.NullString
 	StripeSubscriptionID sql.NullString
-	ScholarshipFlag      sql.NullInt64
-	CreatedAt            sql.NullTime
-	UpdatedAt            sql.NullTime
+	ScholarshipFlag      bool
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }

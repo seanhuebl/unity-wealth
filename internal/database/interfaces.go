@@ -3,7 +3,9 @@ package database
 import (
 	"context"
 	"database/sql"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/models"
 )
 
@@ -13,8 +15,8 @@ type UserQuerier interface {
 }
 
 type DeviceQuerier interface {
-	GetDeviceInfoByUser(ctx context.Context, arg GetDeviceInfoByUserParams) (string, error)
-	CreateDeviceInfo(ctx context.Context, arg CreateDeviceInfoParams) (string, error)
+	GetDeviceInfoByUser(ctx context.Context, arg GetDeviceInfoByUserParams) (uuid.UUID, error)
+	CreateDeviceInfo(ctx context.Context, arg CreateDeviceInfoParams) (uuid.UUID, error)
 }
 
 type TokenQuerier interface {
@@ -26,13 +28,13 @@ type TokenQuerier interface {
 type TransactionQuerier interface {
 	CreateTransaction(ctx context.Context, arg CreateTransactionParams) error
 	UpdateTransactionByID(ctx context.Context, arg UpdateTransactionByIDParams) (UpdateTransactionByIDRow, error)
-	DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (string, error)
+	DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (uuid.UUID, error)
 	GetUserTransactionsFirstPage(ctx context.Context, arg GetUserTransactionsFirstPageParams) ([]GetUserTransactionsFirstPageRow, error)
 	GetUserTransactionsPaginated(ctx context.Context, arg GetUserTransactionsPaginatedParams) ([]GetUserTransactionsPaginatedRow, error)
 	GetUserTransactionByID(ctx context.Context, arg GetUserTransactionByIDParams) (GetUserTransactionByIDRow, error)
 	GetPrimaryCategories(ctx context.Context) ([]models.PrimaryCategory, error)
 	GetDetailedCategories(ctx context.Context) ([]models.DetailedCategory, error)
-	GetDetailedCategoryID(ctx context.Context, name string) (int64, error)
+	GetDetailedCategoryID(ctx context.Context, name string) (int32, error)
 }
 
 type SqlTxQuerier interface {
@@ -46,4 +48,16 @@ type SqlTransactionalQuerier interface {
 	TokenQuerier
 	TransactionQuerier
 	UserQuerier
+}
+
+type TxRow interface {
+	GetFields() (id, userID uuid.UUID, date time.Time, merchant string, cents int64, catID int32)
+}
+
+func (r GetUserTransactionsFirstPageRow) GetFields() (uuid.UUID, uuid.UUID, time.Time, string, int64, int32) {
+	return r.ID, r.UserID, r.TransactionDate, r.Merchant, r.AmountCents, r.DetailedCategoryID
+}
+
+func (r GetUserTransactionsPaginatedRow) GetFields() (uuid.UUID, uuid.UUID, time.Time, string, int64, int32) {
+	return r.ID, r.UserID, r.TransactionDate, r.Merchant, r.AmountCents, r.DetailedCategoryID
 }

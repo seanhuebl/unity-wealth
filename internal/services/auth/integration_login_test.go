@@ -139,7 +139,7 @@ func TestLoginIntegration(t *testing.T) {
 			require.NotEmpty(t, response.JWTToken)
 			require.NotEmpty(t, response.RefreshToken)
 			deviceID, err := transactionalQ.GetDeviceInfoByUser(ctx, database.GetDeviceInfoByUserParams{
-				UserID:         userID.String(),
+				UserID:         userID,
 				DeviceType:     tc.xDeviceInfo.DeviceType,
 				Browser:        tc.xDeviceInfo.Browser,
 				BrowserVersion: tc.xDeviceInfo.BrowserVersion,
@@ -148,7 +148,7 @@ func TestLoginIntegration(t *testing.T) {
 			})
 			require.NoError(t, err)
 			getRefreshTokenEntry, err := tokenQ.GetRefreshByUserAndDevice(ctx, database.GetRefreshByUserAndDeviceParams{
-				UserID:       userID.String(),
+				UserID:       userID,
 				DeviceInfoID: deviceID,
 			})
 
@@ -172,7 +172,7 @@ func seedTestUserForAuth(t *testing.T, hasher auth.PasswordHasher, userQ databas
 	require.NoError(t, err)
 
 	err = userQ.CreateUser(context.Background(), database.CreateUserParams{
-		ID:             userID.String(),
+		ID:             userID,
 		Email:          email,
 		HashedPassword: hashedPwd,
 	})

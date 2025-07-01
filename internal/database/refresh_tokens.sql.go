@@ -9,6 +9,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/models"
 )
 
@@ -22,21 +23,21 @@ INSERT INTO refresh_tokens (
         device_info_id
     )
 VALUES (
-        ?1,
-        ?2,
-        ?3,
+        $1,
+        $2,
+        $3,
         NULL,
-        ?4,
-        ?5
+        $4,
+        $5
     )
 ` // #nosec
 
 type CreateRefreshTokenParams struct {
-	ID           string
+	ID           uuid.UUID
 	TokenHash    string
 	ExpiresAt    sql.NullTime
-	UserID       string
-	DeviceInfoID string
+	UserID       uuid.UUID
+	DeviceInfoID uuid.UUID
 }
 
 func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) error {
@@ -51,15 +52,15 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 }
 
 const getRefreshByUserAndDevice = `-- name: GetRefreshByUserAndDevice :one
-SELECT id, token_hash, created_at, updated_at, expires_at, revoked_at, user_id, device_info_id
+SELECT id, device_info_id, user_id, token_hash, created_at, updated_at, expires_at, revoked_at
 FROM refresh_tokens
-WHERE user_id = ?1
-    AND device_info_id = ?2
+WHERE user_id = $1
+    AND device_info_id = $2
 `
 
 type GetRefreshByUserAndDeviceParams struct {
-	UserID       string
-	DeviceInfoID string
+	UserID       uuid.UUID
+	DeviceInfoID uuid.UUID
 }
 
 func (q *Queries) GetRefreshByUserAndDevice(ctx context.Context, arg GetRefreshByUserAndDeviceParams) (models.RefreshToken, error) {
@@ -67,29 +68,29 @@ func (q *Queries) GetRefreshByUserAndDevice(ctx context.Context, arg GetRefreshB
 	var i models.RefreshToken
 	err := row.Scan(
 		&i.ID,
+		&i.DeviceInfoID,
+		&i.UserID,
 		&i.TokenHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
-		&i.UserID,
-		&i.DeviceInfoID,
 	)
 	return i, err
 }
 
 const revokeToken = `-- name: RevokeToken :exec
 UPDATE refresh_tokens
-SET revoked_at = ?1
-WHERE user_id = ?2
-    AND device_info_id = ?3
+SET revoked_at = $1
+WHERE user_id = $2
+    AND device_info_id = $3
     AND revoked_at IS NULL
 ` // #nosec
 
 type RevokeTokenParams struct {
 	RevokedAt    sql.NullTime
-	UserID       string
-	DeviceInfoID string
+	UserID       uuid.UUID
+	DeviceInfoID uuid.UUID
 }
 
 func (q *Queries) RevokeToken(ctx context.Context, arg RevokeTokenParams) error {

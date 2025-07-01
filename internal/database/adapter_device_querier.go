@@ -2,6 +2,8 @@ package database
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type RealDeviceQuerier struct {
@@ -14,10 +16,10 @@ func NewRealDevicequerier(q SqlTransactionalQuerier) DeviceQuerier {
 	}
 }
 
-func (rd *RealDeviceQuerier) GetDeviceInfoByUser(ctx context.Context, arg GetDeviceInfoByUserParams) (string, error) {
+func (rd *RealDeviceQuerier) GetDeviceInfoByUser(ctx context.Context, arg GetDeviceInfoByUserParams) (uuid.UUID, error) {
 	return rd.q.GetDeviceInfoByUser(ctx, arg)
 }
 
-func (rd *RealDeviceQuerier) CreateDeviceInfo(ctx context.Context, arg CreateDeviceInfoParams) (string, error) {
+func (rd *RealDeviceQuerier) CreateDeviceInfo(ctx context.Context, arg CreateDeviceInfoParams) (uuid.UUID, error) {
 	return rd.q.CreateDeviceInfo(ctx, arg)
 }

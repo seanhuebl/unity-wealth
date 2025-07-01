@@ -102,7 +102,7 @@ func TestIntegrationLogin(t *testing.T) {
 			if tc.expectedStatusCode == http.StatusOK {
 				if !tc.deviceFound {
 					deviceId, err := env.DeviceQ.GetDeviceInfoByUser(context.Background(), database.GetDeviceInfoByUserParams{
-						UserID:         userID.String(),
+						UserID:         userID,
 						DeviceType:     "Mobile",
 						Browser:        "Chrome",
 						BrowserVersion: "100.0",
@@ -111,8 +111,6 @@ func TestIntegrationLogin(t *testing.T) {
 					})
 					require.NoError(t, err)
 					require.NotEmpty(t, deviceId, "expected device ID to be not empty")
-					_, err = uuid.Parse(deviceId)
-					require.NoError(t, err)
 				}
 				result := w.Result()
 				defer result.Body.Close()

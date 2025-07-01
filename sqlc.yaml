@@ -1,17 +1,32 @@
 version: "2"
 
-plugins:
-  - name: sqlc-gen-go
-    wasm:
-      url: file:///home/codespace/sqlc-gen-go_1.5.0.wasm
-      sha256: "4ca52949f4dc04b55188439f5de0ae20af2a71e3534b87907f2a7f466bda59ec"
-
 sql:
-  - engine: "sqlite"
-    schema:  "sql/schema"
-    queries: "sql/queries"
-    codegen:
-      - plugin: sqlc-gen-go
+  - engine: postgresql
+    schema: sql/schema
+    queries: sql/queries
+
+    gen:
+      go:
+        sql_package: database/sql
+        package: database
         out: internal/database
-        options:
-          package: database
+
+overrides:
+  go:
+    overrides:
+      - db_type: pg_catalog.uuid
+        go_type:
+          import: github.com/google/uuid
+          type: UUID
+
+      - db_type: jsonb
+        go_type:
+          import: encoding/json
+          package: json
+          type: RawMessage
+
+      - db_type: citext
+        go_type: string               
+
+      - db_type: pg_catalog.timestamptz
+        go_type: time.Time

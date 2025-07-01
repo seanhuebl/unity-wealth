@@ -27,7 +27,7 @@ func TestLogin(t *testing.T) {
 	validUserID := uuid.New()
 	validDeviceID := uuid.New()
 	dummyUserRow := database.GetUserByEmailRow{
-		ID:             validUserID.String(),
+		ID:             validUserID,
 		HashedPassword: "hashedpassword",
 	}
 	tests := []struct {

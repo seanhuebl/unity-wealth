@@ -7,8 +7,9 @@ package database
 
 import (
 	"context"
-	"database/sql"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/models"
 )
 
@@ -21,16 +22,16 @@ INSERT INTO transactions (
         amount_cents,
         detailed_category_id
     )
-VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type CreateTransactionParams struct {
-	ID                 string
-	UserID             string
-	TransactionDate    string
+	ID                 uuid.UUID
+	UserID             uuid.UUID
+	TransactionDate    time.Time
 	Merchant           string
 	AmountCents        int64
-	DetailedCategoryID int64
+	DetailedCategoryID int32
 }
 
 func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) error {
@@ -47,19 +48,19 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 
 const deleteTransactionByID = `-- name: DeleteTransactionByID :one
 DELETE FROM transactions
-WHERE id = ?1
-    AND user_id = ?2
+WHERE id = $1
+    AND user_id = $2
 RETURNING id
 `
 
 type DeleteTransactionByIDParams struct {
-	ID     string
-	UserID string
+	ID     uuid.UUID
+	UserID uuid.UUID
 }
 
-func (q *Queries) DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (string, error) {
+func (q *Queries) DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, deleteTransactionByID, arg.ID, arg.UserID)
-	var id string
+	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }
@@ -100,12 +101,12 @@ func (q *Queries) GetDetailedCategories(ctx context.Context) ([]models.DetailedC
 const getDetailedCategoryID = `-- name: GetDetailedCategoryID :one
 SELECT id
 FROM detailed_categories
-WHERE name = ?1
+WHERE name = $1
 `
 
-func (q *Queries) GetDetailedCategoryID(ctx context.Context, name string) (int64, error) {
+func (q *Queries) GetDetailedCategoryID(ctx context.Context, name string) (int32, error) {
 	row := q.db.QueryRowContext(ctx, getDetailedCategoryID, name)
-	var id int64
+	var id int32
 	err := row.Scan(&id)
 	return id, err
 }
@@ -146,23 +147,23 @@ SELECT id,
     amount_cents,
     detailed_category_id
 FROM transactions
-WHERE user_id = ?1
-    AND id = ?2
+WHERE user_id = $1
+    AND id = $2
 LIMIT 1
 `
 
 type GetUserTransactionByIDParams struct {
-	UserID string
-	ID     string
+	UserID uuid.UUID
+	ID     uuid.UUID
 }
 
 type GetUserTransactionByIDRow struct {
-	ID                 string
-	UserID             string
-	TransactionDate    string
+	ID                 uuid.UUID
+	UserID             uuid.UUID
+	TransactionDate    time.Time
 	Merchant           string
 	AmountCents        int64
-	DetailedCategoryID int64
+	DetailedCategoryID int32
 }
 
 func (q *Queries) GetUserTransactionByID(ctx context.Context, arg GetUserTransactionByIDParams) (GetUserTransactionByIDRow, error) {
@@ -187,24 +188,24 @@ SELECT id,
     amount_cents,
     detailed_category_id
 FROM transactions
-WHERE user_id = ?1
+WHERE user_id = $1
 ORDER BY transaction_date ASC,
     id ASC
-LIMIT ?2
+LIMIT $2
 `
 
 type GetUserTransactionsFirstPageParams struct {
-	UserID string
-	Limit  int64
+	UserID uuid.UUID
+	Limit  int32
 }
 
 type GetUserTransactionsFirstPageRow struct {
-	ID                 string
-	UserID             string
-	TransactionDate    string
+	ID                 uuid.UUID
+	UserID             uuid.UUID
+	TransactionDate    time.Time
 	Merchant           string
 	AmountCents        int64
-	DetailedCategoryID int64
+	DetailedCategoryID int32
 }
 
 func (q *Queries) GetUserTransactionsFirstPage(ctx context.Context, arg GetUserTransactionsFirstPageParams) ([]GetUserTransactionsFirstPageRow, error) {
@@ -245,33 +246,33 @@ SELECT id,
     amount_cents,
     detailed_category_id
 FROM transactions
-WHERE user_id = ?1
+WHERE user_id = $1
     AND (
-        transaction_date > ?2
+        transaction_date > $2
         OR (
-            transaction_date = ?2
-            AND id < ?3
+            transaction_date = $2
+            AND id < $3
         )
     )
 ORDER BY transaction_date ASC,
     id ASC
-LIMIT ?4
+LIMIT $4
 `
 
 type GetUserTransactionsPaginatedParams struct {
-	UserID          string
-	TransactionDate string
-	ID              string
-	Limit           int64
+	UserID          uuid.UUID
+	TransactionDate time.Time
+	ID              uuid.UUID
+	Limit           int32
 }
 
 type GetUserTransactionsPaginatedRow struct {
-	ID                 string
-	UserID             string
-	TransactionDate    string
+	ID                 uuid.UUID
+	UserID             uuid.UUID
+	TransactionDate    time.Time
 	Merchant           string
 	AmountCents        int64
-	DetailedCategoryID int64
+	DetailedCategoryID int32
 }
 
 func (q *Queries) GetUserTransactionsPaginated(ctx context.Context, arg GetUserTransactionsPaginatedParams) ([]GetUserTransactionsPaginatedRow, error) {
@@ -311,12 +312,12 @@ func (q *Queries) GetUserTransactionsPaginated(ctx context.Context, arg GetUserT
 
 const updateTransactionByID = `-- name: UpdateTransactionByID :one
 UPDATE transactions
-SET transaction_date = ?1,
-    merchant = ?2,
-    amount_cents = ?3,
-    detailed_category_id = ?4,
-    updated_at = ?5
-WHERE id = ?6
+SET transaction_date = $1,
+    merchant = $2,
+    amount_cents = $3,
+    detailed_category_id = $4,
+    updated_at = $5
+WHERE id = $6
 RETURNING id,
     transaction_date,
     merchant,
@@ -325,20 +326,20 @@ RETURNING id,
 `
 
 type UpdateTransactionByIDParams struct {
-	TransactionDate    string
+	TransactionDate    time.Time
 	Merchant           string
 	AmountCents        int64
-	DetailedCategoryID int64
-	UpdatedAt          sql.NullTime
-	ID                 string
+	DetailedCategoryID int32
+	UpdatedAt          time.Time
+	ID                 uuid.UUID
 }
 
 type UpdateTransactionByIDRow struct {
-	ID                 string
-	TransactionDate    string
+	ID                 uuid.UUID
+	TransactionDate    time.Time
 	Merchant           string
 	AmountCents        int64
-	DetailedCategoryID int64
+	DetailedCategoryID int32
 }
 
 func (q *Queries) UpdateTransactionByID(ctx context.Context, arg UpdateTransactionByIDParams) (UpdateTransactionByIDRow, error) {

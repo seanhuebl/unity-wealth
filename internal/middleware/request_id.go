@@ -10,16 +10,16 @@ import (
 
 func (m *Middleware) RequestID() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		reqID := c.GetHeader("X-Request-ID")
-		if reqID == "" {
-			reqID = uuid.New().String()
+		raw := c.GetHeader("X-Request-ID")
+
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			id = uuid.New()
 		}
 
-		c.Writer.Header().Set("X-Request-ID", reqID)
-
-		ctx := context.WithValue(c.Request.Context(), constants.RequestIDKey, reqID)
+		c.Writer.Header().Set("X-Request-ID", id.String())
+		ctx := context.WithValue(c.Request.Context(), constants.RequestIDKey, id)
 		c.Request = c.Request.WithContext(ctx)
-
 		c.Next()
 	}
 }

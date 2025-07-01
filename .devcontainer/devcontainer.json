@@ -28,10 +28,38 @@
         "mtxr.sqltools-driver-sqlite",
         "mtxr.sqltools-driver-pg",
         "davidanson.vscode-markdownlint",
-        "daltonmenezes.aura-theme"
+        "daltonmenezes.aura-theme",
+        "ReneSaarsoo.sql-formatter-vsc"
       ],
       "settings": {
-        "workbench.colorTheme": "Aura Dark"
+        "workbench.colorTheme": "Aura Dark",
+        "editor.formatOnSave": true,
+        "go.formatTool": "goimports",
+        "editor.formatOnPaste": true,
+        "rest-client.environmentVariables": {
+          "$shared": {}
+        },
+        "workbench.editor.languageDetectionHints": {
+          "notebookEditors": false
+        },
+        "editor.cursorBlinking": "expand",
+        "editor.cursorSmoothCaretAnimation": "on",
+        "terminal.integrated.enableMultiLinePasteWarning": "never",
+        "github.copilot.enable": {
+          "*": false,
+          "plaintext": false,
+          "markdown": false,
+          "scminput": false,
+          "go": false
+        },
+        "github.copilot.nextEditSuggestions.enabled": true,
+        "github.copilot.advanced": {},
+        "sqltools.format": {},
+        "[sql]": {
+          "editor.defaultFormatter": "ReneSaarsoo.sql-formatter-vsc",
+          "editor.formatOnSave": true
+        },
+        "SQL-Formatter-VSCode.dialect": "postgresql"
       },
       "snippets": {
         "go-snippets.code-snippets": {
@@ -47,7 +75,7 @@
           "Base err": {
             "prefix": "base",
             "body": [
-              "baseErr := fmt.Errorf(\"%w: %v\", $1, err)$0"
+              "baseErr := errors.Join($1, err)$0"
             ],
             "description": "setting up base err for wrapping"
           },
