@@ -23,15 +23,15 @@ func TestGetTxByID(t *testing.T) {
 	tests := []testmodels.GetTxTestCase{
 		{
 			BaseHTTPTestCase: testfixtures.NilUserID,
-			TxID:             uuid.NewString(),
+			TxID:             uuid.New(),
 		},
 		{
 			BaseHTTPTestCase: testfixtures.InvalidUserID,
-			TxID:             uuid.NewString(),
+			TxID:             uuid.New(),
 		},
 		{
 			BaseHTTPTestCase: testfixtures.InvalidTxID,
-			TxID:             "INVALID",
+			TxIDRaw:          "INVALID",
 		},
 		{
 			BaseHTTPTestCase: testfixtures.EmptyTxID,
@@ -40,13 +40,18 @@ func TestGetTxByID(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
 			mockSvc := handlermocks.NewTransactionService(t)
+			t.Cleanup(func() {mockSvc.AssertExpectations(t)})
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest("GET", fmt.Sprintf("/transactions/%v", tc.TxID), nil)
 			h := htx.NewHandler(mockSvc)
+
+			idVal := testhelpers.PrepareTxID(tc.TxID, tc.TxIDRaw)
+
 			router := gin.New()
 			router.Use(func(c *gin.Context) {
-				c.Params = gin.Params{{Key: "id", Value: tc.TxID}}
+				c.Params = gin.Params{{Key: "id", Value: idVal}}
 				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
 				c.Next()
 			})
@@ -76,7 +81,7 @@ func TestGetTxByID(t *testing.T) {
 					},
 				},
 			},
-			TxID:  uuid.NewString(),
+			TxID:  uuid.New(),
 			TxErr: errors.New("error getting transaction"),
 		},
 		{
@@ -92,7 +97,7 @@ func TestGetTxByID(t *testing.T) {
 					},
 				},
 			},
-			TxID:  uuid.NewString(),
+			TxID:  uuid.New(),
 			TxErr: errors.New("transaction not found"),
 		},
 	}
@@ -100,9 +105,10 @@ func TestGetTxByID(t *testing.T) {
 	for _, tc := range txErrTests {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
 			w := httptest.NewRecorder()
 			mockSvc := handlermocks.NewTransactionService(t)
-
+			t.Cleanup(func() {mockSvc.AssertExpectations(t)})
 			req := httptest.NewRequest("GET", fmt.Sprintf("/transactions/%v", tc.TxID), nil)
 
 			mockSvc.On("GetTransactionByID", mock.Anything, tc.UserID.String(), tc.TxID).Return((*models.Tx)(nil), tc.TxErr)
@@ -111,7 +117,7 @@ func TestGetTxByID(t *testing.T) {
 
 			router := gin.New()
 			router.Use(func(c *gin.Context) {
-				c.Params = gin.Params{{Key: "id", Value: tc.TxID}}
+				c.Params = gin.Params{{Key: "id", Value: tc.TxID.String()}}
 				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
 				c.Next()
 			})

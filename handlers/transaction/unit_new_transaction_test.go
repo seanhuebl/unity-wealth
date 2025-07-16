@@ -19,6 +19,7 @@ import (
 )
 
 func TestNewTx(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	tests := []testmodels.CreateTxTestCase{
 		{
@@ -37,11 +38,11 @@ func TestNewTx(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-
+			t.Parallel()
 			w := httptest.NewRecorder()
-
 			mockSvc := handlermocks.NewTransactionService(t)
-
+			
+			t.Cleanup(func() { mockSvc.AssertExpectations(t) })
 			req := httptest.NewRequest("POST", "/transactions", bytes.NewBufferString(tc.ReqBody))
 			req.Header.Set("Content-Type", "application/json")
 
@@ -63,15 +64,17 @@ func TestNewTx(t *testing.T) {
 		})
 	}
 	t.Run("failed to create tx", func(t *testing.T) {
+		t.Parallel()
 		w := httptest.NewRecorder()
+		mockSvc := handlermocks.NewTransactionService(t)
 		expErr := errors.New("failed to create transaction")
 		userID := uuid.New()
-		mockSvc := handlermocks.NewTransactionService(t)
+		t.Cleanup(func() { mockSvc.AssertExpectations(t) })
 
 		req := httptest.NewRequest("POST", "/transactions", bytes.NewBufferString(`{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`))
 		req.Header.Set("Content-Type", "application/json")
 
-		mockSvc.On("CreateTransaction", mock.Anything, userID.String(), mock.Anything).Return(nil, expErr)
+		mockSvc.On("CreateTransaction", mock.Anything, userID, mock.Anything).Return(nil, expErr)
 		h := htx.NewHandler(mockSvc)
 
 		router := gin.New()
@@ -97,6 +100,5 @@ func TestNewTx(t *testing.T) {
 			},
 			actualResponse,
 		)
-		mockSvc.AssertExpectations(t)
 	})
 }

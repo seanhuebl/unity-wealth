@@ -20,24 +20,25 @@ import (
 )
 
 func TestUpdateTransaction(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	tests := []testmodels.UpdateTxTestCase{
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testfixtures.NilUserID,
-				TxID:             uuid.NewString(),
+				TxID:             uuid.New(),
 			},
 		},
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testfixtures.InvalidUserID,
-				TxID:             uuid.NewString(),
+				TxID:             uuid.New(),
 			},
 		},
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testfixtures.InvalidTxID,
-				TxID:             "INVALID",
+				TxIDRaw:          "INVALID",
 			},
 			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
 		},
@@ -52,15 +53,19 @@ func TestUpdateTransaction(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
 			mockSvc := handlermocks.NewTransactionService(t)
+			t.Cleanup(func() { mockSvc.AssertExpectations(t) })
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest("POST", fmt.Sprintf("/transactions/%v", tc.TxID), bytes.NewBufferString(tc.ReqBody))
 			req.Header.Set("Content-Type", "application/json")
 			h := htx.NewHandler(mockSvc)
 
+			idVal := testhelpers.PrepareTxID(tc.TxID, tc.TxIDRaw)
+
 			router := gin.New()
 			router.Use(func(c *gin.Context) {
-				c.Params = gin.Params{{Key: "id", Value: tc.TxID}}
+				c.Params = gin.Params{{Key: "id", Value: idVal}}
 				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
 				c.Next()
 			})
@@ -87,25 +92,28 @@ func TestUpdateTransaction(t *testing.T) {
 						},
 					},
 				},
-				TxID: uuid.NewString(),
+				TxID: uuid.New(),
 			},
 			ReqBody:     `{"date": "2025-03-05", "merchant": "costco", "amount": 125.98, "detailed_category": 40}`,
 			UpdateTxErr: errors.New("update err"),
 		},
 	}
 	for _, tc := range txErrTests {
+		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
 			mockSvc := handlermocks.NewTransactionService(t)
+			t.Cleanup(func() { mockSvc.AssertExpectations(t) })
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest("POST", fmt.Sprintf("/transactions/%v", tc.TxID), bytes.NewBufferString(tc.ReqBody))
 			req.Header.Set("Content-Type", "application/json")
 
-			mockSvc.On("UpdateTransaction", mock.Anything, tc.TxID, tc.UserID.String(), mock.AnythingOfType("models.NewTxRequest")).Return(nil, tc.UpdateTxErr)
+			mockSvc.On("UpdateTransaction", mock.Anything, tc.TxID, tc.UserID, mock.AnythingOfType("models.NewTxRequest")).Return(nil, tc.UpdateTxErr)
 			h := htx.NewHandler(mockSvc)
 
 			router := gin.New()
 			router.Use(func(c *gin.Context) {
-				c.Params = gin.Params{{Key: "id", Value: tc.TxID}}
+				c.Params = gin.Params{{Key: "id", Value: tc.TxID.String()}}
 				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
 				c.Next()
 			})

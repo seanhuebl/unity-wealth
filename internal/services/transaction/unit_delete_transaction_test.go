@@ -2,11 +2,13 @@ package transaction_test
 
 import (
 	"context"
-	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
+	"github.com/seanhuebl/unity-wealth/internal/cursor"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/sentinels"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
@@ -16,50 +18,55 @@ import (
 )
 
 func TestDeleteTransaction(t *testing.T) {
+	t.Parallel()
 	txnID := uuid.New()
 	userID := uuid.New()
 	ctx := context.Background()
 
 	tests := []struct {
-		name                    string
-		deleteErr               error
-		expectedDeleteErrSubStr string
+		name    string
+		repoRes driver.Result
+		repoErr error
+		wantErr error
 	}{
 		{
-			name:                    "delete successful",
-			deleteErr:               nil,
-			expectedDeleteErrSubStr: "",
+			name:    "delete successful",
+			repoRes: sqlmock.NewResult(0, 1),
+			repoErr: nil,
+			wantErr: nil,
 		},
 		{
-			name:                    "delete transaction failure",
-			deleteErr:               errors.New("delete error"),
-			expectedDeleteErrSubStr: sentinels.ErrDBExecFailed.Error(),
+			name:    "delete transaction failure",
+			repoRes: nil,
+			repoErr: errors.New("driver error"),
+			wantErr: sentinels.ErrDBExecFailed,
 		},
 		{
-			name:                    "no err but tx not found",
-			deleteErr:               sql.ErrNoRows,
-			expectedDeleteErrSubStr: transaction.ErrTxNotFound.Error(),
+			name:    "no err but tx not found",
+			repoRes: sqlmock.NewResult(0, 0),
+			repoErr: nil,
+			wantErr: transaction.ErrTxNotFound,
 		},
 	}
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			mockTxQ := dbmocks.NewTransactionQuerier(t)
-			nopLogger := zap.NewNop()
-			mockTxQ.On("DeleteTransactionByID", ctx, mock.AnythingOfType("database.DeleteTransactionByIDParams")).Return(txnID.String(), tc.deleteErr)
+			t.Cleanup(func() { mockTxQ.AssertExpectations(t) })
 
-			svc := transaction.NewTransactionService(mockTxQ, nopLogger)
+			mockTxQ.On("DeleteTransactionByID", mock.Anything, mock.AnythingOfType("database.DeleteTransactionByIDParams")).
+				Return(tc.repoRes, tc.repoErr).Once()
 
-			err := svc.DeleteTransaction(ctx, txnID.String(), userID.String())
+			svc := transaction.NewTransactionService(mockTxQ, &cursor.NoopSigner{}, zap.NewNop())
 
-			if tc.deleteErr != nil {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.expectedDeleteErrSubStr)
-				mockTxQ.AssertExpectations(t)
+			err := svc.DeleteTransaction(ctx, txnID, userID)
+
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
 			} else {
 				require.NoError(t, err)
-				mockTxQ.AssertExpectations(t)
 			}
-
 		})
 	}
 }

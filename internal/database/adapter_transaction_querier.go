@@ -2,8 +2,8 @@ package database
 
 import (
 	"context"
+	"database/sql"
 
-	"github.com/google/uuid"
 	"github.com/seanhuebl/unity-wealth/internal/models"
 )
 
@@ -25,7 +25,7 @@ func (rt *RealTransactionQuerier) UpdateTransactionByID(ctx context.Context, arg
 	return rt.q.UpdateTransactionByID(ctx, arg)
 }
 
-func (rt *RealTransactionQuerier) DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (uuid.UUID, error) {
+func (rt *RealTransactionQuerier) DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (sql.Result, error) {
 	return rt.q.DeleteTransactionByID(ctx, arg)
 }
 

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
+	"github.com/seanhuebl/unity-wealth/internal/constants"
+	"github.com/seanhuebl/unity-wealth/internal/cursor"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/seanhuebl/unity-wealth/internal/sentinels"
@@ -18,16 +18,13 @@ import (
 )
 
 func TestCreateTransaction(t *testing.T) {
+	t.Parallel()
 	userID := uuid.New()
-	txID := uuid.New()
 
 	tests := []struct {
-		name             string
-		req              models.NewTxRequest
-		dateErr          error
-		expDateErrSubStr string
-		txErr            error
-		expTxErrSubStr   string
+		name string
+		req  models.NewTxRequest
+		want error
 	}{
 		{
 			name: "unsuccessful tx, invalid date",
@@ -37,10 +34,7 @@ func TestCreateTransaction(t *testing.T) {
 				Amount:           145.56,
 				DetailedCategory: 40,
 			},
-			dateErr:          errors.New("date error"),
-			expDateErrSubStr: "invalid date format",
-			txErr:            nil,
-			expTxErrSubStr:   "",
+			want: transaction.ErrInvalidDateFormat,
 		},
 		{
 			name: "unsuccessful tx, create tx failure",
@@ -50,43 +44,53 @@ func TestCreateTransaction(t *testing.T) {
 				Amount:           145.56,
 				DetailedCategory: 40,
 			},
-			dateErr:          nil,
-			expDateErrSubStr: "",
-			txErr:            errors.New("tx error"),
-			expTxErrSubStr:   sentinels.ErrDBExecFailed.Error(),
+			want: sentinels.ErrDBExecFailed,
+		},
+		{
+			name: "success",
+			req: models.NewTxRequest{
+				Date:             "2025-02-24",
+				Merchant:         "Costco",
+				Amount:           145.56,
+				DetailedCategory: 40,
+			},
+			want: nil,
 		},
 	}
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := context.Background()
+			ctx = context.WithValue(ctx, constants.RequestIDKey, uuid.New())
+
 			mockTxQ := dbmocks.NewTransactionQuerier(t)
-			nopLogger := zap.NewNop()
-			if tc.dateErr == nil {
-				mockTxQ.On("CreateTransaction", ctx, mock.AnythingOfType("database.CreateTransactionParams")).Return(tc.txErr)
+			t.Cleanup(func() { mockTxQ.AssertExpectations(t) })
+
+			switch {
+			case tc.want == nil:
+
+				mockTxQ.On("CreateTransaction", mock.Anything, mock.AnythingOfType("database.CreateTransactionParams")).
+					Return(nil).Once()
+
+			case errors.Is(tc.want, sentinels.ErrDBExecFailed):
+
+				mockTxQ.On("CreateTransaction", mock.Anything, mock.AnythingOfType("database.CreateTransactionParams")).
+					Return(errors.New("driver error")).Once()
+
 			}
 
-			svc := transaction.NewTransactionService(mockTxQ, nopLogger)
-			tx, err := svc.CreateTransaction(ctx, userID.String(), tc.req)
+			svc := transaction.NewTransactionService(mockTxQ, &cursor.NoopSigner{}, zap.NewNop())
+			tx, err := svc.CreateTransaction(ctx, userID, tc.req)
 
-			if tc.expDateErrSubStr != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.expDateErrSubStr)
-				require.Nil(t, tx)
-			} else if tc.expTxErrSubStr != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.expTxErrSubStr)
-				require.Nil(t, tx)
-				mockTxQ.AssertExpectations(t)
-			} else {
+			if tc.want == nil {
 				require.NoError(t, err)
 				require.NotNil(t, tx)
-
-				expectedTx := models.NewTransaction(txID.String(), userID.String(), tc.req.Date, tc.req.Merchant, tc.req.Amount, tc.req.DetailedCategory)
-				if diff := cmp.Diff(expectedTx, tx, cmpopts.IgnoreFields(models.Tx{}, "ID")); diff != "" {
-					t.Errorf("transaction mismatch (-want +got)\n%s", diff)
-				}
-				mockTxQ.AssertExpectations(t)
+				return
 			}
+			require.Error(t, err)
+			require.ErrorIs(t, err, tc.want)
+			require.Nil(t, tx)
 
 		})
 	}

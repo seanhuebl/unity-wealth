@@ -12,16 +12,35 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/constants"
 )
 
+type Signer interface {
+	EncodeCursorSigned(time.Time, uuid.UUID) (string, error)
+	DecodeCursorSigned(string) (*time.Time, uuid.UUID, error)
+}
+
 type txCursor struct {
 	Date string    `json:"date"`
 	ID   uuid.UUID `json:"id"`
 }
 
-type Signer struct {
+type RealSigner struct {
 	key []byte
 }
 
-func NewSigner(rawbase64 string) (*Signer, error) {
+type NoopSigner struct{}
+
+func (*NoopSigner) EncodeCursorSigned(date time.Time, id uuid.UUID) (string, error) {
+	return "cursor", nil
+}
+
+func (*NoopSigner) DecodeCursorSigned(token string) (*time.Time, uuid.UUID, error) {
+	if token == "" {
+		return nil, uuid.Nil, nil
+	}
+	now := time.Now()
+	return &now, uuid.New(), nil
+}
+
+func NewSigner(rawbase64 string) (Signer, error) {
 	key, err := base64.StdEncoding.DecodeString(rawbase64)
 	if err != nil {
 		return nil, fmt.Errorf("cursor signer init: %w", err)
@@ -29,10 +48,10 @@ func NewSigner(rawbase64 string) (*Signer, error) {
 	if len(key) < 32 {
 		return nil, fmt.Errorf("cursor signer init: invalid key format")
 	}
-	return &Signer{key: key}, nil
+	return &RealSigner{key: key}, nil
 }
 
-func (s *Signer) EncodeCursorSigned(date time.Time, id uuid.UUID) (string, error) {
+func (s *RealSigner) EncodeCursorSigned(date time.Time, id uuid.UUID) (string, error) {
 	// protects against a situation where init isn't called
 	if len(s.key) == 0 {
 		return "", fmt.Errorf("encode cursor: signer key not set")
@@ -51,7 +70,7 @@ func (s *Signer) EncodeCursorSigned(date time.Time, id uuid.UUID) (string, error
 	return token, nil
 }
 
-func (s *Signer) DecodeCursorSigned(token string) (*time.Time, uuid.UUID, error) {
+func (s *RealSigner) DecodeCursorSigned(token string) (*time.Time, uuid.UUID, error) {
 	// protects against a situation where init isn't called
 	if len(s.key) == 0 {
 		return nil, uuid.Nil, fmt.Errorf("encode cursor: signer key not set")

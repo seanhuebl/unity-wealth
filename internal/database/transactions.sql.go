@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,7 +15,8 @@ import (
 )
 
 const createTransaction = `-- name: CreateTransaction :exec
-INSERT INTO transactions (
+INSERT INTO
+    transactions (
         id,
         user_id,
         transaction_date,
@@ -22,7 +24,8 @@ INSERT INTO transactions (
         amount_cents,
         detailed_category_id
     )
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES
+    ($1, $2, $3, $4, $5, $6)
 `
 
 type CreateTransactionParams struct {
@@ -46,11 +49,11 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 	return err
 }
 
-const deleteTransactionByID = `-- name: DeleteTransactionByID :one
+const deleteTransactionByID = `-- name: DeleteTransactionByID :execresult
 DELETE FROM transactions
-WHERE id = $1
+WHERE
+    id = $1
     AND user_id = $2
-RETURNING id
 `
 
 type DeleteTransactionByIDParams struct {
@@ -58,16 +61,15 @@ type DeleteTransactionByIDParams struct {
 	UserID uuid.UUID
 }
 
-func (q *Queries) DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, deleteTransactionByID, arg.ID, arg.UserID)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+func (q *Queries) DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteTransactionByID, arg.ID, arg.UserID)
 }
 
 const getDetailedCategories = `-- name: GetDetailedCategories :many
-SELECT id, name, description, primary_category_id
-FROM detailed_categories
+SELECT
+    id, name, description, primary_category_id
+FROM
+    detailed_categories
 `
 
 func (q *Queries) GetDetailedCategories(ctx context.Context) ([]models.DetailedCategory, error) {
@@ -99,9 +101,12 @@ func (q *Queries) GetDetailedCategories(ctx context.Context) ([]models.DetailedC
 }
 
 const getDetailedCategoryID = `-- name: GetDetailedCategoryID :one
-SELECT id
-FROM detailed_categories
-WHERE name = $1
+SELECT
+    id
+FROM
+    detailed_categories
+WHERE
+    name = $1
 `
 
 func (q *Queries) GetDetailedCategoryID(ctx context.Context, name string) (int32, error) {
@@ -112,8 +117,10 @@ func (q *Queries) GetDetailedCategoryID(ctx context.Context, name string) (int32
 }
 
 const getPrimaryCategories = `-- name: GetPrimaryCategories :many
-SELECT id, name
-FROM primary_categories
+SELECT
+    id, name
+FROM
+    primary_categories
 `
 
 func (q *Queries) GetPrimaryCategories(ctx context.Context) ([]models.PrimaryCategory, error) {
@@ -140,16 +147,20 @@ func (q *Queries) GetPrimaryCategories(ctx context.Context) ([]models.PrimaryCat
 }
 
 const getUserTransactionByID = `-- name: GetUserTransactionByID :one
-SELECT id,
+SELECT
+    id,
     user_id,
     transaction_date,
     merchant,
     amount_cents,
     detailed_category_id
-FROM transactions
-WHERE user_id = $1
+FROM
+    transactions
+WHERE
+    user_id = $1
     AND id = $2
-LIMIT 1
+LIMIT
+    1
 `
 
 type GetUserTransactionByIDParams struct {
@@ -181,17 +192,22 @@ func (q *Queries) GetUserTransactionByID(ctx context.Context, arg GetUserTransac
 }
 
 const getUserTransactionsFirstPage = `-- name: GetUserTransactionsFirstPage :many
-SELECT id,
+SELECT
+    id,
     user_id,
     transaction_date,
     merchant,
     amount_cents,
     detailed_category_id
-FROM transactions
-WHERE user_id = $1
-ORDER BY transaction_date ASC,
+FROM
+    transactions
+WHERE
+    user_id = $1
+ORDER BY
+    transaction_date ASC,
     id ASC
-LIMIT $2
+LIMIT
+    $2
 `
 
 type GetUserTransactionsFirstPageParams struct {
@@ -239,14 +255,17 @@ func (q *Queries) GetUserTransactionsFirstPage(ctx context.Context, arg GetUserT
 }
 
 const getUserTransactionsPaginated = `-- name: GetUserTransactionsPaginated :many
-SELECT id,
+SELECT
+    id,
     user_id,
     transaction_date,
     merchant,
     amount_cents,
     detailed_category_id
-FROM transactions
-WHERE user_id = $1
+FROM
+    transactions
+WHERE
+    user_id = $1
     AND (
         transaction_date > $2
         OR (
@@ -254,9 +273,11 @@ WHERE user_id = $1
             AND id < $3
         )
     )
-ORDER BY transaction_date ASC,
+ORDER BY
+    transaction_date ASC,
     id ASC
-LIMIT $4
+LIMIT
+    $4
 `
 
 type GetUserTransactionsPaginatedParams struct {
@@ -312,17 +333,21 @@ func (q *Queries) GetUserTransactionsPaginated(ctx context.Context, arg GetUserT
 
 const updateTransactionByID = `-- name: UpdateTransactionByID :one
 UPDATE transactions
-SET transaction_date = $1,
+SET
+    transaction_date = $1,
     merchant = $2,
     amount_cents = $3,
-    detailed_category_id = $4,
-    updated_at = $5
-WHERE id = $6
-RETURNING id,
+    detailed_category_id = $4
+WHERE
+    id = $5
+    AND user_id = $6
+RETURNING
+    id,
     transaction_date,
     merchant,
     amount_cents,
-    detailed_category_id
+    detailed_category_id,
+    updated_at
 `
 
 type UpdateTransactionByIDParams struct {
@@ -330,8 +355,8 @@ type UpdateTransactionByIDParams struct {
 	Merchant           string
 	AmountCents        int64
 	DetailedCategoryID int32
-	UpdatedAt          time.Time
 	ID                 uuid.UUID
+	UserID             uuid.UUID
 }
 
 type UpdateTransactionByIDRow struct {
@@ -340,6 +365,7 @@ type UpdateTransactionByIDRow struct {
 	Merchant           string
 	AmountCents        int64
 	DetailedCategoryID int32
+	UpdatedAt          time.Time
 }
 
 func (q *Queries) UpdateTransactionByID(ctx context.Context, arg UpdateTransactionByIDParams) (UpdateTransactionByIDRow, error) {
@@ -348,8 +374,8 @@ func (q *Queries) UpdateTransactionByID(ctx context.Context, arg UpdateTransacti
 		arg.Merchant,
 		arg.AmountCents,
 		arg.DetailedCategoryID,
-		arg.UpdatedAt,
 		arg.ID,
+		arg.UserID,
 	)
 	var i UpdateTransactionByIDRow
 	err := row.Scan(
@@ -358,6 +384,7 @@ func (q *Queries) UpdateTransactionByID(ctx context.Context, arg UpdateTransacti
 		&i.Merchant,
 		&i.AmountCents,
 		&i.DetailedCategoryID,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

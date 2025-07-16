@@ -14,6 +14,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/constants"
 	handlermocks "github.com/seanhuebl/unity-wealth/internal/mocks/handlers"
 	"github.com/seanhuebl/unity-wealth/internal/models"
+	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/seanhuebl/unity-wealth/internal/testfixtures"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
@@ -21,6 +22,7 @@ import (
 )
 
 func TestGetTransactionsByUserID(t *testing.T) {
+	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	userID := uuid.New()
 	txID := uuid.New()
@@ -43,14 +45,14 @@ func TestGetTransactionsByUserID(t *testing.T) {
 								"detailed_category": 40,
 							},
 						},
-						"next_cursor_date": date,
-						"next_cursor_id":   txID,
-						"has_more_data":    true,
+						"next_cursor":    "token",
+						"has_more_data":  true,
+						"clamped":        false,
+						"effective_size": 1,
 					},
 				},
 			},
-			CursorDate:    date,
-			CursorID:      txID,
+			NextCursor:    "token",
 			PageSize:      1,
 			FirstPageTest: true,
 			MoreData:      true,
@@ -72,9 +74,10 @@ func TestGetTransactionsByUserID(t *testing.T) {
 								"detailed_category": 40,
 							},
 						},
-						"next_cursor_date": "",
-						"next_cursor_id":   "",
-						"has_more_data":    false,
+						"next_cursor":    "",
+						"has_more_data":  false,
+						"clamped":        false,
+						"effective_size": 1,
 					},
 				},
 			},
@@ -99,14 +102,14 @@ func TestGetTransactionsByUserID(t *testing.T) {
 								"detailed_category": 40,
 							},
 						},
-						"next_cursor_date": date,
-						"next_cursor_id":   txID,
-						"has_more_data":    true,
+						"next_cursor":    "token",
+						"has_more_data":  true,
+						"clamped":        false,
+						"effective_size": 1,
 					},
 				},
 			},
-			CursorDate:    date,
-			CursorID:      txID,
+			NextCursor:    "token",
 			PageSize:      1,
 			FirstPageTest: false,
 			MoreData:      true,
@@ -128,9 +131,10 @@ func TestGetTransactionsByUserID(t *testing.T) {
 								"detailed_category": 40,
 							},
 						},
-						"next_cursor_date": "",
-						"next_cursor_id":   "",
-						"has_more_data":    false,
+						"next_cursor":    "",
+						"has_more_data":  false,
+						"clamped":        false,
+						"effective_size": 1,
 					},
 				},
 			},
@@ -142,6 +146,7 @@ func TestGetTransactionsByUserID(t *testing.T) {
 	for _, tc := range successTests {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
 			txs := []models.Tx{
 				{
 					ID:               txID,
@@ -154,15 +159,15 @@ func TestGetTransactionsByUserID(t *testing.T) {
 			}
 
 			mockSvc := handlermocks.NewTransactionService(t)
+			t.Cleanup(func() { mockSvc.AssertExpectations(t) })
 
 			mockSvc.On(
 				"ListUserTransactions",
 				mock.Anything,
 				tc.UserID,
-				testhelpers.StrPtr(tc.CursorDate),
-				testhelpers.StrPtr(tc.CursorID),
+				mock.AnythingOfType("string"),
 				int64(tc.PageSize)).
-				Return(txs, tc.CursorDate, tc.CursorID, tc.MoreData, nil).Once()
+				Return(transaction.ListTxResult{Transactions: txs}, nil).Once()
 
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest("GET", "/transactions", nil)
@@ -171,9 +176,9 @@ func TestGetTransactionsByUserID(t *testing.T) {
 
 			router := gin.New()
 			router.Use(func(c *gin.Context) {
-				c.Set(string(constants.CursorDateKey), tc.CursorDate)
-				c.Set(string(constants.CursorIDKey), tc.CursorID)
-				c.Set(string(constants.PageSizeKey), tc.PageSize)
+				c.Set(string(constants.CursorKey), tc.NextCursor)
+
+				c.Set(string(constants.LimitKey), tc.PageSize)
 				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
 				c.Next()
 			})
@@ -220,8 +225,7 @@ func TestGetTransactionsByUserID(t *testing.T) {
 					},
 				},
 			},
-			CursorDate:        "2025-03-19",
-			CursorID:          txID,
+			NextCursor:        "token",
 			PageSize:          1,
 			FirstPageTest:     false,
 			GetTxPaginatedErr: errors.New("error getting transactions"),
@@ -242,10 +246,11 @@ func TestGetTransactionsByUserID(t *testing.T) {
 		},
 	}
 	for _, tc := range errorTests {
+		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			tc := tc
-
+			t.Parallel()
 			mockSvc := handlermocks.NewTransactionService(t)
+			t.Cleanup(func() { mockSvc.AssertExpectations(t) })
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest("GET", "/transactions", nil)
 
@@ -256,8 +261,7 @@ func TestGetTransactionsByUserID(t *testing.T) {
 					"ListUserTransactions",
 					mock.Anything,
 					tc.UserID,
-					testhelpers.StrPtr(tc.CursorDate),
-					testhelpers.StrPtr(tc.CursorID),
+					tc.NextCursor,
 					int64(tc.PageSize)).
 					Return(nil, "", "", false, errors.New(tc.ExpectedError))
 			}
@@ -265,9 +269,8 @@ func TestGetTransactionsByUserID(t *testing.T) {
 			router := gin.New()
 
 			router.Use(func(c *gin.Context) {
-				c.Set(string(constants.CursorDateKey), tc.CursorDate)
-				c.Set(string(constants.CursorIDKey), tc.CursorID)
-				c.Set(string(constants.PageSizeKey), tc.PageSize)
+				c.Set(string(constants.CursorKey), tc.NextCursor)
+				c.Set(string(constants.LimitKey), tc.PageSize)
 				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
 				c.Next()
 			})

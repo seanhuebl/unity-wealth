@@ -3,14 +3,14 @@ package testhelpers
 import (
 	"context"
 	"database/sql"
-	"log"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 	httpauth "github.com/seanhuebl/unity-wealth/handlers/auth"
 	txhandler "github.com/seanhuebl/unity-wealth/handlers/transaction"
 	httpuser "github.com/seanhuebl/unity-wealth/handlers/user"
@@ -19,12 +19,17 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	"github.com/seanhuebl/unity-wealth/internal/interfaces"
+	"github.com/seanhuebl/unity-wealth/internal/middleware"
 	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/seanhuebl/unity-wealth/internal/services/auth"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/seanhuebl/unity-wealth/internal/services/user"
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
+	"github.com/seanhuebl/unity-wealth/migrations"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/zap"
 )
 
@@ -77,7 +82,9 @@ func SeedTestCategories(t *testing.T, db *sql.DB) {
 func SeedTestTransaction(t *testing.T, txQ database.TransactionQuerier, userID, txID uuid.UUID, req *models.NewTxRequest) {
 	ctx := context.Background()
 	date, err := time.Parse(constants.LayoutDate, req.Date)
-
+	if err != nil {
+		t.Fatalf("error parsing time")
+	}
 	err = txQ.CreateTransaction(ctx, database.CreateTransactionParams{
 		ID:                 txID,
 		UserID:             userID,
@@ -108,17 +115,62 @@ func SeedCreateTxTestData(t *testing.T, db *sql.DB, userQ database.UserQuerier, 
 	SeedTestUser(t, userQ, userID, false)
 	SeedTestCategories(t, db)
 }
+func newTestContainerWithDB(t *testing.T) *sql.DB {
+	t.Helper()
+	ctx := context.Background()
+
+	const migrationsDir = "sql/schema"
+	goose.SetBaseFS(migrations.FS)
+	require.NoError(t, goose.SetDialect("postgres"))
+
+	pgC, err := postgres.Run(ctx,
+		"postgres:16-alpine",
+		testcontainers.WithEnv(map[string]string{
+			"POSTGRES_PASSWORD": "secret",
+			"POSTGRES_USER":     "user",
+			"POSTGRES_DB":       "unity_test",
+		}),
+		testcontainers.WithWaitStrategy(
+			wait.ForListeningPort("5432/tcp"),
+		),
+	)
+	if err != nil {
+		_ = pgC.Terminate(ctx)
+		t.Fatalf("failed to start container: %v", err)
+	}
+
+	dsn, err := pgC.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		_ = pgC.Terminate(ctx)
+		t.Fatalf("cannot obtain DSN: %v", err)
+	}
+
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		_ = pgC.Terminate(ctx)
+		t.Fatalf("cannot open db: %v", err)
+	}
+
+	require.NoError(t, db.PingContext(ctx))
+
+	if err := goose.Up(db, migrationsDir); err != nil {
+		_ = pgC.Terminate(ctx)
+		t.Fatalf("goose up failed: %v", err)
+	}
+	cleanup := func() {
+		db.Close()
+		_ = pgC.Terminate(ctx)
+	}
+	t.Cleanup(cleanup)
+	return db
+}
 
 func SetupTestEnv(t *testing.T) *testmodels.TestEnv {
+
 	t.Helper()
 
-	db, err := sql.Open("sqlite3", ":memory:")
-	require.NoError(t, err)
+	db := newTestContainerWithDB(t)
 
-	_, err = db.Exec("PRAGMA foreign_keys = ON")
-	require.NoError(t, err)
-
-	CreateTestingSchema(t, db)
 	transactionalQ := database.NewRealTransactionalQuerier(database.New(db))
 	txQ := database.NewRealTransactionQuerier(transactionalQ)
 	userQ := database.NewRealUserQuerier(transactionalQ)
@@ -128,10 +180,10 @@ func SetupTestEnv(t *testing.T) *testmodels.TestEnv {
 	pwdHasher := auth.NewRealPwdHasher()
 	tokenGen := auth.NewRealTokenGenerator("your-secret-key", "your-issuer")
 	tokenExtractor := auth.NewRealTokenExtractor()
-	
+	mw := middleware.NewMiddleware(tokenGen, tokenExtractor)
 	secretB64 := os.Getenv("ENCODE_CURSOR_SECRET")
 	if secretB64 == "" {
-		log.Fatalf("ENCODE_CURSOR_SECRET not set")
+		secretB64 = "dGVzdC1zZWNyZXQ=" // "test-secret"
 	}
 	cs, _ := cursor.NewSigner(secretB64)
 
@@ -159,6 +211,7 @@ func SetupTestEnv(t *testing.T) *testmodels.TestEnv {
 			TxService:   txSvc,
 			UserService: userSvc,
 		},
+		Middleware: mw,
 		Handlers: &testmodels.Handlers{
 			AuthHandler: authH,
 			TxHandler:   txH,

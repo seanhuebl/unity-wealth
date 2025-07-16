@@ -5,9 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
+	"github.com/seanhuebl/unity-wealth/internal/constants"
+	"github.com/seanhuebl/unity-wealth/internal/cursor"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/models"
@@ -19,18 +22,27 @@ import (
 )
 
 func TestUpdateTransaction(t *testing.T) {
+	t.Parallel()
 	txID := uuid.New()
 	userID := uuid.New()
 	ctx := context.Background()
+	req := models.NewTxRequest{
+		Date:             "2025-02-24",
+		Merchant:         "costco",
+		Amount:           157.98,
+		DetailedCategory: 40,
+	}
 
 	tests := []struct {
-		name                  string
-		req                   models.NewTxRequest
-		dateErr               error
-		expectedDateErrSubStr string
-		txErr                 error
-		expectedTxErrSubStr   string
+		name string
+		req  models.NewTxRequest
+		want error
 	}{
+		{
+			name: "success",
+			req:  req,
+			want: nil,
+		},
 		{
 			name: "improper date format",
 			req: models.NewTxRequest{
@@ -39,79 +51,72 @@ func TestUpdateTransaction(t *testing.T) {
 				Amount:           157.98,
 				DetailedCategory: 40,
 			},
-			dateErr:               errors.New("date error"),
-			expectedDateErrSubStr: "invalid date format",
-			txErr:                 nil,
-			expectedTxErrSubStr:   "",
+			want: transaction.ErrInvalidDateFormat,
 		},
 		{
 			name: "update tx failure",
-			req: models.NewTxRequest{
-				Date:             "2025-02-24",
-				Merchant:         "costco",
-				Amount:           157.98,
-				DetailedCategory: 40,
-			},
-			dateErr:               nil,
-			expectedDateErrSubStr: "",
-			txErr:                 errors.New("tx error"),
-			expectedTxErrSubStr:   sentinels.ErrDBExecFailed.Error(),
+			req:  req,
+			want: sentinels.ErrDBExecFailed,
 		},
 		{
 			name: "transaction not found",
-			req: models.NewTxRequest{
-				Date:             "2025-02-24",
-				Merchant:         "costco",
-				Amount:           157.98,
-				DetailedCategory: 40,
-			},
-			dateErr:               nil,
-			expectedDateErrSubStr: "",
-			txErr:                 sql.ErrNoRows,
-			expectedTxErrSubStr:   transaction.ErrTxNotFound.Error(),
+			req:  req,
+			want: transaction.ErrTxNotFound,
 		},
 	}
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			mockTxQ := dbmocks.NewTransactionQuerier(t)
+			t.Cleanup(func() { mockTxQ.AssertExpectations(t) })
+
+			date, _ := time.Parse(constants.LayoutDate, tc.req.Date)
 
 			expectedRow := database.UpdateTransactionByIDRow{
-				ID:                 txID.String(),
-				TransactionDate:    tc.req.Date,
+				ID:                 txID,
+				TransactionDate:    date,
 				Merchant:           tc.req.Merchant,
 				AmountCents:        int64(tc.req.Amount * 100),
 				DetailedCategoryID: 40,
+				UpdatedAt:          time.Now(),
 			}
-			if tc.dateErr == nil {
-				returnRow := expectedRow
-				if tc.txErr != nil {
-					returnRow = database.UpdateTransactionByIDRow{}
-				}
-				mockTxQ.On("UpdateTransactionByID", ctx, mock.AnythingOfType("database.UpdateTransactionByIDParams")).Return(returnRow, tc.txErr)
+
+			switch {
+			case tc.want == nil:
+
+				mockTxQ.On("UpdateTransactionByID", mock.Anything, mock.AnythingOfType("database.UpdateTransactionByIDParams")).
+					Return(expectedRow, tc.want).Once()
+
+			case errors.Is(tc.want, sentinels.ErrDBExecFailed):
+
+				mockTxQ.On("UpdateTransactionByID", mock.Anything, mock.AnythingOfType("database.UpdateTransactionByIDParams")).
+					Return(database.UpdateTransactionByIDRow{}, errors.New("driver error")).Once()
+
+			case errors.Is(tc.want, transaction.ErrTxNotFound):
+
+				mockTxQ.On("UpdateTransactionByID", mock.Anything, mock.AnythingOfType("database.UpdateTransactionByIDParams")).
+					Return(database.UpdateTransactionByIDRow{}, sql.ErrNoRows).Once()
 			}
-			nopLogger := zap.NewNop()
-			svc := transaction.NewTransactionService(mockTxQ, nopLogger)
-			tx, err := svc.UpdateTransaction(ctx, txID.String(), userID.String(), tc.req)
-			if tc.expectedDateErrSubStr != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.expectedDateErrSubStr)
+
+			svc := transaction.NewTransactionService(mockTxQ, &cursor.RealSigner{}, zap.NewNop())
+			tx, err := svc.UpdateTransaction(ctx, txID, userID, tc.req)
+
+			if tc.want != nil {
+				require.ErrorIs(t, err, tc.want)
 				require.Nil(t, tx)
-			} else if tc.expectedTxErrSubStr != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.expectedTxErrSubStr)
-				require.Nil(t, tx)
-				mockTxQ.AssertExpectations(t)
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, tx)
 				mockTxQ.AssertExpectations(t)
 				expectedTx := &models.Tx{
 					ID:               expectedRow.ID,
-					UserID:           userID.String(),
+					UserID:           userID,
 					Date:             expectedRow.TransactionDate,
 					Merchant:         expectedRow.Merchant,
 					Amount:           float64(expectedRow.AmountCents) / 100.0,
 					DetailedCategory: expectedRow.DetailedCategoryID,
+					UpdatedAt:        expectedRow.UpdatedAt,
 				}
 				if diff := cmp.Diff(expectedTx, tx); diff != "" {
 					t.Errorf("transaction mismatch (-want +got)\n%s", diff)

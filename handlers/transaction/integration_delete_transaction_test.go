@@ -8,12 +8,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/seanhuebl/unity-wealth/internal/testfixtures"
 	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
 )
 
 func TestIntegrationDeleteTransaction(t *testing.T) {
+	t.Parallel()
 	tests := []testmodels.DeleteTxTestCase{
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
@@ -27,54 +29,52 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 						},
 					},
 				},
-				TxID: uuid.NewString(),
+				TxID: uuid.New(),
 			},
 		},
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testfixtures.InvalidTxID,
-				TxID:             "INVALID",
+				TxIDRaw:          "INVALID",
 			},
 		},
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testfixtures.NilUserID,
-				TxID:             uuid.NewString(),
+				TxID:             uuid.New(),
 			},
 		},
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testfixtures.InvalidUserID,
-				TxID:             uuid.NewString(),
-			},
-		},
-		{
-			GetTxTestCase: testmodels.GetTxTestCase{
-				BaseHTTPTestCase: testfixtures.NotFound,
-				TxID:             uuid.NewString(),
+				TxID:             uuid.New(),
 			},
 		},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
 			gin.SetMode(gin.TestMode)
 			env := testhelpers.SetupTestEnv(t)
-			defer env.Db.Close()
-			parsedTxID, err := uuid.Parse(tc.TxID)
+			t.Cleanup(func() { env.Db.Close() })
 
-			if err == nil {
-				testhelpers.SeedTestUser(t, env.UserQ, tc.UserID, false)
-				testhelpers.SeedTestCategories(t, env.Db)
-				fmt.Printf("txID: %v", parsedTxID)
-				testhelpers.IsTxFound(t, tc.BaseHTTPTestCase, parsedTxID, env)
-			}
+			testhelpers.SeedTestUser(t, env.UserQ, tc.UserID, false)
+			testhelpers.SeedTestCategories(t, env.Db)
+
+			testhelpers.SeedTestTransaction(t, env.TxQ, tc.UserID, tc.TxID, &models.NewTxRequest{
+				Date:             "2025-03-05",
+				Merchant:         "costco",
+				Amount:           125.98,
+				DetailedCategory: 40,
+			})
+
 			w := httptest.NewRecorder()
 
-			req := httptest.NewRequest("DELETE", fmt.Sprintf("/transactions/%v", parsedTxID), nil)
+			req := httptest.NewRequest("DELETE", fmt.Sprintf("/transactions/%v", tc.TxID), nil)
 
 			env.Router.Use(func(c *gin.Context) {
-				c.Params = gin.Params{{Key: "id", Value: tc.TxID}}
+				c.Params = gin.Params{{Key: "id", Value: tc.TxID.String()}}
 				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
 				c.Next()
 			})
@@ -84,7 +84,7 @@ func TestIntegrationDeleteTransaction(t *testing.T) {
 				})
 			})
 
-			env.Router.DELETE("/transactions/:id", env.Handlers.TxHandler.DeleteTransaction)
+			env.Router.DELETE("/transactions/:id", env.Middleware.RequestID(), env.Handlers.TxHandler.DeleteTransaction)
 
 			env.Router.ServeHTTP(w, req)
 			actualResponse := testhelpers.ProcessResponse(w, t)

@@ -29,23 +29,23 @@ func TestIntegrationGetTransactionByID(t *testing.T) {
 					},
 				},
 			},
-			TxID: uuid.NewString(),
+			TxID: uuid.New(),
 		},
 		{
 			BaseHTTPTestCase: testfixtures.NilUserID,
-			TxID:             uuid.NewString(),
+			TxID:             uuid.New(),
 		},
 		{
 			BaseHTTPTestCase: testfixtures.InvalidUserID,
-			TxID:             uuid.NewString(),
+			TxID:             uuid.New(),
 		},
 		{
 			BaseHTTPTestCase: testfixtures.InvalidTxID,
-			TxID:             "",
+			TxIDRaw:             "INVALID",
 		},
 		{
 			BaseHTTPTestCase: testfixtures.NotFound,
-			TxID:             uuid.NewString(),
+			TxID:             uuid.New(),
 		},
 	}
 
@@ -55,16 +55,16 @@ func TestIntegrationGetTransactionByID(t *testing.T) {
 			env := testhelpers.SetupTestEnv(t)
 			defer env.Db.Close()
 
-			if tc.TxID != "" {
+			if tc.TxIDRaw != "" {
 				testhelpers.SeedTestUser(t, env.UserQ, tc.UserID, false)
 				testhelpers.SeedTestCategories(t, env.Db)
-				testhelpers.IsTxFound(t, tc.BaseHTTPTestCase, uuid.MustParse(tc.TxID), env)
+				testhelpers.IsTxFound(t, tc.BaseHTTPTestCase, tc.TxID, env)
 			}
 			w := httptest.NewRecorder()
 
 			req := httptest.NewRequest("GET", fmt.Sprintf("/transactions/%v", tc.TxID), nil)
 
-			if tc.TxID == "" {
+			if tc.TxIDRaw == "" {
 				c, _ := gin.CreateTestContext(w)
 				c.Request = req
 				c.Params = gin.Params{{Key: "id", Value: ""}}

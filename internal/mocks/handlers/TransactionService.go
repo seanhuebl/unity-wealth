@@ -8,6 +8,8 @@ import (
 	models "github.com/seanhuebl/unity-wealth/internal/models"
 	mock "github.com/stretchr/testify/mock"
 
+	servicestransaction "github.com/seanhuebl/unity-wealth/internal/services/transaction"
+
 	uuid "github.com/google/uuid"
 )
 
@@ -17,7 +19,7 @@ type TransactionService struct {
 }
 
 // CreateTransaction provides a mock function with given fields: ctx, userID, req
-func (_m *TransactionService) CreateTransaction(ctx context.Context, userID string, req models.NewTxRequest) (*models.Tx, error) {
+func (_m *TransactionService) CreateTransaction(ctx context.Context, userID uuid.UUID, req models.NewTxRequest) (*models.Tx, error) {
 	ret := _m.Called(ctx, userID, req)
 
 	if len(ret) == 0 {
@@ -26,10 +28,10 @@ func (_m *TransactionService) CreateTransaction(ctx context.Context, userID stri
 
 	var r0 *models.Tx
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, models.NewTxRequest) (*models.Tx, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, models.NewTxRequest) (*models.Tx, error)); ok {
 		return rf(ctx, userID, req)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, models.NewTxRequest) *models.Tx); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, models.NewTxRequest) *models.Tx); ok {
 		r0 = rf(ctx, userID, req)
 	} else {
 		if ret.Get(0) != nil {
@@ -37,7 +39,7 @@ func (_m *TransactionService) CreateTransaction(ctx context.Context, userID stri
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, models.NewTxRequest) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, models.NewTxRequest) error); ok {
 		r1 = rf(ctx, userID, req)
 	} else {
 		r1 = ret.Error(1)
@@ -47,7 +49,7 @@ func (_m *TransactionService) CreateTransaction(ctx context.Context, userID stri
 }
 
 // DeleteTransaction provides a mock function with given fields: ctx, txnID, userID
-func (_m *TransactionService) DeleteTransaction(ctx context.Context, txnID string, userID string) error {
+func (_m *TransactionService) DeleteTransaction(ctx context.Context, txnID uuid.UUID, userID uuid.UUID) error {
 	ret := _m.Called(ctx, txnID, userID)
 
 	if len(ret) == 0 {
@@ -55,7 +57,7 @@ func (_m *TransactionService) DeleteTransaction(ctx context.Context, txnID strin
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
 		r0 = rf(ctx, txnID, userID)
 	} else {
 		r0 = ret.Error(0)
@@ -65,7 +67,7 @@ func (_m *TransactionService) DeleteTransaction(ctx context.Context, txnID strin
 }
 
 // GetTransactionByID provides a mock function with given fields: ctx, userID, txnID
-func (_m *TransactionService) GetTransactionByID(ctx context.Context, userID string, txnID string) (*models.Tx, error) {
+func (_m *TransactionService) GetTransactionByID(ctx context.Context, userID uuid.UUID, txnID uuid.UUID) (*models.Tx, error) {
 	ret := _m.Called(ctx, userID, txnID)
 
 	if len(ret) == 0 {
@@ -74,10 +76,10 @@ func (_m *TransactionService) GetTransactionByID(ctx context.Context, userID str
 
 	var r0 *models.Tx
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*models.Tx, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (*models.Tx, error)); ok {
 		return rf(ctx, userID, txnID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) *models.Tx); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) *models.Tx); ok {
 		r0 = rf(ctx, userID, txnID)
 	} else {
 		if ret.Get(0) != nil {
@@ -85,7 +87,7 @@ func (_m *TransactionService) GetTransactionByID(ctx context.Context, userID str
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
 		r1 = rf(ctx, userID, txnID)
 	} else {
 		r1 = ret.Error(1)
@@ -94,59 +96,36 @@ func (_m *TransactionService) GetTransactionByID(ctx context.Context, userID str
 	return r0, r1
 }
 
-// ListUserTransactions provides a mock function with given fields: ctx, userID, cursorDate, cursorID, pageSize
-func (_m *TransactionService) ListUserTransactions(ctx context.Context, userID uuid.UUID, cursorDate *string, cursorID *string, pageSize int64) ([]models.Tx, string, string, bool, error) {
-	ret := _m.Called(ctx, userID, cursorDate, cursorID, pageSize)
+// ListUserTransactions provides a mock function with given fields: ctx, userID, cursorToken, pageSize
+func (_m *TransactionService) ListUserTransactions(ctx context.Context, userID uuid.UUID, cursorToken string, pageSize int32) (servicestransaction.ListTxResult, error) {
+	ret := _m.Called(ctx, userID, cursorToken, pageSize)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListUserTransactions")
 	}
 
-	var r0 []models.Tx
-	var r1 string
-	var r2 string
-	var r3 bool
-	var r4 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, *string, *string, int64) ([]models.Tx, string, string, bool, error)); ok {
-		return rf(ctx, userID, cursorDate, cursorID, pageSize)
+	var r0 servicestransaction.ListTxResult
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, int32) (servicestransaction.ListTxResult, error)); ok {
+		return rf(ctx, userID, cursorToken, pageSize)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, *string, *string, int64) []models.Tx); ok {
-		r0 = rf(ctx, userID, cursorDate, cursorID, pageSize)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, int32) servicestransaction.ListTxResult); ok {
+		r0 = rf(ctx, userID, cursorToken, pageSize)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]models.Tx)
-		}
+		r0 = ret.Get(0).(servicestransaction.ListTxResult)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, *string, *string, int64) string); ok {
-		r1 = rf(ctx, userID, cursorDate, cursorID, pageSize)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string, int32) error); ok {
+		r1 = rf(ctx, userID, cursorToken, pageSize)
 	} else {
-		r1 = ret.Get(1).(string)
+		r1 = ret.Error(1)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, uuid.UUID, *string, *string, int64) string); ok {
-		r2 = rf(ctx, userID, cursorDate, cursorID, pageSize)
-	} else {
-		r2 = ret.Get(2).(string)
-	}
-
-	if rf, ok := ret.Get(3).(func(context.Context, uuid.UUID, *string, *string, int64) bool); ok {
-		r3 = rf(ctx, userID, cursorDate, cursorID, pageSize)
-	} else {
-		r3 = ret.Get(3).(bool)
-	}
-
-	if rf, ok := ret.Get(4).(func(context.Context, uuid.UUID, *string, *string, int64) error); ok {
-		r4 = rf(ctx, userID, cursorDate, cursorID, pageSize)
-	} else {
-		r4 = ret.Error(4)
-	}
-
-	return r0, r1, r2, r3, r4
+	return r0, r1
 }
 
 // UpdateTransaction provides a mock function with given fields: ctx, txnID, userID, req
-func (_m *TransactionService) UpdateTransaction(ctx context.Context, txnID string, userID string, req models.NewTxRequest) (*models.Tx, error) {
+func (_m *TransactionService) UpdateTransaction(ctx context.Context, txnID uuid.UUID, userID uuid.UUID, req models.NewTxRequest) (*models.Tx, error) {
 	ret := _m.Called(ctx, txnID, userID, req)
 
 	if len(ret) == 0 {
@@ -155,10 +134,10 @@ func (_m *TransactionService) UpdateTransaction(ctx context.Context, txnID strin
 
 	var r0 *models.Tx
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, models.NewTxRequest) (*models.Tx, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, models.NewTxRequest) (*models.Tx, error)); ok {
 		return rf(ctx, txnID, userID, req)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, models.NewTxRequest) *models.Tx); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, models.NewTxRequest) *models.Tx); ok {
 		r0 = rf(ctx, txnID, userID, req)
 	} else {
 		if ret.Get(0) != nil {
@@ -166,7 +145,7 @@ func (_m *TransactionService) UpdateTransaction(ctx context.Context, txnID strin
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, models.NewTxRequest) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, models.NewTxRequest) error); ok {
 		r1 = rf(ctx, txnID, userID, req)
 	} else {
 		r1 = ret.Error(1)

@@ -19,11 +19,11 @@ import (
 
 type TransactionService struct {
 	txQueries    database.TransactionQuerier
-	cursorSigner *cursor.Signer
+	cursorSigner cursor.Signer
 	logger       *zap.Logger
 }
 
-func NewTransactionService(txQueries database.TransactionQuerier, cs *cursor.Signer, logger *zap.Logger) *TransactionService {
+func NewTransactionService(txQueries database.TransactionQuerier, cs cursor.Signer, logger *zap.Logger) *TransactionService {
 	if logger == nil {
 		logger = zap.NewNop()
 	}
@@ -140,7 +140,6 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, txID, userID
 		Merchant:           req.Merchant,
 		AmountCents:        helpers.ConvertToCents(req.Amount),
 		DetailedCategoryID: req.DetailedCategory,
-		UpdatedAt:          time.Now().UTC(),
 		ID:                 txID,
 	})
 	dbDuration := time.Since(dbStart)
@@ -171,6 +170,7 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, txID, userID
 		Merchant:         txRow.Merchant,
 		Amount:           helpers.CentsToDollars(txRow.AmountCents),
 		DetailedCategory: txRow.DetailedCategoryID,
+		UpdatedAt:        txRow.UpdatedAt,
 	}
 
 	totalDuration := time.Since(start)
@@ -199,7 +199,7 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, userID, txID
 	logger.Debug(evtDeleteTxAttempt)
 
 	dbStart := time.Now()
-	_, err := s.txQueries.DeleteTransactionByID(ctx, database.DeleteTransactionByIDParams{
+	res, err := s.txQueries.DeleteTransactionByID(ctx, database.DeleteTransactionByIDParams{
 		ID:     txID,
 		UserID: userID,
 	})
@@ -207,16 +207,6 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, userID, txID
 	dbDuration := time.Since(dbStart)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			baseErr := errors.Join(ErrTxNotFound, err)
-			wrapped := fmt.Errorf("delete tx: %w", baseErr)
-
-			logger.Warn(evtDeleteTxNotFound,
-				zap.Duration("db_duration_ms", dbDuration),
-				zap.Error(wrapped),
-			)
-			return wrapped
-		}
 		baseErr := errors.Join(sentinels.ErrDBExecFailed, err)
 		wrapped := fmt.Errorf("delete tx: %w", baseErr)
 		logger.Error(evtCreateTxDBExecFailed,
@@ -225,6 +215,29 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, userID, txID
 		)
 		return wrapped
 	}
+
+	rowsAffected, rowsErr := res.RowsAffected()
+	if rowsErr != nil {
+		baseErr := errors.Join(sentinels.ErrDBExecFailed, rowsErr)
+		wrapped := fmt.Errorf("delete tx: %w", baseErr)
+		logger.Error(evtCreateTxDBExecFailed,
+			zap.Duration("db_duration_ms", dbDuration),
+			zap.Error(wrapped),
+		)
+		return wrapped
+	}
+
+	if rowsAffected == 0 {
+		baseErr := errors.Join(ErrTxNotFound, err)
+		wrapped := fmt.Errorf("delete tx: %w", baseErr)
+
+		logger.Warn(evtDeleteTxNotFound,
+			zap.Duration("db_duration_ms", dbDuration),
+			zap.Error(wrapped),
+		)
+		return wrapped
+	}
+
 	totalDuration := time.Since(start)
 	logger.Info(evtDeleteTxSuccess,
 		zap.Duration("db_duration_ms", dbDuration),
@@ -378,7 +391,7 @@ func (s *TransactionService) ListUserTransactions(ctx context.Context, userID uu
 
 	logger.Info(evtListTxsFetchAttempt,
 		zap.String("fetch_type", fetchType),
-		zap.Int32("page_size", pageSize))
+		zap.Int32("fetch_size", fetchSize))
 
 	var rowsFirst []database.GetUserTransactionsFirstPageRow
 	var rowsNext []database.GetUserTransactionsPaginatedRow
@@ -405,13 +418,13 @@ func (s *TransactionService) ListUserTransactions(ctx context.Context, userID uu
 				zap.String("fetch_type", fetchType),
 				zap.Duration("db_duration_ms", dbDuration), // custom zap encoder outputs ms
 			)
-			return ListTxResult{}, nil
+			return ListTxResult{}, ErrTxNotFound
 		}
 		logger.Info(evtListTxsPaginatedempty,
 			zap.String("fetch_type", fetchType),
 			zap.Duration("db_duration_ms", dbDuration),
 		)
-		return ListTxResult{}, nil
+		return ListTxResult{}, ErrTxNotFound
 	}
 	if err != nil {
 		baseErr := errors.Join(sentinels.ErrDBExecFailed, err)

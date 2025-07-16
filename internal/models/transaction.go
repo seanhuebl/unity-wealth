@@ -20,6 +20,7 @@ type Tx struct {
 	Merchant         string    `json:"merchant" binding:"required"`
 	Amount           float64   `json:"amount" binding:"required"`
 	DetailedCategory int32     `json:"detailed_category" binding:"required"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 type TxResponse struct {
@@ -48,4 +49,3 @@ func ConvertToResponse(txn *Tx) *TxResponse {
 		DetailedCategory: txn.DetailedCategory,
 	}
 }
-

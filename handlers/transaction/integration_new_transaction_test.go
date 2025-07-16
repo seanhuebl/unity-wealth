@@ -16,6 +16,7 @@ import (
 )
 
 func TestIntegrationNewTx(t *testing.T) {
+	t.Parallel()
 	tests := []testmodels.CreateTxTestCase{
 		{
 			BaseHTTPTestCase: testmodels.BaseHTTPTestCase{
@@ -63,20 +64,20 @@ func TestIntegrationNewTx(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
 			env := testhelpers.SetupTestEnv(t)
-			defer env.Db.Close()
-
+			t.Cleanup(func() { env.Db.Close() })
 			testhelpers.SeedTestUser(t, env.UserQ, tc.UserID, false)
 			testhelpers.SeedTestCategories(t, env.Db)
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest("POST", "/transactions", bytes.NewBufferString(tc.ReqBody))
 			req.Header.Set("Content-Type", "application/json")
-
 			env.Router.Use(func(c *gin.Context) {
 				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
+				c.Next()
 			})
 
-			env.Router.POST("/transactions", env.Handlers.TxHandler.NewTransaction)
+			env.Router.POST("/transactions", env.Middleware.RequestID(), env.Handlers.TxHandler.NewTransaction)
 			env.Router.ServeHTTP(w, req)
 			actualResponse := testhelpers.ProcessResponse(w, t)
 			testhelpers.CheckHTTPResponse(t, w, tc.ExpectedError, tc.ExpectedStatusCode, tc.ExpectedResponse, actualResponse)

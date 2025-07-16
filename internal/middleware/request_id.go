@@ -11,7 +11,6 @@ import (
 func (m *Middleware) RequestID() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		raw := c.GetHeader("X-Request-ID")
-
 		id, err := uuid.Parse(raw)
 		if err != nil {
 			id = uuid.New()

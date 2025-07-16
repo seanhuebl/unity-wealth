@@ -59,7 +59,7 @@ func (r *RealTransactionalQuerier) UpdateTransactionByID(ctx context.Context, ar
 	return r.q.UpdateTransactionByID(ctx, arg)
 }
 
-func (r *RealTransactionalQuerier) DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (uuid.UUID, error) {
+func (r *RealTransactionalQuerier) DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (sql.Result, error) {
 	return r.q.DeleteTransactionByID(ctx, arg)
 }
 

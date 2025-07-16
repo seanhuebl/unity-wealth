@@ -1,5 +1,7 @@
 package testhelpers
 
+import "github.com/google/uuid"
+
 func ConvertResponseFloatToInt(actualResponse map[string]interface{}) map[string]interface{} {
 
 	data, ok := actualResponse["data"].(map[string]interface{})
@@ -29,4 +31,12 @@ func StrPtr(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+func PrepareTxID(txID uuid.UUID, txIDRaw string) string {
+	idVal := txID.String()
+	if txIDRaw != "" {
+		idVal = txIDRaw
+	}
+	return idVal
 }

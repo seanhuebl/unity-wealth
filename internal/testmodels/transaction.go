@@ -1,8 +1,6 @@
 package testmodels
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 )
 
@@ -27,8 +25,9 @@ func (c CreateTxTestCase) BaseAccess() BaseHTTPTestCase {
 
 type GetTxTestCase struct {
 	BaseHTTPTestCase
-	TxID  uuid.UUID
-	TxErr error
+	TxID    uuid.UUID
+	TxErr   error
+	TxIDRaw string
 }
 
 func (g GetTxTestCase) BaseAccess() BaseHTTPTestCase {
@@ -55,8 +54,7 @@ func (d DeleteTxTestCase) BaseAccess() BaseHTTPTestCase {
 
 type GetAllTxByUserIDTestCase struct {
 	BaseHTTPTestCase
-	CursorDate        time.Time
-	CursorID          uuid.UUID
+	NextCursor        string
 	PageSize          int
 	GetFirstPageErr   error
 	GetTxPaginatedErr error

@@ -16,6 +16,8 @@ import (
 )
 
 func TestIntegrationUpdateTx(t *testing.T) {
+	t.Parallel()
+	txID := uuid.New()
 	tests := []testmodels.UpdateTxTestCase{
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
@@ -32,40 +34,45 @@ func TestIntegrationUpdateTx(t *testing.T) {
 						},
 					},
 				},
-				TxID: uuid.NewString(),
+				TxID:    txID,
+				TxIDRaw: txID.String(),
 			},
 			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 400.00, "detailed_category": 40}`,
 		},
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testfixtures.InvalidTxID,
-				TxID:             "",
+				TxIDRaw:          "INVALID",
 			},
 			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 400.00, "detailed_category": 40}`,
 		},
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testfixtures.InvalidReqBody,
-				TxID:             uuid.NewString(),
+				TxID:             txID,
+				TxIDRaw:          txID.String(),
 			},
 			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 400.00, "detailed_category": 40`,
 		},
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testfixtures.NilUserID,
-				TxID:             uuid.NewString(),
+				TxID:             txID,
+				TxIDRaw:          txID.String(),
 			},
 		},
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testfixtures.InvalidUserID,
-				TxID:             uuid.NewString(),
+				TxID:             txID,
+				TxIDRaw:          txID.String(),
 			},
 		},
 		{
 			GetTxTestCase: testmodels.GetTxTestCase{
 				BaseHTTPTestCase: testfixtures.NotFound,
-				TxID:             uuid.NewString(),
+				TxID:             txID,
+				TxIDRaw:          txID.String(),
 			},
 			ReqBody: `{"date": "2025-03-05", "merchant": "costco", "amount": 400.00, "detailed_category": 40}`,
 		},
@@ -81,7 +88,7 @@ func TestIntegrationUpdateTx(t *testing.T) {
 						},
 					},
 				},
-				TxID:  uuid.NewString(),
+				TxID:  uuid.New(),
 				TxErr: errors.New("failed to update transaction"),
 			},
 			ReqBody: `{"date": "1/1/1994", "merchant": "costco", "amount": 400.00, "detailed_category": 40}`,
@@ -93,16 +100,16 @@ func TestIntegrationUpdateTx(t *testing.T) {
 			env := testhelpers.SetupTestEnv(t)
 			defer env.Db.Close()
 
-			if tc.TxID != "" {
+			if tc.TxIDRaw != "" {
 				testhelpers.SeedTestUser(t, env.UserQ, tc.UserID, false)
 				testhelpers.SeedTestCategories(t, env.Db)
-				testhelpers.IsTxFound(t, tc.BaseHTTPTestCase, uuid.MustParse(tc.TxID), env)
+				testhelpers.IsTxFound(t, tc.BaseHTTPTestCase, tc.TxID, env)
 			}
 			w := httptest.NewRecorder()
 
 			req := httptest.NewRequest("POST", fmt.Sprintf("/transactions/%v", tc.TxID), bytes.NewBufferString(tc.ReqBody))
 			req.Header.Set("Content-Type", "application/json")
-			if tc.TxID == "" {
+			if tc.TxIDRaw == "" {
 				c, _ := gin.CreateTestContext(w)
 				c.Request = req
 				c.Params = gin.Params{{Key: "id", Value: ""}}

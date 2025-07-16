@@ -48,7 +48,7 @@ func main() {
 	if err != nil {
 		appLogger.Fatal("failed to init cursor signer", zap.Error(err))
 	}
-	
+
 	db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
 	if err != nil {
 		appLogger.Fatal("unable to connect to database", zap.Error(err))
@@ -80,7 +80,7 @@ func main() {
 	userQ := database.NewRealUserQuerier(transactionalQ)
 
 	authSvc := auth.NewAuthService(sqlTxQ, userQ, tokenGen, tokenExtract, pwdHasher, appLogger)
-	txnSvc := transaction.NewTransactionService(txQ, appLogger)
+	txnSvc := transaction.NewTransactionService(txQ, signer, appLogger)
 	userSvc := userService.NewUserService(cfg.Queries, pwdHasher, appLogger)
 
 	authHandler := authHandler.NewHandler(authSvc)

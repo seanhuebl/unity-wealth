@@ -2,230 +2,206 @@ package transaction_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
+	"github.com/seanhuebl/unity-wealth/internal/constants"
+	"github.com/seanhuebl/unity-wealth/internal/cursor"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
 	"github.com/seanhuebl/unity-wealth/internal/models"
 	"github.com/seanhuebl/unity-wealth/internal/sentinels"
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
-	"github.com/seanhuebl/unity-wealth/internal/testhelpers"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
 func TestListUserTransactions(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	tests := []struct {
-		name                         string
-		userID                       uuid.UUID
-		cursorDate                   *string
-		expectedCursorDate           string
-		cursorID                     *string
-		expectedHasMoreData          bool
-		pageSize                     int64
-		expectedPageSizeErrSubStr    string
-		txSliceLength                int
-		getFirstPageErr              error
-		expectedFirstPageErrSubStr   string
-		getTxPaginatedErr            error
-		expectedTxPaginatedErrSubStr string
+		name                string
+		userID              uuid.UUID
+		cursorToken         string
+		expectedCursorDate  string
+		expectedHasMoreData bool
+		pageSize            int32
+		txSliceLength       int
+		getFirstPageErr     error
+		getTxPaginatedErr   error
+		wantErr             error
 	}{
 		{
-			name:                       "first page, more data, success",
-			userID:                     uuid.New(),
-			cursorDate:                 nil,
-			expectedCursorDate:         "2025-02-05",
-			cursorID:                   nil,
-			expectedHasMoreData:        true,
-			pageSize:                   5,
-			txSliceLength:              10,
-			getFirstPageErr:            nil,
-			expectedFirstPageErrSubStr: "",
+			name:                "first page, more data, success",
+			userID:              uuid.New(),
+			cursorToken:         "",
+			expectedCursorDate:  "2025-02-05",
+			expectedHasMoreData: true,
+			pageSize:            5,
+			txSliceLength:       10,
+			getFirstPageErr:     nil,
 		},
 		{
-			name:                       "first page, no extra data, success",
-			userID:                     uuid.New(),
-			cursorDate:                 nil,
-			expectedCursorDate:         "",
-			cursorID:                   nil,
-			expectedHasMoreData:        false,
-			pageSize:                   5,
-			txSliceLength:              2,
-			getFirstPageErr:            nil,
-			expectedFirstPageErrSubStr: "",
+			name:                "first page, no extra data, success",
+			userID:              uuid.New(),
+			cursorToken:         "",
+			expectedCursorDate:  "",
+			expectedHasMoreData: false,
+			pageSize:            5,
+			txSliceLength:       2,
+			getFirstPageErr:     nil,
 		},
 		{
-			name:                         "paginated, more data, success",
-			userID:                       uuid.New(),
-			cursorDate:                   testhelpers.StrPtr("2025-02-01"),
-			expectedCursorDate:           "2025-02-10",
-			cursorID:                     testhelpers.StrPtr(uuid.NewString()),
-			expectedHasMoreData:          true,
-			pageSize:                     10,
-			txSliceLength:                15,
-			getTxPaginatedErr:            nil,
-			expectedTxPaginatedErrSubStr: "",
+			name:                "paginated, more data, success",
+			userID:              uuid.New(),
+			cursorToken:         "token",
+			expectedCursorDate:  "2025-02-10",
+			expectedHasMoreData: true,
+			pageSize:            10,
+			txSliceLength:       15,
+			getTxPaginatedErr:   nil,
 		},
 		{
-			name:                         "paginated, no extra data, success",
-			userID:                       uuid.New(),
-			cursorDate:                   testhelpers.StrPtr("2025-02-01"),
-			expectedCursorDate:           "",
-			cursorID:                     testhelpers.StrPtr(uuid.NewString()),
-			expectedHasMoreData:          false,
-			pageSize:                     10,
-			txSliceLength:                7,
-			getTxPaginatedErr:            nil,
-			expectedTxPaginatedErrSubStr: "",
+			name:                "paginated, no extra data, success",
+			userID:              uuid.New(),
+			cursorToken:         "token",
+			expectedCursorDate:  "",
+			expectedHasMoreData: false,
+			pageSize:            10,
+			txSliceLength:       7,
+			getTxPaginatedErr:   nil,
 		},
 		{
-			name:                       "first page, db error",
-			userID:                     uuid.New(),
-			cursorDate:                 nil,
-			expectedCursorDate:         "",
-			cursorID:                   nil,
-			pageSize:                   1,
-			getFirstPageErr:            errors.New("db error"),
-			expectedFirstPageErrSubStr: sentinels.ErrDBExecFailed.Error(),
+			name:               "first page, db error",
+			userID:             uuid.New(),
+			cursorToken:        "",
+			expectedCursorDate: "",
+			pageSize:           1,
+			getFirstPageErr:    errors.New("db error"),
+			wantErr:            sentinels.ErrDBExecFailed,
 		},
 		{
-			name:                       "first page, no transactions found",
-			userID:                     uuid.New(),
-			cursorDate:                 nil,
-			expectedCursorDate:         "",
-			cursorID:                   nil,
-			pageSize:                   1,
-			getFirstPageErr:            nil,
-			expectedFirstPageErrSubStr: transaction.ErrTxNotFound.Error(),
+			name:               "first page, no transactions found",
+			userID:             uuid.New(),
+			cursorToken:        "",
+			expectedCursorDate: "",
+			pageSize:           1,
+			getFirstPageErr:    nil,
+			wantErr:            transaction.ErrTxNotFound,
 		},
 		{
-			name:                         "paginated, db error",
-			userID:                       uuid.New(),
-			cursorDate:                   testhelpers.StrPtr("2025-02-01"),
-			expectedCursorDate:           "",
-			cursorID:                     testhelpers.StrPtr(uuid.NewString()),
-			pageSize:                     1,
-			getTxPaginatedErr:            errors.New("db error"),
-			expectedTxPaginatedErrSubStr: sentinels.ErrDBExecFailed.Error(),
+			name:               "paginated, db error",
+			userID:             uuid.New(),
+			cursorToken:        "token",
+			expectedCursorDate: "",
+			pageSize:           1,
+			getTxPaginatedErr:  errors.New("db error"),
+			wantErr:            sentinels.ErrDBExecFailed,
 		},
 		{
-			name:                         "paginated, no transactions found",
-			userID:                       uuid.New(),
-			cursorDate:                   testhelpers.StrPtr("2025-02-01"),
-			expectedCursorDate:           "",
-			cursorID:                     testhelpers.StrPtr(uuid.NewString()),
-			pageSize:                     1,
-			getTxPaginatedErr:            nil,
-			expectedTxPaginatedErrSubStr: transaction.ErrTxNotFound.Error(),
+			name:               "paginated, no transactions found",
+			userID:             uuid.New(),
+			cursorToken:        "token",
+			expectedCursorDate: "",
+			pageSize:           1,
+			getTxPaginatedErr:  nil,
+			wantErr:            transaction.ErrTxNotFound,
 		},
 		{
-			name:                      "page size <= 0",
-			userID:                    uuid.New(),
-			pageSize:                  0,
-			expectedPageSizeErrSubStr: transaction.ErrInvalidPageSize.Error(),
+			name:     "page size <= 0",
+			userID:   uuid.New(),
+			pageSize: 0,
+			wantErr:  transaction.ErrInvalidPageSizeNonPositive,
 		},
 	}
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			mockTxQ := dbmocks.NewTransactionQuerier(t)
 			fetchSize := tc.pageSize + 1
-			expectedTxs := make([]models.Tx, 0)
-			nopLogger := zap.NewNop()
-			svc := transaction.NewTransactionService(mockTxQ, nopLogger)
+			t.Cleanup(func() { mockTxQ.AssertExpectations(t) })
 
-			firstPageRows := generateFirstPageRows(tc.userID, tc.txSliceLength)
+			fetchType := constants.FTFirst
+			var nextRows []database.GetUserTransactionsPaginatedRow
+			var firstPageRows []database.GetUserTransactionsFirstPageRow
 
-			if len(firstPageRows) > int(fetchSize) {
-				firstPageRows = firstPageRows[:fetchSize]
-			}
-			if tc.cursorDate == nil || tc.cursorID == nil {
-				mockTxQ.On("GetUserTransactionsFirstPage", ctx, mock.AnythingOfType("database.GetUserTransactionsFirstPageParams")).Return(firstPageRows, tc.getFirstPageErr).Maybe()
-				transactions, nextCursorDate, nextCursorID, hasMoreData, err := svc.ListUserTransactions(ctx, tc.userID, tc.cursorDate, tc.cursorID, tc.pageSize)
-				if tc.expectedPageSizeErrSubStr != "" {
-					require.Error(t, err)
-					require.Contains(t, err.Error(), tc.expectedPageSizeErrSubStr)
-
-				} else if tc.getFirstPageErr != nil {
-					require.Error(t, err)
-					require.Contains(t, err.Error(), tc.expectedFirstPageErrSubStr)
-					mockTxQ.AssertExpectations(t)
-				} else {
-					require.NoError(t, err)
-					if len(firstPageRows) > int(tc.pageSize) {
-						firstPageRows = firstPageRows[:tc.pageSize]
-					}
-					for _, row := range firstPageRows {
-						expectedTxs = append(transactions, transaction.MapToTx(
-							row.ID,
-							row.UserID,
-							row.TransactionDate,
-							row.Merchant,
-							row.AmountCents,
-							row.DetailedCategoryID,
-						),
-						)
-					}
-					if hasMoreData == true {
-						require.NotEmpty(t, nextCursorID)
-					}
-					require.Equal(t, tc.expectedCursorDate, nextCursorDate)
-					require.Equal(t, tc.expectedHasMoreData, hasMoreData)
-
-					if diff := cmp.Diff(expectedTxs, transactions); diff != "" {
-						t.Errorf("transaction slice mismatch (-want +got)\n%s", diff)
-					}
-					mockTxQ.AssertExpectations(t)
+			switch {
+			case tc.cursorToken == "":
+				firstPageRows = generateFirstPageRows(tc.userID, tc.txSliceLength)
+				if len(firstPageRows) > int(fetchSize) {
+					firstPageRows = firstPageRows[:fetchSize]
 				}
-
-			} else {
-				nextRows := generatePaginatedRows(tc.userID, tc.txSliceLength)
+				switch {
+				case tc.wantErr == nil:
+					mockTxQ.On("GetUserTransactionsFirstPage", mock.Anything, mock.AnythingOfType("database.GetUserTransactionsFirstPageParams")).
+						Return(firstPageRows, nil).Once()
+				case errors.Is(tc.wantErr, sentinels.ErrDBExecFailed):
+					mockTxQ.On("GetUserTransactionsFirstPage", mock.Anything, mock.AnythingOfType("database.GetUserTransactionsFirstPageParams")).
+						Return(nil, errors.New("db error")).Once()
+				case errors.Is(tc.wantErr, transaction.ErrTxNotFound):
+					mockTxQ.On("GetUserTransactionsFirstPage", mock.Anything, mock.AnythingOfType("database.GetUserTransactionsFirstPageParams")).
+						Return(nil, sql.ErrNoRows).Once()
+				}
+			default:
+				fetchType = constants.FTPag
+				nextRows = generatePaginatedRows(tc.userID, tc.txSliceLength)
 				if len(nextRows) > int(fetchSize) {
 					nextRows = nextRows[:fetchSize]
 				}
-				mockTxQ.On("GetUserTransactionsPaginated", ctx, mock.AnythingOfType("database.GetUserTransactionsPaginatedParams")).Return(nextRows, tc.getTxPaginatedErr).Maybe()
-				transactions, nextCursorDate, nextCursorID, hasMoreData, err := svc.ListUserTransactions(ctx, tc.userID, tc.cursorDate, tc.cursorID, tc.pageSize)
-				if tc.expectedPageSizeErrSubStr != "" {
-					require.Error(t, err)
-					require.Contains(t, err.Error(), tc.expectedPageSizeErrSubStr)
-				} else if tc.getTxPaginatedErr != nil {
-					require.Error(t, err)
-					require.Contains(t, err.Error(), tc.expectedTxPaginatedErrSubStr)
-					mockTxQ.AssertExpectations(t)
-				} else {
-					require.NoError(t, err)
-					if len(nextRows) > int(tc.pageSize) {
-						nextRows = nextRows[:tc.pageSize]
-					}
-					for _, row := range nextRows {
-						expectedTxs = append(transactions, transaction.MapToTx(
-							row.ID,
-							row.UserID,
-							row.TransactionDate,
-							row.Merchant,
-							row.AmountCents,
-							row.DetailedCategoryID,
-						),
-						)
-					}
-					if hasMoreData == true {
-						require.NotEmpty(t, nextCursorID)
-					}
-					require.Equal(t, tc.expectedCursorDate, nextCursorDate)
-					require.Equal(t, tc.expectedHasMoreData, hasMoreData)
-
-					if diff := cmp.Diff(expectedTxs, transactions); diff != "" {
-						t.Errorf("transaction slice mismatch (-want +got)\n%s", diff)
-					}
-					mockTxQ.AssertExpectations(t)
+				switch {
+				case tc.wantErr == nil:
+					mockTxQ.On("GetUserTransactionsPaginated", mock.Anything, mock.AnythingOfType("database.GetUserTransactionsPaginatedParams")).
+						Return(nextRows, nil).Once()
+				case errors.Is(tc.wantErr, sentinels.ErrDBExecFailed):
+					mockTxQ.On("GetUserTransactionsPaginated", mock.Anything, mock.AnythingOfType("database.GetUserTransactionsPaginatedParams")).
+						Return(nil, errors.New("db error")).Once()
+				case errors.Is(tc.wantErr, transaction.ErrTxNotFound):
+					mockTxQ.On("GetUserTransactionsPaginated", mock.Anything, mock.AnythingOfType("database.GetUserTransactionsPaginatedParams")).
+						Return(nil, sql.ErrNoRows).Once()
 				}
 			}
 
+			svc := transaction.NewTransactionService(mockTxQ, &cursor.NoopSigner{}, zap.NewNop())
+			txResult, err := svc.ListUserTransactions(ctx, tc.userID, tc.cursorToken, tc.pageSize)
+
+			if tc.wantErr == nil {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err, tc.wantErr)
+				return
+
+			}
+			txs := make([]models.Tx, 0, tc.pageSize)
+			if fetchType == constants.FTFirst {
+				if len(firstPageRows) > int(tc.pageSize) {
+					firstPageRows = firstPageRows[:tc.pageSize]
+				}
+				txs = helpers.AppendTxs(txs, helpers.SliceToTxRows(firstPageRows))
+			} else {
+				if len(nextRows) > int(tc.pageSize) {
+					nextRows = nextRows[:tc.pageSize]
+				}
+				txs = helpers.AppendTxs(txs, helpers.SliceToTxRows(nextRows))
+			}
+			if tc.expectedHasMoreData {
+				require.NotEmpty(t, txResult.NextCursor)
+			}
+			require.Equal(t, tc.expectedHasMoreData, txResult.HasMoreData)
+
+			if diff := cmp.Diff(txs, txResult.Transactions, cmpopts.IgnoreFields(models.Tx{}, "ID")); diff != "" {
+				t.Errorf("transaction slice mismatch (-want +got)\n%s", diff)
+			}
+			mockTxQ.AssertExpectations(t)
 		})
 	}
 }
@@ -234,10 +210,14 @@ func TestListUserTransactions(t *testing.T) {
 func generateFirstPageRows(userID uuid.UUID, txSliceLength int) []database.GetUserTransactionsFirstPageRow {
 	var rows []database.GetUserTransactionsFirstPageRow
 	for i := 0; i < txSliceLength; i++ {
-		date := fmt.Sprintf("2025-02-%02d", i+1)
+		d := fmt.Sprintf("2025-02-%02d", i+1)
+		date, err := time.Parse(constants.LayoutDate, d)
+		if err != nil {
+			log.Fatal("issue generating first page rows")
+		}
 		rows = append(rows, database.GetUserTransactionsFirstPageRow{
-			ID:                 uuid.NewString(),
-			UserID:             userID.String(),
+			ID:                 uuid.New(),
+			UserID:             userID,
 			TransactionDate:    date,
 			Merchant:           "costco",
 			AmountCents:        15744,
@@ -250,10 +230,14 @@ func generateFirstPageRows(userID uuid.UUID, txSliceLength int) []database.GetUs
 func generatePaginatedRows(userID uuid.UUID, txSliceLength int) []database.GetUserTransactionsPaginatedRow {
 	var rows []database.GetUserTransactionsPaginatedRow
 	for i := 0; i < txSliceLength; i++ {
-		date := fmt.Sprintf("2025-02-%02d", i+1)
+		d := fmt.Sprintf("2025-02-%02d", i+1)
+		date, err := time.Parse(constants.LayoutDate, d)
+		if err != nil {
+			log.Fatal("issue generating first page rows")
+		}
 		rows = append(rows, database.GetUserTransactionsPaginatedRow{
-			ID:                 uuid.NewString(),
-			UserID:             userID.String(),
+			ID:                 uuid.New(),
+			UserID:             userID,
 			TransactionDate:    date,
 			Merchant:           "costco",
 			AmountCents:        15744,

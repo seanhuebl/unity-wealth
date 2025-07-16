@@ -97,8 +97,7 @@ func TestIntegrationGetTransactionsByUserID(t *testing.T) {
 					},
 				},
 			},
-			CursorDate:    "2025-03-05",
-			CursorID:      txID.String(),
+			NextCursor:    "",
 			PageSize:      1,
 			FirstPageTest: false,
 			MoreData:      false,
@@ -126,8 +125,7 @@ func TestIntegrationGetTransactionsByUserID(t *testing.T) {
 					},
 				},
 			},
-			CursorDate:    "2025-03-05",
-			CursorID:      txID.String(),
+			NextCursor:    "token",
 			PageSize:      1,
 			FirstPageTest: false,
 			MoreData:      true,
@@ -171,8 +169,6 @@ func TestIntegrationGetTransactionsByUserID(t *testing.T) {
 			},
 			PageSize:      1,
 			FirstPageTest: false,
-			CursorDate:    "2025-03-05",
-			CursorID:      pagTxID.String(),
 		},
 	}
 	for _, tc := range tests {
@@ -221,9 +217,8 @@ func TestIntegrationGetTransactionsByUserID(t *testing.T) {
 			req := httptest.NewRequest("GET", "/transactions", nil)
 			env.Router.GET("/transactions", func(c *gin.Context) {
 				c.Request = req
-				c.Set(string(constants.CursorDateKey), tc.CursorDate)
-				c.Set(string(constants.CursorIDKey), tc.CursorID)
-				c.Set(string(constants.PageSizeKey), tc.PageSize)
+				c.Set(string(constants.CursorKey), tc.NextCursor)
+				c.Set(string(constants.LimitKey), tc.PageSize)
 				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
 				env.Handlers.TxHandler.GetTransactionsByUserID(c)
 			})

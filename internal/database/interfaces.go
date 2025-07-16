@@ -28,7 +28,7 @@ type TokenQuerier interface {
 type TransactionQuerier interface {
 	CreateTransaction(ctx context.Context, arg CreateTransactionParams) error
 	UpdateTransactionByID(ctx context.Context, arg UpdateTransactionByIDParams) (UpdateTransactionByIDRow, error)
-	DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (uuid.UUID, error)
+	DeleteTransactionByID(ctx context.Context, arg DeleteTransactionByIDParams) (sql.Result, error)
 	GetUserTransactionsFirstPage(ctx context.Context, arg GetUserTransactionsFirstPageParams) ([]GetUserTransactionsFirstPageRow, error)
 	GetUserTransactionsPaginated(ctx context.Context, arg GetUserTransactionsPaginatedParams) ([]GetUserTransactionsPaginatedRow, error)
 	GetUserTransactionByID(ctx context.Context, arg GetUserTransactionByIDParams) (GetUserTransactionByIDRow, error)

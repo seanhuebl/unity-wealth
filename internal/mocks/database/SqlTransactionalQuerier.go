@@ -135,23 +135,23 @@ func (_m *SqlTransactionalQuerier) CreateUser(ctx context.Context, params databa
 }
 
 // DeleteTransactionByID provides a mock function with given fields: ctx, arg
-func (_m *SqlTransactionalQuerier) DeleteTransactionByID(ctx context.Context, arg database.DeleteTransactionByIDParams) (uuid.UUID, error) {
+func (_m *SqlTransactionalQuerier) DeleteTransactionByID(ctx context.Context, arg database.DeleteTransactionByIDParams) (sql.Result, error) {
 	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteTransactionByID")
 	}
 
-	var r0 uuid.UUID
+	var r0 sql.Result
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, database.DeleteTransactionByIDParams) (uuid.UUID, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, database.DeleteTransactionByIDParams) (sql.Result, error)); ok {
 		return rf(ctx, arg)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, database.DeleteTransactionByIDParams) uuid.UUID); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, database.DeleteTransactionByIDParams) sql.Result); ok {
 		r0 = rf(ctx, arg)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(uuid.UUID)
+			r0 = ret.Get(0).(sql.Result)
 		}
 	}
 

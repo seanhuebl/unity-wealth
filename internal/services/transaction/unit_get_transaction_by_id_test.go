@@ -5,9 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
+	"github.com/seanhuebl/unity-wealth/internal/constants"
+	"github.com/seanhuebl/unity-wealth/internal/cursor"
 	"github.com/seanhuebl/unity-wealth/internal/database"
 	"github.com/seanhuebl/unity-wealth/internal/helpers"
 	dbmocks "github.com/seanhuebl/unity-wealth/internal/mocks/database"
@@ -20,42 +24,51 @@ import (
 )
 
 func TestGetTransactionByID(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	tests := []struct {
-		name                string
-		userID              uuid.UUID
-		txnID               uuid.UUID
-		txErr               error
-		expectedTxErrSubstr string
+		name   string
+		userID uuid.UUID
+		txID   uuid.UUID
+		want   error
 	}{
 		{
-			name:                "database error",
-			userID:              uuid.New(),
-			txnID:               uuid.New(),
-			txErr:               errors.New("db error"),
-			expectedTxErrSubstr: sentinels.ErrDBExecFailed.Error(),
+			name:   "success",
+			userID: uuid.New(),
+			txID:   uuid.New(),
+			want:   nil,
 		},
 		{
-			name:                "userID / txnID pair not found",
-			userID:              uuid.New(),
-			txnID:               uuid.New(),
-			txErr:               sql.ErrNoRows,
-			expectedTxErrSubstr: transaction.ErrTxNotFound.Error(),
+			name:   "database error",
+			userID: uuid.New(),
+			txID:   uuid.New(),
+			want:   sentinels.ErrDBExecFailed,
+		},
+		{
+			name:   "userID / txnID pair not found",
+			userID: uuid.New(),
+			txID:   uuid.New(),
+			want:   transaction.ErrTxNotFound,
 		},
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-
+			t.Parallel()
+			date, err := time.Parse(constants.LayoutDate, "2025-02-25")
+			require.NoError(t, err)
+			mockTxQ := dbmocks.NewTransactionQuerier(t)
+			t.Cleanup(func() { mockTxQ.AssertExpectations(t) })
 			expectedRow := database.GetUserTransactionByIDRow{
-				ID:                 tc.txnID.String(),
-				UserID:             tc.userID.String(),
-				TransactionDate:    "2025-02-25",
+				ID:                 tc.txID,
+				UserID:             tc.userID,
+				TransactionDate:    date,
 				Merchant:           "costco",
 				AmountCents:        19725,
 				DetailedCategoryID: 40,
 			}
-			expectedTxn := &models.Tx{
+			expectedTx := &models.Tx{
 				ID:               expectedRow.ID,
 				UserID:           expectedRow.UserID,
 				Date:             expectedRow.TransactionDate,
@@ -63,30 +76,30 @@ func TestGetTransactionByID(t *testing.T) {
 				Amount:           helpers.CentsToDollars(expectedRow.AmountCents),
 				DetailedCategory: expectedRow.DetailedCategoryID,
 			}
-
-			mockTxQ := dbmocks.NewTransactionQuerier(t)
-			if tc.txErr != nil {
-				expectedRow = database.GetUserTransactionByIDRow{}
+			switch {
+			case tc.want == nil:
+				mockTxQ.On("GetUserTransactionByID", mock.Anything, mock.AnythingOfType("database.GetUserTransactionByIDParams")).
+					Return(expectedRow, nil)
+			case errors.Is(tc.want, sentinels.ErrDBExecFailed):
+				mockTxQ.On("GetUserTransactionByID", mock.Anything, mock.AnythingOfType("database.GetUserTransactionByIDParams")).
+					Return(database.GetUserTransactionByIDRow{}, errors.New("db error"))
+			case errors.Is(tc.want, transaction.ErrTxNotFound):
+				mockTxQ.On("GetUserTransactionByID", mock.Anything, mock.AnythingOfType("database.GetUserTransactionByIDParams")).
+					Return(database.GetUserTransactionByIDRow{}, sql.ErrNoRows)
 			}
-			mockTxQ.On("GetUserTransactionByID", ctx, mock.AnythingOfType("database.GetUserTransactionByIDParams")).Return(expectedRow, tc.txErr)
 
-			nopLogger := zap.NewNop()
-			svc := transaction.NewTransactionService(mockTxQ, nopLogger)
+			svc := transaction.NewTransactionService(mockTxQ, &cursor.NoopSigner{}, zap.NewNop())
 
-			txn, err := svc.GetTransactionByID(ctx, tc.userID.String(), tc.txnID.String())
-			if tc.expectedTxErrSubstr != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.expectedTxErrSubstr)
-				mockTxQ.AssertExpectations(t)
+			tx, err := svc.GetTransactionByID(ctx, tc.userID, tc.txID)
+			if tc.want != nil {
+				require.ErrorIs(t, err, tc.want)
+				require.Nil(t, tx)
 			} else {
 				require.NoError(t, err)
-
-				if diff := cmp.Diff(txn, expectedTxn); diff != "" {
+				if diff := cmp.Diff(expectedTx, tx, cmpopts.IgnoreFields(*new(models.Tx), "UpdatedAt")); diff != "" {
 					t.Errorf("transaction mismatch (-want +got)\n%s", diff)
 				}
-				mockTxQ.AssertExpectations(t)
 			}
-
 		})
 	}
 }

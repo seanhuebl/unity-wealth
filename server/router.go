@@ -66,7 +66,7 @@ func registerPublicRoutes(r *gin.Engine, h *HandlersGroup) {
 
 func registerAppRoutes(r *gin.Engine, h *HandlersGroup, m *middleware.Middleware) {
 	app := r.Group("/app")
-	app.Use(m.UserAuthMiddleware(), m.ClaimsAuthMiddleware())
+	app.Use(m.UserAuthMiddleware(), m.ClaimsAuthMiddleware(), m.RequestID())
 
 	app.POST("transactions", h.Tx.NewTransaction)
 	app.GET("transactions", m.Paginate(), h.Tx.GetTransactionsByUserID)

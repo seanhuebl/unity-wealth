@@ -8,6 +8,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/handlers/transaction"
 	"github.com/seanhuebl/unity-wealth/handlers/user"
 	"github.com/seanhuebl/unity-wealth/internal/database"
+	"github.com/seanhuebl/unity-wealth/internal/middleware"
 	authSvc "github.com/seanhuebl/unity-wealth/internal/services/auth"
 	txSvc "github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	userSvc "github.com/seanhuebl/unity-wealth/internal/services/user"
@@ -15,15 +16,16 @@ import (
 )
 
 type TestEnv struct {
-	Db       *sql.DB
-	Router   *gin.Engine
-	UserQ    database.UserQuerier
-	TxQ      database.TransactionQuerier
-	TokenQ   database.TokenQuerier
-	DeviceQ  database.DeviceQuerier
-	Logger   *zap.Logger
-	Services *Services
-	Handlers *Handlers
+	Db         *sql.DB
+	Router     *gin.Engine
+	UserQ      database.UserQuerier
+	TxQ        database.TransactionQuerier
+	TokenQ     database.TokenQuerier
+	DeviceQ    database.DeviceQuerier
+	Logger     *zap.Logger
+	Services   *Services
+	Middleware *middleware.Middleware
+	Handlers   *Handlers
 }
 
 type Services struct {
