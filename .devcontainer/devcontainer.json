@@ -3,6 +3,9 @@
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
+  "containerEnv": {
+    "TESTCONTAINERS_RYUK_DISABLED": "true"
+  },
   "build": {
     "dockerfile": "Dockerfile",
     "context": "..",
