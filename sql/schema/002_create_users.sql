@@ -1,6 +1,6 @@
 -- +goose Up
--- +goose StatementBegin
 /* -- enums -- */
+-- +goose StatementBegin
 DO $$
 BEGIN
     IF NOT EXISTS(
@@ -25,7 +25,7 @@ END IF;
             typname = 'plan_type_enum') THEN
     CREATE TYPE plan_type_enum AS ENUM(
         'FREE',
-        'PRO',
+        'PRO'
 );
 END IF;
 END
@@ -34,7 +34,7 @@ $$;
 -- +goose StatementEnd
 CREATE TABLE IF NOT EXISTS users (
     -- keys
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     -- business data
     email CITEXT NOT NULL UNIQUE,
     hashed_password text NOT NULL,

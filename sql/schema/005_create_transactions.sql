@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS detailed_categories (
     name TEXT NOT NULL,
     description TEXT NOT NULL,
     primary_category_id INTEGER NOT NULL,
+    UNIQUE (primary_category_id, name),
     CONSTRAINT fk_detailed_primary FOREIGN KEY (primary_category_id) REFERENCES primary_categories (id) ON DELETE CASCADE
 );
 
@@ -20,7 +21,7 @@ CREATE INDEX IF NOT EXISTS idx_detailed_categories_primary ON detailed_categorie
 /* -- TRANSACTIONS  (fact table) -- */
 CREATE TABLE IF NOT EXISTS transactions (
     -- keys first
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     detailed_category_id INTEGER NOT NULL,
     user_id UUID NOT NULL,
     -- business data

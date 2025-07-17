@@ -5,6 +5,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS citext;
 
 /* ---------- timestamp maintenance helpers ---------- */
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION trg_set_timestamp () RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at := NOW();
@@ -12,6 +13,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- +goose StatementEnd
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION trg_touch_last_used_at () RETURNS TRIGGER AS $$
 BEGIN
   NEW.last_used_at := NOW();
@@ -19,6 +22,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- +goose StatementEnd
 -- +goose Down
 DROP FUNCTION IF EXISTS trg_set_timestamp ();
 

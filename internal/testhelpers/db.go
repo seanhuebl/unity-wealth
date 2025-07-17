@@ -25,7 +25,7 @@ import (
 	"github.com/seanhuebl/unity-wealth/internal/services/transaction"
 	"github.com/seanhuebl/unity-wealth/internal/services/user"
 	"github.com/seanhuebl/unity-wealth/internal/testmodels"
-	"github.com/seanhuebl/unity-wealth/migrations"
+	migrations "github.com/seanhuebl/unity-wealth/sql"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -68,13 +68,13 @@ func SeedTestUser(t *testing.T, userQ database.UserQuerier, userID uuid.UUID, re
 func SeedTestCategories(t *testing.T, db *sql.DB) {
 	_, err := db.Exec(`
 	INSERT INTO primary_categories (id, name)
-	VALUES (?1, ?2)
+	VALUES ($1, $2)
 	`, 7, "Food")
 	require.NoError(t, err)
 
 	_, err = db.Exec(`
 	INSERT INTO detailed_categories (id, name, description, primary_category_id)
-	VALUES (?1, ?2, ?3, ?4)
+	VALUES ($1, $2, $3, $4)
 	`, 40, "Groceries", "Purchases for fresh produce and groceries, including farmers' markets", 7)
 	require.NoError(t, err)
 }
@@ -119,7 +119,7 @@ func newTestContainerWithDB(t *testing.T) *sql.DB {
 	t.Helper()
 	ctx := context.Background()
 
-	const migrationsDir = "sql/schema"
+	const migrationsDir = "schema"
 	goose.SetBaseFS(migrations.FS)
 	require.NoError(t, goose.SetDialect("postgres"))
 

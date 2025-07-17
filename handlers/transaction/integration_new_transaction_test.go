@@ -25,7 +25,7 @@ func TestIntegrationNewTx(t *testing.T) {
 				ExpectedStatusCode: http.StatusCreated,
 				ExpectedResponse: map[string]interface{}{
 					"data": map[string]interface{}{
-						"date":              "2025-03-05",
+						"date":              "2025-03-05T00:00:00Z",
 						"merchant":          "costco",
 						"amount":            125.98,
 						"detailed_category": 40,
@@ -66,9 +66,7 @@ func TestIntegrationNewTx(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 			env := testhelpers.SetupTestEnv(t)
-			t.Cleanup(func() { env.Db.Close() })
 			testhelpers.SeedTestUser(t, env.UserQ, tc.UserID, false)
-			testhelpers.SeedTestCategories(t, env.Db)
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest("POST", "/transactions", bytes.NewBufferString(tc.ReqBody))
 			req.Header.Set("Content-Type", "application/json")
@@ -76,7 +74,6 @@ func TestIntegrationNewTx(t *testing.T) {
 				testhelpers.CheckForUserIDIssues(tc.Name, tc.UserID, c)
 				c.Next()
 			})
-
 			env.Router.POST("/transactions", env.Middleware.RequestID(), env.Handlers.TxHandler.NewTransaction)
 			env.Router.ServeHTTP(w, req)
 			actualResponse := testhelpers.ProcessResponse(w, t)
