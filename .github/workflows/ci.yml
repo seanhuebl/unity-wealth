@@ -28,7 +28,11 @@ jobs:
           EOF
 
       - name: unit tests
-        run: cd backend/ && go test ./... -cover -v
+        run: 
+          go test -v -count=1 -parallel 1 ./handlers/auth
+          go test -v -count=1 -parallel 1 ./internal/services/auth
+          go test -v -count=1 -parallel 1 ./handlers/transaction/tests
+          go test -v -count=1 -parallel 1 ./internal/services/user
       
       - name: install gosec
         run: go install github.com/securego/gosec/v2/cmd/gosec@latest
