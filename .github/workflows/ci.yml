@@ -26,9 +26,9 @@ jobs:
           TOKEN_TYPE=urn:unity-wealth:auth
           ENCODE_CURSOR_SECRET="C3DfIz6iWtzziGxFXudSvuzGgc0sdPXtkrSIsFfbfpU="
           EOF
-          
+
       - name: unit tests
-        run: cd backend/ && go test ./... -cover
+        run: cd backend/ && go test ./... -cover -v
       
       - name: install gosec
         run: go install github.com/securego/gosec/v2/cmd/gosec@latest
