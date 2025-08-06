@@ -72,7 +72,7 @@ func startContainerAndTemplate() {
 	if err != nil {
 		log.Fatalf("open admin: %v", err)
 	}
-	if err = waitForPing(ctx, admin, 10, 300*time.Millisecond); err != nil {
+	if err = waitForPing(ctx, admin, 20, 300*time.Millisecond); err != nil {
 		log.Fatalf("postgres never became ready")
 	}
 	if _, err := admin.ExecContext(ctx, `DROP DATABASE IF EXISTS test_template`); err != nil {
