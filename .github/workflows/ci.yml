@@ -27,16 +27,20 @@ jobs:
           ENCODE_CURSOR_SECRET="C3DfIz6iWtzziGxFXudSvuzGgc0sdPXtkrSIsFfbfpU="
           EOF
       - name: test1
-        run: go test -v -count=1 -parallel 1 ./backend/handlers/auth
+        run: go test -v -count=1 -parallel 1 ./handlers/auth
+        working-directory: backend
 
       - name: test2
-        run: go test -v -count=1 -parallel 1 ./backend/internal/services/auth
+        run: go test -v -count=1 -parallel 1 ./internal/services/auth
+        working-directory: backend
 
       - name: test3
-        run: go test -v -count=1 -parallel 1 ./backend/handlers/transaction/tests
-        
+        run: go test -v -count=1 -parallel 1 ./handlers/transaction/tests
+        working-directory: backend
+
       - name: test4
-        run: go test -v -count=1 -parallel 1 ./backend/internal/services/user
+        run: go test -v -count=1 -parallel 1 ./internal/services/user
+        working-directory: backend
 
       - name: unit tests
         run: cd backend/ && go test ./... -cover -v
