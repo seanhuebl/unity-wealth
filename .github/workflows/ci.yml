@@ -26,6 +26,17 @@ jobs:
           TOKEN_TYPE=urn:unity-wealth:auth
           ENCODE_CURSOR_SECRET="C3DfIz6iWtzziGxFXudSvuzGgc0sdPXtkrSIsFfbfpU="
           EOF
+      - name: Auth service tests
+        run: |
+          cd backend
+          go test -json -count=1 ./internal/services/auth |
+            tee ${{ runner.temp }}/auth_svc.json |
+            jq -r 'select(.Action=="fail") | .Test, .Output'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: auth-service-test-json
+          path: ${{ runner.temp }}/auth_svc.json
+
       - name: test1
         run: go test -v -count=1 -parallel 1 -tags=testdebug ./handlers/auth
         working-directory: backend
