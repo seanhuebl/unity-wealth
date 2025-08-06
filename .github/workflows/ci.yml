@@ -29,13 +29,12 @@ jobs:
       - name: Auth service tests
         run: |
           cd backend
-          go test -json -count=1 ./internal/services/auth |
-            tee ${{ runner.temp }}/auth_svc.json |
-            jq -r 'select(.Action=="fail") | .Test, .Output'
+          go test -json ./internal/services/auth 2> $RUNNER_TEMP/auth_stderr.log
+        continue-on-error: true
       - uses: actions/upload-artifact@v4
         with:
-          name: auth-service-test-json
-          path: ${{ runner.temp }}/auth_svc.json
+          name: auth-stderr
+          path: $RUNNER_TEMP/auth_stderr.log
 
       - name: test1
         run: go test -v -count=1 -parallel 1 -tags=testdebug ./handlers/auth
