@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
@@ -23,7 +24,7 @@ func (rph *RealPasswordHasher) HashPassword(password string) (string, error) {
 func (rph *RealPasswordHasher) CheckPasswordHash(password, hash string) error {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	if err != nil {
-		return fmt.Errorf("pwd hash mismatch: %w", err)
+		return errors.Join(ErrPwdHashMismatch, err)
 	}
 	return nil
 }

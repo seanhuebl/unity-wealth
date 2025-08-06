@@ -139,7 +139,9 @@ func TestCheckPasswordHash(t *testing.T) {
 			if !tc.wantErr {
 				return
 			}
-
+			if errors.Is(err, auth.ErrPwdHashMismatch) {
+				return
+			}
 			if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 				return
 			}
