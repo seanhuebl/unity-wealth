@@ -17,15 +17,49 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.23.0"
-      
+
+      - name: create test .env
+        run: |
+          cat <<EOF>> backend/.env
+          GIN_MODE=debug
+          TOKEN_SECRET="5nJwILdxd5YCfQfsc1Zd6JK4Rrq5Gj0JQaiI8EtQjk0="
+          TOKEN_TYPE=urn:unity-wealth:auth
+          ENCODE_CURSOR_SECRET="C3DfIz6iWtzziGxFXudSvuzGgc0sdPXtkrSIsFfbfpU="
+          EOF
+      - name: Auth service tests
+        run: |
+          cd backend
+          go test -json ./internal/services/auth 2> $RUNNER_TEMP/auth_stderr.log
+        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: auth-stderr
+          path: $RUNNER_TEMP/auth_stderr.log
+
+      - name: test1
+        run: go test -v -count=1 -parallel 1 -tags=testdebug ./handlers/auth
+        working-directory: backend
+
+      - name: test2
+        run: go test -v -count=1 -parallel 1 ./internal/services/auth
+        working-directory: backend
+
+      - name: test3
+        run: go test -v -count=1 -parallel 1 ./handlers/transaction/tests
+        working-directory: backend
+
+      - name: test4
+        run: go test -v -count=1 -parallel 1 ./internal/services/user
+        working-directory: backend
+
       - name: unit tests
-        run: go test ./... -cover
+        run: cd backend/ && go test ./... -cover -v
       
       - name: install gosec
         run: go install github.com/securego/gosec/v2/cmd/gosec@latest
 
       - name: check gosec
-        run: gosec ./...
+        run: cd backend/ && gosec ./...
 
   styles:    
     name: Style
@@ -41,10 +75,10 @@ jobs:
           go-version: "1.23.4"
       
       - name: check style
-        run: test -z "$(go fmt ./...)"
+        run: cd backend/ && test -z "$(go fmt ./...)"
 
       - name: Install staticcheck
         run: go install honnef.co/go/tools/cmd/staticcheck@latest
 
       - name: lint code
-        run: staticcheck ./...
+        run: cd backend/ && staticcheck ./...

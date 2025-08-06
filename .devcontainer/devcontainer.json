@@ -1,5 +1,11 @@
 {
   "name": "go backend container",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "containerEnv": {
+    "TESTCONTAINERS_RYUK_DISABLED": "true"
+  },
   "build": {
     "dockerfile": "Dockerfile",
     "context": "..",
@@ -28,10 +34,38 @@
         "mtxr.sqltools-driver-sqlite",
         "mtxr.sqltools-driver-pg",
         "davidanson.vscode-markdownlint",
-        "daltonmenezes.aura-theme"
+        "daltonmenezes.aura-theme",
+        "ReneSaarsoo.sql-formatter-vsc"
       ],
       "settings": {
-        "workbench.colorTheme": "Aura Dark"
+        "workbench.colorTheme": "Aura Dark",
+        "editor.formatOnSave": true,
+        "go.formatTool": "goimports",
+        "editor.formatOnPaste": true,
+        "rest-client.environmentVariables": {
+          "$shared": {}
+        },
+        "workbench.editor.languageDetectionHints": {
+          "notebookEditors": false
+        },
+        "editor.cursorBlinking": "expand",
+        "editor.cursorSmoothCaretAnimation": "on",
+        "terminal.integrated.enableMultiLinePasteWarning": "never",
+        "github.copilot.enable": {
+          "*": false,
+          "plaintext": false,
+          "markdown": false,
+          "scminput": false,
+          "go": false
+        },
+        "github.copilot.nextEditSuggestions.enabled": true,
+        "github.copilot.advanced": {},
+        "sqltools.format": {},
+        "[sql]": {
+          "editor.defaultFormatter": "ReneSaarsoo.sql-formatter-vsc",
+          "editor.formatOnSave": true
+        },
+        "SQL-Formatter-VSCode.dialect": "postgresql"
       },
       "snippets": {
         "go-snippets.code-snippets": {
@@ -44,7 +78,21 @@
             ],
             "description": "gin anonymous with c instead of ctx"
           },
-          "Table-Driven Test": {
+          "Base err": {
+            "prefix": "base",
+            "body": [
+              "baseErr := errors.Join($1, err)$0"
+            ],
+            "description": "setting up base err for wrapping"
+          },
+          "Wrapped error": {
+            "prefix": "wrp",
+            "body": [
+              "wrapped := fmt.Errorf(\"$1: %w\", baseErr)$0"
+            ],
+            "description": "fast way to write wrapped error boilerplate"
+          },
+          "Table-driven test": {
             "prefix": "tdt",
             "body": [
               "func Test$1(t *testing.T) {",
