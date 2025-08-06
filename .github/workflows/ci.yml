@@ -27,7 +27,7 @@ jobs:
           ENCODE_CURSOR_SECRET="C3DfIz6iWtzziGxFXudSvuzGgc0sdPXtkrSIsFfbfpU="
           EOF
       - name: test1
-        run: go test -v -count=1 -parallel 1 ./handlers/auth
+        run: go test -v -count=1 -parallel 1 -tags=testdebug ./handlers/auth
         working-directory: backend
 
       - name: test2
